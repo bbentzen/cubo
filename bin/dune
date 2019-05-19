@@ -1,0 +1,7 @@
+(executable
+  (name main)
+  (libraries frontend basis checker))
+
+(install
+ (section bin)
+ (files (main.exe as cubo)))

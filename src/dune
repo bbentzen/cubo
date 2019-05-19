@@ -1,0 +1,8 @@
+(menhir
+ (flags --explain --interpret-show-cst)
+ (modules syntax))
+
+(ocamllex scanner)
+
+(library
+  (name basis))

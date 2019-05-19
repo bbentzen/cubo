@@ -1,0 +1,203 @@
+/* this is a test */
+
+def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
+⊢ app B (p @ i0) :=
+(app f a)
+
+def apds (A : type 1) (B : A → type 1) (a b : A) (p : pathd (λi, A) a b)
+⊢ app B (p @ i0) → app B a :=
+λ b, b
+
+def apdd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
+⊢ app B (p @ i0) :=
+(app f a)
+
+/*** 
+
+def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
+⊢ type 1 :=
+pathd (λi, app B (p @ i)) (app f a) (app f b)
+
+problem:
+def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
+⊢ app (λi, app B (p @ i)) i0 :=
+(app f a)
+
+
+def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
+⊢ type 1 :=
+pathd (λi, app B (p @ i)) (app f a) (app f b) 
+
+def ap (A B : type 1) (f : A → B) (a b : A) 
+⊢ pathd (λi, A) a b → pathd (λi, B) (app f a) (app f b) :=
+λp, <i> app f (p @ i)
+
+def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
+⊢ pathd (λi, app B (p @ i)) (app f a) (app f b) :=
+<i> app f (p @ i)
+
+
+(*
+
+Checker.elaborate
+[("i", Ast.Int ()); ("x", Ast.Id "A"); 
+	("A", Ast.Type 1); ("B", Ast.Type 1);
+	("f", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")); 
+	("g", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"));
+  ("h",
+   Ast.Pi ("x", Ast.Id "A",
+    Ast.Pathd (Ast.Abs ("i", Ast.Id "B"), Ast.App (Ast.Id "f", Ast.Id "x"),
+		 Ast.App (Ast.Id "f", Ast.Id "x"))))]
+(Ast.Int ()) 0
+(Ast.Id "i");;
+
+Checker.elaborate
+[("i", Ast.Int ()); ("x", Ast.Id "A"); 
+	("A", Ast.Type 1); ("B", Ast.Type 1);
+	("f", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")); 
+	("g", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"));
+  ("h",
+   Ast.Pi ("x", Ast.Id "A",
+    Ast.Pathd (Ast.Abs ("i", Ast.Id "B"), Ast.App (Ast.Id "f", Ast.Id "x"),
+		 Ast.App (Ast.Id "f", Ast.Id "x"))))]
+(Ast.Pathd (Ast.Placeholder "0", Ast.Placeholder "1", Ast.Placeholder "2")) 0
+(Ast.App (Ast.Id "h", Ast.Id "x"));;
+
+Checker.elaborate
+[("i", Ast.Int ()); ("x", Ast.Id "A");
+	("A", Ast.Type 1); ("B", Ast.Type 1);
+	("f", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")); 
+	("g", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"));
+  ("h",
+   Ast.Pi ("x", Ast.Id "A",
+    Ast.Pathd (Ast.Abs ("i", Ast.Id "B"), Ast.App (Ast.Id "f", Ast.Id "x"),
+		 Ast.App (Ast.Id "f", Ast.Id "x"))))]
+(Eval.eval (Ast.App(Ast.Abs ("i", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")), Ast.Id "i"))) 0
+(Ast.Abs ("x", (Ast.At (Ast.App (Ast.Id "h", Ast.Id "x"), Ast.Id "i"))));;
+
+-----------
+
+Checker.elaborate
+[("A", Ast.Type 1);
+("B", Ast.Type 1);
+("C", Ast.Type 1)]
+(Ast.Placeholder "0") 1
+(Ast.Sigma ("v?", Ast.Id "A", Ast.Sum(Ast.Id "B", Ast.Id "C")));;
+
+Checker.check_type
+[("A", Ast.Type 1);
+("B", Ast.Pi ("v?", Ast.Id "A", Ast.Type 1));
+("C", Ast.Type 1)]
+(Ast.Pi ("x", Ast.Id "A", Ast.App (Ast.Id "B", Ast.Id "x")));;
+
+Checker.elaborate
+[("A", Ast.Type 1);
+("B", Ast.Type 1);
+("C", Ast.Type 1)]
+(Ast.Placeholder "0") 1
+(Ast.Sum(Ast.Id "B", Ast.Id "C"));;
+
+
+----------
+
+Checker.elaborate
+[("i", Ast.Int ()); 
+	("A", Ast.Type 1); ("B", Ast.Type 1);
+	("f", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")); 
+	("g", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"));
+  ("h",
+   Ast.Pi ("x", Ast.Id "A",
+    Ast.Pathd (Ast.Abs ("i", Ast.Id "B"), Ast.App (Ast.Id "f", Ast.Id "x"),
+		 Ast.App (Ast.Id "f", Ast.Id "x"))))]
+(Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")) 0
+(Ast.At (Ast.App (Ast.Id "h", Ast.Id "x"), Ast.Id "i"));;
+
+------------
+
+
+PROBLEM：
+Checker.elaborate
+[("A", Ast.Type 1); ("B", Ast.Type 1);
+ ("f",
+  Ast.Pi ("v?",
+   Ast.Pi ("v?", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"), Ast.Id "B"),
+   Ast.Id "B"));
+ ("x", Ast.Id "A")]
+(Ast.Placeholder "0") 1
+(Ast.Abs ("g", Ast.App (Ast.Id "g", Ast.Id "x")));;
+
+Checker.elaborate
+[("A", Ast.Type 1); ("B", Ast.Type 1);
+ ("f",
+  Ast.Pi ("v?",
+   Ast.Pi ("v?", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"), Ast.Id "B"),
+   Ast.Id "B"));
+ ("x", Ast.Id "A")]
+(Ast.Pi ("v?", Ast.Placeholder "0", Ast.Placeholder "1")) 2
+(Ast.Abs ("g", Ast.App (Ast.Id "g", Ast.Id "x")));;
+
+Checker.elaborate
+[("g", Ast.Placeholder "0"); 
+("A", Ast.Type 1); ("B", Ast.Type 1);
+ ("f",
+  Ast.Pi ("v?",
+   Ast.Pi ("v?", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"), Ast.Id "B"),
+   Ast.Id "B"));
+ ("x", Ast.Id "A")]
+(Ast.Placeholder "1") 2
+(Ast.App (Ast.Id "g", Ast.Id "x"));;
+
+Checker.elaborate
+[("g", Ast.Placeholder "0"); 
+("A", Ast.Type 1); ("B", Ast.Type 1);
+ ("f",
+  Ast.Pi ("v?",
+   Ast.Pi ("v?", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"), Ast.Id "B"),
+   Ast.Id "B"));
+ ("x", Ast.Id "A")]
+(Ast.Pi ("v?", Ast.Id "A", Ast.Placeholder "1")) 2
+(Ast.Id "g");;
+
+----------------
+
+Checker.elaborate [("A", Ast.Type 1); ("B", Ast.Type 1); ("C", Ast.Type 1);
+ ("f", Ast.Pi ("v?", Ast.Id "A", Ast.Pi ("v?", Ast.Id "B", Ast.Id "C")));
+ ("y", Ast.Id "B"); ("x", Ast.Id "A")]
+(Ast.Pi ("v0", Ast.Id "B", Ast.Id "C")) 1
+(Ast.App (Ast.Id "f", Ast.Id "x"));;
+
+Checker.elaborate [("A", Ast.Type 1); ("B", Ast.Type 1); ("C", Ast.Type 1);
+ ("f", Ast.Pi ("v?", Ast.Id "A", Ast.Pi ("v?", Ast.Id "B", Ast.Id "C")));
+ ("y", Ast.Id "B"); ("x", Ast.Id "A")]
+(Ast.Placeholder ("0")) 1
+(Ast.Id "x");;
+
+Checker.elaborate [("A", Ast.Type 1); ("B", Ast.Type 1); ("C", Ast.Type 1);
+ ("f", Ast.Pi ("v?", Ast.Id "A", Ast.Pi ("v?", Ast.Id "B", Ast.Id "C")));
+ ("y", Ast.Id "B"); ("x", Ast.Id "A")]
+(Ast.Pi ("v0", Ast.Id "A", (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C")))) 1
+(Ast.Id "f");;
+
+PROBLEM HERE:
+Checker.elaborate [("A", Ast.Type 1); ("B", Ast.Type 1); ("C", Ast.Type 1);
+ ("f", Ast.Pi ("v?", Ast.Id "A", Ast.Pi ("v?", Ast.Id "B", Ast.Id "C")));
+ ("y", Ast.Id "B"); ("x", Ast.Id "A")]
+(Ast.Pi ("v0", Ast.Id "A", 
+  Substitution.fullsubst (Ast.Id "x") (Ast.Id "v0") (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C")))) 1
+(Ast.Id "f");;
+
+Substitution.fullsubst (Ast.Id "x") (Ast.Id "v0") (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C"));;
+
+Substitution.termsubst (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C")) (Ast.Id "v0") (Ast.Id "x");;
+
+Substitution.subst ("x") (Ast.Id "v0") (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C"));;
+
+Substitution.alphasubst ("x") (Ast.Id "v0") false (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C"));;
+
+let ty_of_string s =
+	match (parse_string s) with
+	| Def (s, l, ty, e) -> ty
+	| Eof () -> Void()
+*)
+
+**/

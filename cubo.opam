@@ -1,0 +1,12 @@
+opam-version: "2.0"
+name: "cubo"
+version: "0.1"
+maintainer: "bbentzen@andrew.cmu.edu"
+authors: ["bbentzen"]
+homepage: "https://github.com/bbentzen/cubo"
+bug-reports: "https://github.com/bbentzen/cubo/issues"
+dev-repo: "git+https://github.com/bbentzen/cubo.git"
+license: "Apache-2.0"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]

@@ -1,0 +1,12 @@
+lib: [
+  "_build/install/default/lib/cubo/META" {"META"}
+  "_build/install/default/lib/cubo/dune-package" {"dune-package"}
+  "_build/install/default/lib/cubo/opam" {"opam"}
+]
+bin: [
+  "_build/install/default/bin/cubo" {"cubo"}
+]
+doc: [
+  "_build/install/default/doc/cubo/LICENSE"
+  "_build/install/default/doc/cubo/README.md"
+]
