@@ -23,11 +23,12 @@ let rec create_ctx = function
 
 let ctx_of_string s =
 	match (parse_string s) with
-	| Def (_, l, _, _, _) -> create_ctx l
+	| Thm (_, Prf (_, l, _, _)) -> create_ctx l
+	| Print _ -> []
 	| Eof () -> []
 				
 let checkctx filename = 
-	check_ctx (ctx_of_string (concat_string_list (read_file filename)))
+	check_ctx [] (ctx_of_string (concat_string_list (read_file filename)))
 
 let ctxfile filename = 
 	(ctx_of_string (concat_string_list (read_file filename)))

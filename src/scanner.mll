@@ -2,7 +2,7 @@
 (**
  * (c) Copyright 2019 Bruno Bentzen. All rights reserved.
  * Released under Apache 2.0 license as described in the file LICENSE.
- * Desc: Performs lexical analysis of the program
+ * Desc: Performs the lexical analysis 
  **)
 
 open Syntax
@@ -15,7 +15,12 @@ let number =
   ['0'-'9']* as str
 
 let whitespace =
-  [' ' '\t' '\n']
+  [' ' '\t']+
+
+let end_of_line =
+    '\r'
+  | '\n'
+  | "\r\n"
 
 rule token = parse
   | "/*"               { comment lexbuf } (* Comments *)
@@ -75,12 +80,20 @@ rule token = parse
   | "lemma"            { DEF }
   | "theorem"          { DEF }
   | "thm"              { DEF }
+  | "print"            { PRINT }
   | whitespace         { token lexbuf }
+  | end_of_line        { Lexing.new_line lexbuf; token lexbuf } (* needs fix later *)
   | identifier         { ID(str) }
   | number             { NUMBER(str) }
-  | _ as chr           { failwith ("lex error: "^(Char.escaped chr))}
+  | _ as chr           { failwith ("Lex error: "^(Char.escaped chr))}
   | eof                { EOF }
 
 and comment = parse
   | "*/"               { token lexbuf }
   | _                  { comment lexbuf }
+
+(*
+(* | "--"               { comment_line lexbuf } *)
+and comment_line = parse
+  | end_of_line        { token lexbuf }
+  | _                  { comment_line lexbuf } *)

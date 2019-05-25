@@ -19,17 +19,16 @@ let function_of_def id ctx elab =
 		id, helper ctx
 
 let rec check_def_id id = function
-  | [] -> false 
-  | (id', (_, _)) :: global -> 
+  | [] -> Error ("No definition or theorem found for the identifier " ^ id) 
+  | (id', body) :: global -> 
     if id = id'
-    then true
+    then Ok body
 		else check_def_id id global
 
 (* Appends a triple id * term * type to the global enviroment list *)
 
 let add_to_global_env global id ctx elab =
-	if check_def_id id global
-	then global
-	else function_of_def id ctx elab :: global
-
+	match check_def_id id global with
+	| Ok _ -> global
+	| Error _ -> function_of_def id ctx elab :: global
 

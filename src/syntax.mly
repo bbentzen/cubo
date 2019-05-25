@@ -10,7 +10,8 @@ open Ast
 
 %token <string> ID
 %token <string> NUMBER
-%token TYPE COLON DEF VDASH
+%token DEF PRINT
+%token TYPE COLON VDASH
 %token I0 I1 INTERVAL
 %token ABS APP RARROW LRARROW PI
 %token LPAREN RPAREN COMMA FST SND PROD SIGMA
@@ -33,6 +34,7 @@ open Ast
 
 %start command
 %type <Ast.command> command
+%type <Ast.proof> decl
 %type <(string list * Ast.expr) list> ctx
 %type <Ast.expr> expr
 %type <string list>ids 
@@ -40,8 +42,12 @@ open Ast
 %%
 
 command:
-  | DEF ID ctx expr COLONEQ expr command                    {Def($2,$3,$4,$6,$7)}
+  | decl command                                            {Thm($2, $1)}
+  | PRINT ID command                                        {Print($3, $2)}
   | EOF                                                     {Eof()}
+
+decl:
+  | DEF ID ctx expr COLONEQ expr                            {Prf($2, $3, $4, $6)}
 
 ctx: 
   | LPAREN ids expr RPAREN ctx                              {($2, $3) :: $5}

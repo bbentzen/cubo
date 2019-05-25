@@ -20,7 +20,7 @@ let rec check_var_ty x ty ctx =
     then true
     else check_var_ty x ty ctx'
 
-(* Finds a variable of a given typed in the context when it exists *)
+(* Finds a variable of a given type in the context when it exists *)
 
 let rec find_ty ty ctx =
   match (List.rev ctx) with
@@ -30,9 +30,18 @@ let rec find_ty ty ctx =
     then Ok y
     else find_ty ty ctx'
 
+(* Definition unfolding *)
+
+let rec unfold_def id = function
+  | [] -> Error ("No declaration found for identifier " ^ id)
+  | (id', (body , ty)) :: global -> 
+    if id = id'
+    then Ok (body, ty)
+		else unfold_def id global
+
 (* Checks whether the type of a given expression is the given type *)
 
-let rec elaborate ctx ty ph vars = function
+let rec elaborate global ctx ty ph vars = function
   | Id x ->
     let ty' = infer_var_ty x ctx in
     (match check_var_ty x ty ctx, is_placeholder ty', is_declared x ctx with
@@ -41,8 +50,14 @@ let rec elaborate ctx ty ph vars = function
       if synthesize vars (ty', ty) 
       then Ok (Id x, ty') 
       else Error ("Failed to synthesize the types " ^ unparse ty' ^ "and " ^ unparse ty)
-    | false , false , false -> 
-      Error ("No declaration found for identifier " ^ x))
+    | false , false , false ->
+      (match unfold_def x global with
+      | Ok (body, ty') -> 
+        if synthesize vars (ty', ty) 
+        then Ok (body, ty')
+        else Error (x ^ "has type " ^ unparse ty' ^ "but is expected to have type " ^ unparse ty)
+      | Error msg -> Error msg )
+      )
   | I0() ->
     (match ty with
     | Ast.Int() -> Ok (I0(), Int())
@@ -56,20 +71,20 @@ let rec elaborate ctx ty ph vars = function
   | Abs (x, e) -> 
     (match ty with
     | Pi (y, ty1, ty2) -> 
-      (match elaborate ((x, ty1) :: ctx) (subst y (Ast.Id x) ty2) ph vars e with
+      (match elaborate global ((x, ty1) :: ctx) (subst y (Ast.Id x) ty2) ph vars e with
       | Ok elab -> Ok (Abs (x, fst elab), Pi (y, ty1, snd elab))
       | Error msg -> Error msg )
     | Hole _ -> 
       let p = generate_placeholder ty + ph in
-      elaborate ctx (Pi(x,(Hole (string_of_int p)),(Hole (string_of_int (p+1))))) (ph+2) vars (Abs (x, e))
+      elaborate global ctx (Pi(x,(Hole (string_of_int p)),(Hole (string_of_int (p+1))))) (ph+2) vars (Abs (x, e))
     | _ -> 
       Error ("Type mismatch when checking that the term λ " ^ x ^ ", " ^ unparse e ^ "of type Π (v? : ?0?) ?1? has type " ^ unparse ty))
   | App (e1, e2) ->
     let p = generate_placeholder ty + ph in
     let var = fresh_var (App(e1, e2)) ty vars in
-    (match elaborate ctx (Hole (string_of_int p)) (ph+1) (vars+1) e2 with
+    (match elaborate global ctx (Hole (string_of_int p)) (ph+1) (vars+1) e2 with
     | Ok elab2 -> 
-      (match elaborate ctx (Pi(var, (snd elab2), fullsubst e2 (Id var) ty)) (ph+1) (vars+1) e1 with
+      (match elaborate global ctx (Pi(var, (snd elab2), fullsubst e2 (Id var) ty)) (ph+1) (vars+1) e1 with
       | Ok elab1 ->
         (match snd elab1 with
         | Pi(x, _, ty') -> 
@@ -81,7 +96,7 @@ let rec elaborate ctx ty ph vars = function
   | Pair (e1, e2) -> 
     (match ty with
     | Sigma(y, ty1, ty2) ->
-      (match elaborate ctx ty1 ph vars e1, elaborate ctx (subst y e1 ty2) ph vars e2 with
+      (match elaborate global ctx ty1 ph vars e1, elaborate global ctx (subst y e1 ty2) ph vars e2 with
       | Ok elab1, Ok elab2 ->
         let gen_ty = fullsubst (fst elab1) (Id y) (snd elab2) in
         Ok (Pair (fst elab1, fst elab2), Sigma(y, snd elab1, gen_ty))
@@ -89,14 +104,14 @@ let rec elaborate ctx ty ph vars = function
     | Hole _ -> 
       let p = generate_placeholder ty in
       let var = fresh_var (App (e1, e2)) ty vars in
-      elaborate ctx (Sigma(var, (Hole (string_of_int p)), 
+      elaborate global ctx (Sigma(var, (Hole (string_of_int p)), 
       (Hole (string_of_int (p+1))))) (ph+2) (vars+1) (Pair (e1, e2))
     | _ ->
       Error ("Type mismatch when checking that the term (" ^ unparse e1 ^ ", " ^ unparse e2 ^ ") of type Σ (v? : ?0?) ?1? has type " ^ unparse ty))
   | Ast.Fst e ->
     let p = generate_placeholder ty in
     let var = fresh_var e ty vars in
-    (match elaborate ctx (Sigma (var, ty, Hole (string_of_int p))) (ph+1) (vars+1) e with
+    (match elaborate global ctx (Sigma (var, ty, Hole (string_of_int p))) (ph+1) (vars+1) e with
     | Ok elab ->
       (match snd elab with
       | Sigma(_, ty', _) -> 
@@ -107,14 +122,14 @@ let rec elaborate ctx ty ph vars = function
     (*
     let p = generate_placeholder ty in
     let var = fresh_var e ty in
-    (match elaborate ctx (Sigma (var, ty, Hole (string_of_int p))) (ph+1) vars e with
+    (match elaborate global ctx (Sigma (var, ty, Hole (string_of_int p))) (ph+1) vars e with
     | Ok elab -> Ok (Fst (fst elab), ty)
     | Error msg -> Error msg)
     *)
   | Snd e ->
     let p = generate_placeholder ty in
     let var = fresh_var e ty vars in
-    (match elaborate ctx (Sigma (var, Hole (string_of_int p), fullsubst (Fst e) (Id var) ty)) (ph+1) (vars+1) e with
+    (match elaborate global ctx (Sigma (var, Hole (string_of_int p), fullsubst (Fst e) (Id var) ty)) (ph+1) (vars+1) e with
     | Ok elab -> 
       (match snd elab with
       | Sigma(x, _, ty') -> 
@@ -125,41 +140,41 @@ let rec elaborate ctx ty ph vars = function
     (*
     let p = generate_placeholder ty in
     let var = fresh_var e ty vars in
-    (match elaborate ctx (Sigma (var, Hole (string_of_int p), fullsubst (Fst e) (Id var) ty)) (ph+1) vars e with
+    (match elaborate global ctx (Sigma (var, Hole (string_of_int p), fullsubst (Fst e) (Id var) ty)) (ph+1) vars e with
     | Ok elab -> Ok (Snd (fst elab), ty)
     | Error msg -> Error msg)
     *)
   | Ast.Inl e ->
     (match ty with
     | Ast.Sum (ty1, ty2) -> 
-      (match elaborate ctx ty1 ph vars e with
+      (match elaborate global ctx ty1 ph vars e with
       | Ok elab -> Ok (Inl (fst elab), Sum(snd elab, ty2))
       | Error msg -> Error msg)
     | Hole _ ->
       let p = generate_placeholder ty in
-      elaborate ctx (Sum(Hole (string_of_int p), Hole (string_of_int (p+1)))) (ph+2) vars (Inl e)
+      elaborate global ctx (Sum(Hole (string_of_int p), Hole (string_of_int (p+1)))) (ph+2) vars (Inl e)
     | _ ->
       Error ("Type mismatch when checking that the term inl " ^ unparse e ^ " of type ?0? + ?1? has type " ^ unparse ty)) 
   | Ast.Inr e -> 
     (match ty with
     | Ast.Sum (ty1, ty2) -> 
-      (match elaborate ctx ty2 ph vars e with
+      (match elaborate global ctx ty2 ph vars e with
       | Ok elab -> Ok (Inr (fst elab), Sum(ty1, snd elab))
       | Error msg -> Error msg)
     | Hole _ ->
       let p = generate_placeholder ty in
-      elaborate ctx (Sum(Hole (string_of_int p), Hole (string_of_int (p+1)))) (ph+2) vars (Inr e)
+      elaborate global ctx (Sum(Hole (string_of_int p), Hole (string_of_int (p+1)))) (ph+2) vars (Inr e)
     | _ -> 
       Error ("Type mismatch when checking that the term inr " ^ unparse e ^ " of type ?0? + ?1? has type " ^ unparse ty)) 
   | Case (e, e1, e2) ->
     let p = generate_placeholder ty in
-    (match elaborate ctx (Sum (Hole (string_of_int p), (Hole (string_of_int (p + 1))))) (ph+2) vars e with
+    (match elaborate global ctx (Sum (Hole (string_of_int p), (Hole (string_of_int (p + 1))))) (ph+2) vars e with
     | Ok elab ->
       (match snd elab with
       | Sum (ty1, ty2) ->
         let var = fresh_var (Sum(ty1,ty2)) ty vars in
-        (match elaborate ctx (Pi(var, ty1, fullsubst e (Inl (Id var)) ty)) ph (vars+1) e1, 
-               elaborate ctx (Pi(var, ty2, fullsubst e (Inr (Id var)) ty)) ph (vars+1) e2 with
+        (match elaborate global ctx (Pi(var, ty1, fullsubst e (Inl (Id var)) ty)) ph (vars+1) e1, 
+               elaborate global ctx (Pi(var, ty2, fullsubst e (Inr (Id var)) ty)) ph (vars+1) e2 with
         | Ok elab1, Ok elab2 ->
           Ok (Case(fst elab, fst elab1, fst elab2), ty)
         | Error msg, _ | _, Error msg -> Error msg) 
@@ -171,7 +186,7 @@ let rec elaborate ctx ty ph vars = function
     | Hole _ -> Ok (Zero(), Nat())
     | _ -> Error ("Type mismatch when checking that the term 0 of type nat has type " ^ unparse ty))
   | Ast.Succ e -> 
-    (match elaborate ctx (Ast.Nat()) ph vars e, ty with
+    (match elaborate global ctx (Ast.Nat()) ph vars e, ty with
     | Ok elab, Ast.Nat() -> 
       Ok (Succ (fst elab), Nat())
     | Ok elab, Hole _ ->
@@ -182,9 +197,9 @@ let rec elaborate ctx ty ph vars = function
   | Ast.Natrec (e, e1, e2) ->
       let var1 = fresh_var (Natrec(e, e1, e2)) ty vars in
       let var2 = fresh_var (Id var1) (Id var1) vars in
-      (match elaborate ctx (Ast.Nat()) ph (vars+2) e,
-             elaborate ctx (fullsubst e (Ast.Zero()) ty) ph (vars+2) e1,
-             elaborate ctx (Pi(var1, Nat(), Pi(var2, fullsubst e (Id var1) ty, fullsubst e (Succ (Id var1)) ty))) ph (vars+2) e2 with
+      (match elaborate global ctx (Ast.Nat()) ph (vars+2) e,
+             elaborate global ctx (fullsubst e (Ast.Zero()) ty) ph (vars+2) e1,
+             elaborate global ctx (Pi(var1, Nat(), Pi(var2, fullsubst e (Id var1) ty, fullsubst e (Succ (Id var1)) ty))) ph (vars+2) e2 with
       | Ok elab, Ok elab1, Ok elab2 ->        
         Ok (Natrec (fst elab, fst elab1, fst elab2), ty)
       | Error msg, _, _| _, Error msg, _ | _, _, Error msg -> Error msg)
@@ -199,9 +214,9 @@ let rec elaborate ctx ty ph vars = function
     | Hole _ -> Ok (False(), Bool())
     | _ -> Error ("Type mismatch when checking that the term false of type bool has type " ^ unparse ty))
   | Ast.If (e, e1, e2) -> 
-    (match elaborate ctx (Ast.Bool()) ph vars e,
-    elaborate ctx (fullsubst e (Ast.True()) ty) ph vars e1,
-    elaborate ctx (fullsubst e (Ast.False()) ty) ph vars e2 with
+    (match elaborate global ctx (Ast.Bool()) ph vars e,
+    elaborate global ctx (fullsubst e (Ast.True()) ty) ph vars e1,
+    elaborate global ctx (fullsubst e (Ast.False()) ty) ph vars e2 with
     | Ok elab, Ok elab1, Ok elab2 ->
       Ok (If (fst elab, fst elab1, fst elab2), ty)
     | Error msg, _, _| _, Error msg, _ | _, _, Error msg -> Error msg)
@@ -211,43 +226,45 @@ let rec elaborate ctx ty ph vars = function
     | Hole _ -> Ok (Star(), Unit())
     | _ -> Error ("Type mismatch when checking that the term () of type unit has type " ^ unparse ty))
   | Ast.Let (e1, e2) ->
-    (match elaborate ctx (Ast.Unit()) ph vars e1, elaborate ctx (fullsubst e1 (Ast.Star()) ty) ph vars e2 with
+    (match elaborate global ctx (Ast.Unit()) ph vars e1, elaborate global ctx (fullsubst e1 (Ast.Star()) ty) ph vars e2 with
     | Ok elab1, Ok elab2 ->
       Ok (Let (fst elab1, fst elab2), ty)
       | Error msg, _ | _, Error msg -> Error msg)
   | Ast.Abort e -> 
-    elaborate ctx (Ast.Void()) ph vars e
+    elaborate global ctx (Ast.Void()) ph vars e
   | Pabs (i, e) -> 
     (match ty with
     | Pathd (ty1, e1, e2) ->
-      (match elaborate ((i, Int()) :: ctx) (eval (App(ty1,Id i))) ph vars e,
-              elaborate ((i, Int()) :: ctx) (eval (App(ty1,I0()))) ph vars (subst i (I0()) e),
-              elaborate ((i, Int()) :: ctx) (eval (App(ty1,I1()))) ph vars (subst i (I1()) e) with
-      | Ok _, Ok elab1, Ok elab2 ->
-      let e1' = eval (fst elab1) in
-      let e2' = eval (fst elab2) in
-      if e1 = e1' && e2 = e2' 
-      then Ok (Pabs (i, e), Pathd (ty, eval (fst elab1), eval (fst elab2)))
-      else if e2 = e2' 
-      then Error ("Term mismatch when checking that " ^ unparse e1 ^ "and " ^ unparse e1' ^ "are definitionally equal")
-      else Error ("Term mismatch whens checking that " ^ unparse e2 ^ "and " ^ unparse e2' ^ "are definitionally equal") (* HERE *)
+      (match elaborate global ((i, Int()) :: ctx) (eval (App(ty1,Id i))) ph vars e,
+              elaborate global ((i, Int()) :: ctx) (eval (App(ty1,I0()))) ph vars (subst i (I0()) e),
+              elaborate global ((i, Int()) :: ctx) (eval (App(ty1,I1()))) ph vars (subst i (I1()) e) with
+      | Ok elab, Ok elab1, Ok elab2 ->
+      let e1' = eval e1 in
+      let e2' = eval e2 in
+      let ei0 = eval (fst elab1) in
+      let ei1 = eval (fst elab2) in
+      if e1' = ei0 && e2' = ei1 
+      then Ok (Pabs (i, fst elab), Pathd (ty, eval (fst elab1), eval (fst elab2)))
+      else if e2' = ei1 
+      then Error ("Term mismatch when checking that " ^ unparse e1' ^ "and " ^ unparse ei0 ^ "are definitionally equal")
+      else Error ("Term mismatch whens checking that " ^ unparse e2' ^ "and " ^ unparse ei1 ^ "are definitionally equal") (* HERE *)
       | Error msg, _, _| _, Error msg, _ | _, _, Error msg -> Error msg)
     | Hole _ -> 
       let p = generate_placeholder ty in
-      elaborate ctx (Pathd(Hole (string_of_int p), App (e, I0()), App (e, I1()))) (ph+1) vars (Pabs (i, e))
+      elaborate global ctx (Pathd(Hole (string_of_int p), App (e, I0()), App (e, I1()))) (ph+1) vars (Pabs (i, e))
     | _ -> 
       Error ("Type mismatch when checking that the term <" ^ i ^ "> " ^ unparse e ^ " of type path ?0? ?1? ?2? has type " ^ unparse ty))
   | At (e1, e2) ->
     let p = generate_placeholder ty in
-    (match elaborate ctx (Int()) ph vars e2, 
-            elaborate ctx (Pathd(Hole (string_of_int p), Hole (string_of_int (p+1)), Hole (string_of_int (p+2)))) (ph+3) vars e1 with
+    (match elaborate global ctx (Int()) ph vars e2, 
+            elaborate global ctx (Pathd(Hole (string_of_int p), Hole (string_of_int (p+1)), Hole (string_of_int (p+2)))) (ph+3) vars e1 with
     | Ok elab2, Ok elab1 ->
       (match snd elab1 with
       | Pathd (ty',a,b) ->
         if e2 = I0()
-        then elaborate ctx (fullsubst (At(e1,I0())) a ty) ph vars a
+        then elaborate global ctx (fullsubst (At(e1,I0())) a ty) ph vars a
         else if e2 = I1()
-          then elaborate ctx (fullsubst (At(e1,I1())) b ty) ph vars b
+          then elaborate global ctx (fullsubst (At(e1,I1())) b ty) ph vars b
           else
             (match ty' with
             | Abs(_, ty') ->
@@ -267,8 +284,8 @@ let rec elaborate ctx ty ph vars = function
       | Error msg, _ | _, Error msg -> Error msg)
   | Pi(x, ty1, ty2) ->
     let p = generate_placeholder ty in
-    (match elaborate ctx (Hole (string_of_int p)) (ph+1) vars ty1,
-            elaborate ((x, ty1) :: ctx) (Hole (string_of_int p)) (ph+1) vars ty2 with
+    (match elaborate global ctx (Hole (string_of_int p)) (ph+1) vars ty1,
+            elaborate global ((x, ty1) :: ctx) (Hole (string_of_int p)) (ph+1) vars ty2 with
     | Ok elab1, Ok elab2 -> 
       (match snd elab1, snd elab2 with
       | Type n1, Type n2 ->
@@ -289,8 +306,8 @@ let rec elaborate ctx ty ph vars = function
     | Error msg, _ | _, Error msg -> Error msg)
   | Sigma(x, ty1, ty2) ->      
     let p = generate_placeholder ty in
-    (match elaborate ctx (Hole (string_of_int p)) (ph+1) vars ty1,
-            elaborate ((x, ty1) :: ctx) (Hole (string_of_int p)) (ph+1) vars ty2 with
+    (match elaborate global ctx (Hole (string_of_int p)) (ph+1) vars ty1,
+            elaborate global ((x, ty1) :: ctx) (Hole (string_of_int p)) (ph+1) vars ty2 with
     | Ok elab1, Ok elab2 ->
       (match snd elab1, snd elab2 with
       | Type n1, Type n2 ->
@@ -311,8 +328,8 @@ let rec elaborate ctx ty ph vars = function
     | Error msg, _ | _, Error msg -> Error msg)
   | Sum(ty1, ty2) ->
     let p = generate_placeholder ty in
-    (match elaborate ctx (Hole (string_of_int p)) (ph+1) vars ty1,
-            elaborate ctx (Hole (string_of_int p)) (ph+1) vars ty2 with
+    (match elaborate global ctx (Hole (string_of_int p)) (ph+1) vars ty1,
+            elaborate global ctx (Hole (string_of_int p)) (ph+1) vars ty2 with
     | Ok elab1, Ok elab2 ->
       (match snd elab1, snd elab2 with
       | Type n1, Type n2 ->
@@ -357,13 +374,13 @@ let rec elaborate ctx ty ph vars = function
     | _ -> Error ("Type mismatch when checking that the type void has type " ^ unparse ty))
   | Pathd(ty1, e1, e2) ->
     let p = generate_placeholder (App(ty,Pathd(ty1, e1, e2))) in
-    (match elaborate ctx (Hole (string_of_int p)) (ph+1) vars (eval (App (ty1, I0()))),
-            elaborate ctx (Hole (string_of_int p)) (ph+1) vars (eval (App (ty1, I1()))) with
+    (match elaborate global ctx (Hole (string_of_int p)) (ph+1) vars (eval (App (ty1, I0()))),
+            elaborate global ctx (Hole (string_of_int p)) (ph+1) vars (eval (App (ty1, I1()))) with
     | Ok tyi0, Ok tyi1 ->
       
-      (match elaborate ctx (Hole (string_of_int p)) (ph+1) vars ty1,
-              elaborate ctx (fst tyi0) (ph+1) vars e1,
-              elaborate ctx (fst tyi1) (ph+1) vars e2 with
+      (match elaborate global ctx (Hole (string_of_int p)) (ph+1) vars ty1,
+              elaborate global ctx (fst tyi0) (ph+1) vars e1,
+              elaborate global ctx (fst tyi1) (ph+1) vars e2 with
       | Ok elab, Ok elab1, Ok elab2 ->
         (match snd elab with
         | Pi (_, interval, ty2) ->
@@ -398,9 +415,9 @@ let rec elaborate ctx ty ph vars = function
 
 (* Checks whether a given expression is a type *)
 
-let check_type ctx ty =
+let check_type global ctx ty =
   let msg = ("Failed to prove that " ^ unparse ty ^ "is a type ") in
-  match elaborate ctx (Hole "0") 1 0 (reduce ty) with
+  match elaborate global ctx (Hole "0") 1 0 (reduce ty) with
   | Ok elab -> 
     (match snd elab with
     | Type _ -> Ok elab
@@ -409,12 +426,12 @@ let check_type ctx ty =
 
 (* Checks whether a given context is well-formed *)
 
-let check_ctx ctx =
+let check_ctx global ctx =
   let rec helper l = 
     match l with
   | [] -> Ok []
   | (x, ty) :: ctx' ->
-    match check_type ctx' ty, helper ctx' with
+    match check_type global ctx' ty, helper ctx' with
     | Ok elab, Ok ctx'' -> Ok ((x, eval (fst elab)) :: ctx'')
     | Error msg, _ | _ , Error msg -> 
       Error (msg ^ "\n The specified context is invalid") in

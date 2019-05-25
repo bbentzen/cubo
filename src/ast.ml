@@ -42,8 +42,12 @@ type expr =
   | Hole of string
   | Wild of unit
 
+type proof = 
+  | Prf of string * ((string list * expr) list) * expr * expr
+
 type command = 
-    | Def of string * ((string list * expr) list) * expr * expr * command
+    | Thm of command * proof
+    | Print of command * string
     | Eof of unit
 
 type binstr = 
@@ -57,19 +61,19 @@ let rec unparse = function
 	| I0() -> "i0 "
 	| I1() -> "i1 "
 	| Int() -> "I " 
-	| Abs (y, e) ->  String.concat "" ["λ "; y; ", "; unparse e; " "]
-	| App (e1, e2) -> String.concat "" ["( "; unparse e1; ") "; unparse e2; " "]
-	| Pi (y, e1, e2) -> String.concat "" ["Π ( "; y; " : "; unparse e1; ") "; unparse e2; " "]
+	| Abs (y, e) ->  String.concat "" ["λ "; y; ", "; unparse e]
+	| App (e1, e2) -> String.concat "" ["( "; unparse e1; ") "; unparse e2]
+	| Pi (y, e1, e2) -> String.concat "" ["Π ( "; y; " : "; unparse e1; ") "; unparse e2]
 	| Pair (e1, e2) -> String.concat "" ["("; unparse e1; ", "; unparse e2; ") "]
-	| Fst e -> String.concat "" ["fst "; unparse e; " "]
-	| Snd e -> String.concat "" ["snd "; unparse e; " "]
-	| Sigma (y, e1, e2) -> String.concat "" ["Σ ( "; y; " : "; unparse e1; ") "; unparse e2; " "]
-	| Inl e -> String.concat "" ["inl "; unparse e; " "]
-	| Inr e -> String.concat "" ["inr "; unparse e; " "]
+	| Fst e -> String.concat "" ["fst "; unparse e]
+	| Snd e -> String.concat "" ["snd "; unparse e]
+	| Sigma (y, e1, e2) -> String.concat "" ["Σ ( "; y; " : "; unparse e1; ") "; unparse e2]
+	| Inl e -> String.concat "" ["inl "; unparse e]
+	| Inr e -> String.concat "" ["inr "; unparse e]
 	| Case (e, e1, e2) -> String.concat "" ["case "; unparse e; " "; unparse e1; " "; unparse e2; ") "]
 	| Sum (e1, e2) -> String.concat "" ["( "; unparse e1; "+ "; unparse e2; ") "]
 	| Zero() -> "0 "
-	| Succ e -> String.concat "" ["succ "; unparse e; " "]
+	| Succ e -> String.concat "" ["succ "; unparse e]
 	| Natrec (e, e1, e2) -> String.concat "" ["natrec "; unparse e; " "; unparse e1; " "; unparse e2; ") "]
 	| Nat() -> "nat "
 	| True() -> "true "
@@ -79,11 +83,11 @@ let rec unparse = function
 	| Star() -> "() "
 	| Let (e1, e2) -> String.concat "" ["let "; unparse e1; " "; unparse e2; ") "]
 	| Unit() -> "unit "
-	| Abort e -> String.concat "" ["abort "; unparse e; " "]
+	| Abort e -> String.concat "" ["abort "; unparse e]
 	| Void() -> "void "
-	| Pabs (y, e) -> String.concat "" ["<"; y; "> "; unparse e; " "]
+	| Pabs (y, e) -> String.concat "" ["<"; y; "> "; unparse e]
 	| At (e1, e2) -> String.concat "" ["( "; unparse e1; "@ "; unparse e2; ") "]
-	| Pathd (e, e1, e2) -> String.concat "" ["pathd ( "; unparse e; ") "; unparse e1; " "; unparse e2; " "]
+	| Pathd (e, e1, e2) -> String.concat "" ["pathd ( "; unparse e; ") "; unparse e1; " "; unparse e2]
 	| Type n -> String.concat "" ["type "; string_of_int n; " "]
   | Hole n -> String.concat "" ["?"; n; "? "]
   | Wild() -> "_ "

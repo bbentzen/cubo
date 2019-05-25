@@ -10,10 +10,14 @@ open Command
 let () =
   let filename = "tests/test.cubo" in
   match checkfile filename with 
-  | Ok env ->
-    (match (List.length env) with
-    | 1 ->
-      print_endline (" 1 definition/theorem compiled successfully. " );
-    | n ->  
-      print_endline (string_of_int n ^ " definitions/theorems compiled successfully. " );)
+  | Ok (env, s) ->
+    let n = String.length s in
+    let s' = 
+      if n > 0 && s.[n-1] = '\n' then 
+        String.sub s 0 (n-1)
+      else 
+        s 
+    in
+    print_endline s';
+    print_endline (string_of_int (List.length env) ^ " definition(s)/theorem(s) compiled successfully. " );
   | Error msg -> print_endline (" Error: " ^ msg);
