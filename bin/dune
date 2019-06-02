@@ -1,6 +1,6 @@
 (executable
   (name main)
-  (libraries frontend basis checker))
+  (libraries frontend basis checker context))
 
 (install
  (section bin)

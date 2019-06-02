@@ -10,7 +10,7 @@ open Ast
 
 %token <string> ID
 %token <string> NUMBER
-%token DEF PRINT
+%token DEF PRINT LBRACE RBRACE
 %token TYPE COLON VDASH
 %token I0 I1 INTERVAL
 %token ABS APP RARROW LRARROW PI
@@ -35,7 +35,7 @@ open Ast
 %start command
 %type <Ast.command> command
 %type <Ast.proof> decl
-%type <(string list * Ast.expr) list> ctx
+%type <((string list * Ast.expr) * bool) list> ctx
 %type <Ast.expr> expr
 %type <string list>ids 
 
@@ -50,7 +50,8 @@ decl:
   | DEF ID ctx expr COLONEQ expr                            {Prf($2, $3, $4, $6)}
 
 ctx: 
-  | LPAREN ids expr RPAREN ctx                              {($2, $3) :: $5}
+  | LPAREN ids expr RPAREN ctx                              {(($2, $3), true) :: $5}
+  | LBRACE ids expr RBRACE ctx                              {(($2, $3), false) :: $5}
   | VDASH                                                   {([])}
 
 ids:
@@ -103,5 +104,5 @@ expr:
   | PATH expr expr expr %prec ABORT                         { Pathd(Abs("v?",$2),$3,$4) }
   | TYPE ZERO                                               { Type(0) }
   | TYPE NUMBER                                             { Type(int_of_string $2) }
-  | PLACEHOLDER NUMBER                                      { Hole($2) }
+  | PLACEHOLDER NUMBER                                      { Hole($2, []) }
   | WILDCARD                                                { Wild() }

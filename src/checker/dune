@@ -1,3 +1,3 @@
 (library
   (name checker)
-  (libraries basis))
+  (libraries basis context))

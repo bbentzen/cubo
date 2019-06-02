@@ -1,203 +1,266 @@
-/* this is a test */
+/*
 
-def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
-⊢ app B (p @ i0) :=
-(app f a)
+| At (e1, e2) ->
+    let h1 = Hole.generate ty 0 [] in
+    let h2 = Hole.generate ty 1 [] in
+    let h3 = Hole.generate ty 2 [] in
+    (*
+    let v1 = fresh_var (At(e1, e2)) ty vars in
+    let tya = fullsubst e2 (Id v1) ty in
+    Pi(v1,Int(),tya)
+    *)
+    (* elaborate global ctx (Pathd(h1, h2, h3)) (ph+3) vars e1 with *)
+    let elab1 = elaborate global ctx (Pathd(h1, h2, h3)) (ph+3) vars e1 in
+    let elab2 = elaborate global ctx (Int()) ph vars e2 in
+    
+    begin match elab1, elab2 with
+    | Ok (e1', Pathd (Abs(i, ty'), a, b)), Ok (e2', _) ->
+      
+      let tyi' = subst i e2 ty' in
+      let synt = synthesize vars (ty, tyi') in
+      begin match synt with
+      | Ok st ->
 
-def apds (A : type 1) (B : A → type 1) (a b : A) (p : pathd (λi, A) a b)
-⊢ app B (p @ i0) → app B a :=
-λ b, b
+        begin match e2' with
+        | I0() -> 
+          (*let v1 = fresh_var ty ty' vars in
+          let tyi = fullsubst e2 (Id v1) ty in*)
+          let tyi0' = subst i (I0()) ty' in
+          begin match a with
+          | Hole _ ->
+            Ok (At(e1',I0()), tyi0')
+          | a -> 
+            elaborate global ctx tyi0' ph vars a
+          end
+        
+        | I1() ->
+          let tyi1' = subst i (I1()) ty' in
+          begin match b with
+          | Hole _ ->
+            Ok (At(e1',I1()), tyi1')
+          | b -> 
+            elaborate global ctx tyi1' ph vars b
+          end
+        | e2' ->
+          Ok (At (e1', e2'), st)
+        end
 
-def apdd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
-⊢ app B (p @ i0) :=
-(app f a)
+      | Error msg ->
+          Error ("Don't know how to unify\n  " ^ unparse ty ^ 
+                  "\nwith\n  " ^ unparse ty' ^ "\n" ^ msg)
+      end
+        (*
+        begin match ty' with
+      | Abs(_, ty') ->
+        (match synthesize vars (ty', ty) with
+        | Ok _ -> Ok (At (e1', e2'), ty)
+        | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
+      (*| Hole n -> Ok (At (fst elab1, fst elab2), Hole n) *)
+      | _ -> 
+        (match ty with
+        | App(ty, i) ->
+          (match synthesize vars (ty', ty), e2 = i with 
+          | Ok _, true -> Ok (At (e1', e2'), App(ty, i))
+          | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
+        | ty -> 
+          (match synthesize vars (ty', ty) with
+          | Ok _ -> Ok (At (e1', e2'), ty) 
+          | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty)))
+        end
+        *)
 
-/*** 
+      (*
+      begin match a, ty' with
+      | Hole _, Abs(v, ty') -> Ok (At (e1', I0()), subst v (I0()) ty')
+      | Hole _, Hole (n, l) -> Ok (At (e1', I0()), Hole (n, l))
+      | Hole _, ty' -> Ok (At (e1', I0()), App(ty', I0()))
+      | _ ->
+      *)
 
-def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
-⊢ type 1 :=
-pathd (λi, app B (p @ i)) (app f a) (app f b)
+      
+        
+    | Ok (e1', Pathd (Hole _, a, b)), Ok (e2', _) ->
 
-problem:
-def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
-⊢ app (λi, app B (p @ i)) i0 :=
-(app f a)
+      (*let v1 = fresh_var ty ty vars in*)
+      let tyi0 = fullsubst e2 (I0()) ty in
+      let tyi1 = fullsubst e2 (I0()) ty in
+      let elab0 = elaborate global ctx tyi0 ph vars a in
+      let elab1 = elaborate global ctx tyi1 ph vars b in
+      begin match elab0, elab1 with
+      | Ok (_, _), Ok (_, _) ->
+        Ok (At (e1', e2'), ty)
+      | Error msg, _ | _, Error msg -> 
+        Error msg
+      end
 
-
-def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
-⊢ type 1 :=
-pathd (λi, app B (p @ i)) (app f a) (app f b) 
-
-def ap (A B : type 1) (f : A → B) (a b : A) 
-⊢ pathd (λi, A) a b → pathd (λi, B) (app f a) (app f b) :=
-λp, <i> app f (p @ i)
-
-def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd (λi, A) a b)
-⊢ pathd (λi, app B (p @ i)) (app f a) (app f b) :=
-<i> app f (p @ i)
-
-
-(*
-
-Checker.elaborate
-[("i", Ast.Int ()); ("x", Ast.Id "A"); 
-	("A", Ast.Type 1); ("B", Ast.Type 1);
-	("f", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")); 
-	("g", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"));
-  ("h",
-   Ast.Pi ("x", Ast.Id "A",
-    Ast.Pathd (Ast.Abs ("i", Ast.Id "B"), Ast.App (Ast.Id "f", Ast.Id "x"),
-		 Ast.App (Ast.Id "f", Ast.Id "x"))))]
-(Ast.Int ()) 0
-(Ast.Id "i");;
-
-Checker.elaborate
-[("i", Ast.Int ()); ("x", Ast.Id "A"); 
-	("A", Ast.Type 1); ("B", Ast.Type 1);
-	("f", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")); 
-	("g", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"));
-  ("h",
-   Ast.Pi ("x", Ast.Id "A",
-    Ast.Pathd (Ast.Abs ("i", Ast.Id "B"), Ast.App (Ast.Id "f", Ast.Id "x"),
-		 Ast.App (Ast.Id "f", Ast.Id "x"))))]
-(Ast.Pathd (Ast.Placeholder "0", Ast.Placeholder "1", Ast.Placeholder "2")) 0
-(Ast.App (Ast.Id "h", Ast.Id "x"));;
-
-Checker.elaborate
-[("i", Ast.Int ()); ("x", Ast.Id "A");
-	("A", Ast.Type 1); ("B", Ast.Type 1);
-	("f", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")); 
-	("g", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"));
-  ("h",
-   Ast.Pi ("x", Ast.Id "A",
-    Ast.Pathd (Ast.Abs ("i", Ast.Id "B"), Ast.App (Ast.Id "f", Ast.Id "x"),
-		 Ast.App (Ast.Id "f", Ast.Id "x"))))]
-(Eval.eval (Ast.App(Ast.Abs ("i", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")), Ast.Id "i"))) 0
-(Ast.Abs ("x", (Ast.At (Ast.App (Ast.Id "h", Ast.Id "x"), Ast.Id "i"))));;
-
------------
-
-Checker.elaborate
-[("A", Ast.Type 1);
-("B", Ast.Type 1);
-("C", Ast.Type 1)]
-(Ast.Placeholder "0") 1
-(Ast.Sigma ("v?", Ast.Id "A", Ast.Sum(Ast.Id "B", Ast.Id "C")));;
-
-Checker.check_type
-[("A", Ast.Type 1);
-("B", Ast.Pi ("v?", Ast.Id "A", Ast.Type 1));
-("C", Ast.Type 1)]
-(Ast.Pi ("x", Ast.Id "A", Ast.App (Ast.Id "B", Ast.Id "x")));;
-
-Checker.elaborate
-[("A", Ast.Type 1);
-("B", Ast.Type 1);
-("C", Ast.Type 1)]
-(Ast.Placeholder "0") 1
-(Ast.Sum(Ast.Id "B", Ast.Id "C"));;
-
-
-----------
-
-Checker.elaborate
-[("i", Ast.Int ()); 
-	("A", Ast.Type 1); ("B", Ast.Type 1);
-	("f", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")); 
-	("g", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"));
-  ("h",
-   Ast.Pi ("x", Ast.Id "A",
-    Ast.Pathd (Ast.Abs ("i", Ast.Id "B"), Ast.App (Ast.Id "f", Ast.Id "x"),
-		 Ast.App (Ast.Id "f", Ast.Id "x"))))]
-(Ast.Pi ("v?", Ast.Id "A", Ast.Id "B")) 0
-(Ast.At (Ast.App (Ast.Id "h", Ast.Id "x"), Ast.Id "i"));;
-
-------------
+      (*begin match b, ty' with
+      | Hole _, Abs(v, ty') -> Ok (At (e1', I1()), subst v (I1()) ty')
+      | Hole _, Hole (n, l) -> Ok (At (e1', I1()), Hole (n, l))
+      | Hole _, ty' -> Ok (At (e1', I1()), App(ty', I1()))
+      | _ -> 
+      elaborate global ctx (fullsubst (At(e1, I1())) b ty) ph vars b
+      end
+      *)
 
 
-PROBLEM：
-Checker.elaborate
-[("A", Ast.Type 1); ("B", Ast.Type 1);
- ("f",
-  Ast.Pi ("v?",
-   Ast.Pi ("v?", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"), Ast.Id "B"),
-   Ast.Id "B"));
- ("x", Ast.Id "A")]
-(Ast.Placeholder "0") 1
-(Ast.Abs ("g", Ast.App (Ast.Id "g", Ast.Id "x")));;
+    | Ok (e1', ty1'), Ok _ -> 
+        Error ("Type mismatch when checking that\n  " ^ unparse e1' ^ 
+               "\nof type\n  " ^ unparse ty1' ^ "\nhas type\n  pathd ?0? ?1? ?2? ")
+      
+    | Error msg, _ | _, Error msg -> 
+        Error msg
+    end
 
-Checker.elaborate
-[("A", Ast.Type 1); ("B", Ast.Type 1);
- ("f",
-  Ast.Pi ("v?",
-   Ast.Pi ("v?", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"), Ast.Id "B"),
-   Ast.Id "B"));
- ("x", Ast.Id "A")]
-(Ast.Pi ("v?", Ast.Placeholder "0", Ast.Placeholder "1")) 2
-(Ast.Abs ("g", Ast.App (Ast.Id "g", Ast.Id "x")));;
 
-Checker.elaborate
-[("g", Ast.Placeholder "0"); 
-("A", Ast.Type 1); ("B", Ast.Type 1);
- ("f",
-  Ast.Pi ("v?",
-   Ast.Pi ("v?", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"), Ast.Id "B"),
-   Ast.Id "B"));
- ("x", Ast.Id "A")]
-(Ast.Placeholder "1") 2
-(Ast.App (Ast.Id "g", Ast.Id "x"));;
 
-Checker.elaborate
-[("g", Ast.Placeholder "0"); 
-("A", Ast.Type 1); ("B", Ast.Type 1);
- ("f",
-  Ast.Pi ("v?",
-   Ast.Pi ("v?", Ast.Pi ("v?", Ast.Id "A", Ast.Id "B"), Ast.Id "B"),
-   Ast.Id "B"));
- ("x", Ast.Id "A")]
-(Ast.Pi ("v?", Ast.Id "A", Ast.Placeholder "1")) 2
-(Ast.Id "g");;
+(* YESTERDAY
+    let h1 = Hole.generate ty 0 in
+    let h2 = Hole.generate ty 1 in
+    let h3 = Hole.generate ty 2 in
+    (match elaborate global ctx (Int()) ph vars e2, 
+           elaborate global ctx (Pathd(h1, h2, h3)) (ph+3) vars e1 with
+           (* elaborate global ctx (Pathd(h1, At (e1, I0()), At (e1, I1()))) (ph+3) vars e1 with *)
+           (* elaborate global ctx (Pathd(h1, h2, h3)) (ph+3) vars e1 with *)
+    | Ok elab2, Ok elab1 ->
+      (match snd elab1 with
+      | Pathd (ty', Hole _, Hole _) ->
+        (match ty' with
+          | Abs(v, ty') ->
+            if reduce e2 = I0()
+            then Ok (At (e1, I0()), subst v (I0()) ty)
+            else if reduce e2 = I1()
+            then Ok (At (e1, I1()), subst v (I1()) ty)
+            else
+            (match synthesize vars (ty', ty) with
+            | Ok _ -> Ok (At (fst elab1, fst elab2), ty)
+            | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
+          | Hole n -> 
+            if reduce e2 = I0()
+            then Ok (At (e1, I0()), Hole n)
+            else if reduce e2 = I1()
+            then Ok (At (e1, I1()), Hole n)
+            else
+            (match ty with
+            | App(ty, i) ->
+              (match synthesize vars (ty', ty), e2 = i with 
+              | Ok _, true -> Ok (At (fst elab1, fst elab2), App(ty, i))
+              | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
+            | ty -> 
+              (match synthesize vars (ty', ty) with
+              | Ok _ -> Ok (At (fst elab1, fst elab2), ty) 
+              | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty)))
+          | ty' -> 
+            if reduce e2 = I0()
+            then Ok (At (e1, I0()), App(ty, I0()))
+            else if reduce e2 = I1()
+            then Ok (At (e1, I1()), App(ty, I1()))
+            else
+            (match ty with
+            | App(ty, i) ->
+              (match synthesize vars (ty', ty), e2 = i with 
+              | Ok _, true -> Ok (At (fst elab1, fst elab2), App(ty, i))
+              | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
+            | ty -> 
+              (match synthesize vars (ty', ty) with
+              | Ok _ -> Ok (At (fst elab1, fst elab2), ty) 
+              | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))))
+      | Pathd (ty', a, b) ->
+        if reduce e2 = I0()
+        then elaborate global ctx (fullsubst (At(e1, I0())) a ty) ph vars a
+        else if reduce e2 = I1()
+          then elaborate global ctx (fullsubst (At(e1, I1())) b ty) ph vars b
+          else
+            (match ty' with
+            | Abs(_, ty') ->
+              (match synthesize vars (ty', ty) with
+              | Ok _ -> Ok (At (fst elab1, fst elab2), ty)
+              | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
+            | _ -> 
+              (match ty with
+              | App(ty, i) ->
+                (match synthesize vars (ty', ty), e2 = i with 
+                | Ok _, true -> Ok (At (fst elab1, fst elab2), App(ty, i))
+                | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
+              | ty -> 
+                (match synthesize vars (ty', ty) with
+                | Ok _ -> Ok (At (fst elab1, fst elab2), ty) 
+                | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))))
+      | _ -> Error ("Type mismatch when checking that\n  " ^ unparse (fst elab1) ^ "\nof type\n  " ^ unparse (snd elab1) ^ "\nhas type\n  pathd ?0? ?1? ?2? "))
+      | Error msg, _ | _, Error msg -> Error msg)
+  END OF YESTERDAY *)
+  (*
+  let h1 = Hole.generate ty 0 in
+    let h2 = Hole.generate ty 1 in
+    let h3 = Hole.generate ty 2 in
+    (match elaborate global ctx (Int()) ph vars e2, 
+           elaborate global ctx (Pathd(h1, h2, h3)) (ph+3) vars e1 with
+           (* elaborate global ctx (Pathd(h1, At (e1, I0()), At (e1, I1()))) (ph+3) vars e1 with *)
+           (* elaborate global ctx (Pathd(h1, h2, h3)) (ph+3) vars e1 with *)
+    | Ok elab2, Ok elab1 ->
+      (match snd elab1 with
+      | Pathd (ty', a, b) ->
+        if reduce e2 = I0()
+        then elaborate global ctx (fullsubst (At(e1, I0())) a ty) ph vars a
+        else if reduce e2 = I1()
+          then elaborate global ctx (fullsubst (At(e1, I1())) b ty) ph vars b
+          else
+            (match ty' with
+            | Abs(_, ty') ->
+              (match synthesize vars (ty', ty) with
+              | Ok _ -> Ok (At (fst elab1, fst elab2), ty)
+              | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
+            | _ -> 
+              (match ty with
+              | App(ty, i) ->
+                (match synthesize vars (ty', ty), e2 = i with 
+                | Ok _, true -> Ok (At (fst elab1, fst elab2), App(ty, i))
+                | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
+              | ty -> 
+                (match synthesize vars (ty', ty) with
+                | Ok _ -> Ok (At (fst elab1, fst elab2), ty) 
+                | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))))
+      | _ -> Error ("Type mismatch when checking that\n  " ^ unparse (fst elab1) ^ "\nof type\n  " ^ unparse (snd elab1) ^ "\nhas type\n  pathd ?0? ?1? ?2? "))
+      | Error msg, _ | _, Error msg -> Error msg)
+  *)
 
-----------------
 
-Checker.elaborate [("A", Ast.Type 1); ("B", Ast.Type 1); ("C", Ast.Type 1);
- ("f", Ast.Pi ("v?", Ast.Id "A", Ast.Pi ("v?", Ast.Id "B", Ast.Id "C")));
- ("y", Ast.Id "B"); ("x", Ast.Id "A")]
-(Ast.Pi ("v0", Ast.Id "B", Ast.Id "C")) 1
-(Ast.App (Ast.Id "f", Ast.Id "x"));;
 
-Checker.elaborate [("A", Ast.Type 1); ("B", Ast.Type 1); ("C", Ast.Type 1);
- ("f", Ast.Pi ("v?", Ast.Id "A", Ast.Pi ("v?", Ast.Id "B", Ast.Id "C")));
- ("y", Ast.Id "B"); ("x", Ast.Id "A")]
-(Ast.Placeholder ("0")) 1
-(Ast.Id "x");;
-
-Checker.elaborate [("A", Ast.Type 1); ("B", Ast.Type 1); ("C", Ast.Type 1);
- ("f", Ast.Pi ("v?", Ast.Id "A", Ast.Pi ("v?", Ast.Id "B", Ast.Id "C")));
- ("y", Ast.Id "B"); ("x", Ast.Id "A")]
-(Ast.Pi ("v0", Ast.Id "A", (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C")))) 1
-(Ast.Id "f");;
-
-PROBLEM HERE:
-Checker.elaborate [("A", Ast.Type 1); ("B", Ast.Type 1); ("C", Ast.Type 1);
- ("f", Ast.Pi ("v?", Ast.Id "A", Ast.Pi ("v?", Ast.Id "B", Ast.Id "C")));
- ("y", Ast.Id "B"); ("x", Ast.Id "A")]
-(Ast.Pi ("v0", Ast.Id "A", 
-  Substitution.fullsubst (Ast.Id "x") (Ast.Id "v0") (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C")))) 1
-(Ast.Id "f");;
-
-Substitution.fullsubst (Ast.Id "x") (Ast.Id "v0") (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C"));;
-
-Substitution.termsubst (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C")) (Ast.Id "v0") (Ast.Id "x");;
-
-Substitution.subst ("x") (Ast.Id "v0") (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C"));;
-
-Substitution.alphasubst ("x") (Ast.Id "v0") false (Ast.Pi ("v0", Ast.Id "B", Ast.Id "C"));;
-
-let ty_of_string s =
-	match (parse_string s) with
-	| Def (s, l, ty, e) -> ty
-	| Eof () -> Void()
-*)
+        (*
+        | Ast.Natrec (e, e1, e2) ->
+      let v1 = fresh_var (Natrec(e, e1, e2)) ty vars in
+      let v2 = fresh_var (Id v1) (Id v1) vars in
+      let elab = elaborate global ctx (Ast.Nat()) ph (vars+2) e in
+      begin match elab with
+      | Ok (e', _) ->  
+        begin match ty with
+        | Hole (n, l) ->
+          let elab1 = elaborate global ctx (Hole (n, l)) ph (vars+1) e1 in
+          begin match elab1 with
+          | Ok (e1', ty0) ->
+            let elab2 = elaborate global ctx (Hole (n, l)) ph (vars+1) e2 in (* call elab with ty0' *)
+            begin match elab2 with
+            | Ok (e2', Ast.Pi(x, nat, Ast.Pi(y, c, tys))) ->
+              let h1 = Hole.generate (App(ty,ty0)) ph [] in
+              let ty0' = hfullsubst (Zero()) h1 ty0 in  
+              let tys' = hfullsubst (Succ(Id x)) h1 tys in
+              let synt = synthesize vars (ty0', tys') in
+              begin match synt with
+              | Ok st ->
+                let st' = hfullsubst h1 e st in
+                Ok (Natrec(e', e1', e2'), st')
+              | Error msg ->
+                Error ("Don't know how to unify\n  " ^ unparse ty0' ^ "\nwith\n  " ^ unparse tys' ^ "\n" ^ msg)
+              end
+            | Ok (e2', ty') -> 
+              Error ("The term\n  " ^ unparse e2' ^ "\nhas type\n  " ^ unparse ty' ^ 
+                  "\nbut is expected to have type\n  Π (v? : nat) ?0? → ?1?")  
+            | Error msg -> 
+              Error msg
+            end
+          
+          | Error msg -> 
+            Error msg
+          end
+        *)
 
 **/

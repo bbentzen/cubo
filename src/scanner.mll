@@ -9,7 +9,7 @@ open Syntax
 }
 
 let identifier =
-  ['A'-'Z' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_']* as str
+  ['A'-'Z' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_' ''']* as str
 
 let number =
   ['0'-'9']* as str
@@ -60,6 +60,7 @@ rule token = parse
   | "let"              { LET }
   | "unit"             { UNIT }
   | "abort"            { ABORT }
+  | "empty"            { VOID }
   | "void"             { VOID }
   | "¬"                { NEG }
   | "<"                { LANGLE }
@@ -75,6 +76,8 @@ rule token = parse
   | ":"                { COLON }
   | "|-"               { VDASH }
   | "⊢"                { VDASH }
+  | "{"                { LBRACE }
+  | "}"                { RBRACE }
   | "definition"       { DEF }
   | "def"              { DEF }
   | "lemma"            { DEF }

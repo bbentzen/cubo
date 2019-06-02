@@ -20,4 +20,4 @@ let () =
     in
     print_endline s';
     print_endline (string_of_int (List.length env) ^ " definition(s)/theorem(s) compiled successfully. " );
-  | Error msg -> print_endline (" Error: " ^ msg);
+  | Error msg -> print_endline ("Error: " ^ msg);

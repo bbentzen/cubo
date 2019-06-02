@@ -39,11 +39,11 @@ type expr =
   | At of expr * expr
   | Pathd of expr * expr * expr
   | Type of int
-  | Hole of string
+  | Hole of string * (expr list)
   | Wild of unit
 
 type proof = 
-  | Prf of string * ((string list * expr) list) * expr * expr
+  | Prf of string * (((string list * expr) * bool) list) * expr * expr
 
 type command = 
     | Thm of command * proof
@@ -70,24 +70,24 @@ let rec unparse = function
 	| Sigma (y, e1, e2) -> String.concat "" ["Σ ( "; y; " : "; unparse e1; ") "; unparse e2]
 	| Inl e -> String.concat "" ["inl "; unparse e]
 	| Inr e -> String.concat "" ["inr "; unparse e]
-	| Case (e, e1, e2) -> String.concat "" ["case "; unparse e; " "; unparse e1; " "; unparse e2; ") "]
+	| Case (e, e1, e2) -> String.concat "" ["case "; unparse e; unparse e1; unparse e2]
 	| Sum (e1, e2) -> String.concat "" ["( "; unparse e1; "+ "; unparse e2; ") "]
 	| Zero() -> "0 "
 	| Succ e -> String.concat "" ["succ "; unparse e]
-	| Natrec (e, e1, e2) -> String.concat "" ["natrec "; unparse e; " "; unparse e1; " "; unparse e2; ") "]
+	| Natrec (e, e1, e2) -> String.concat "" ["natrec "; unparse e; unparse e1; unparse e2]
 	| Nat() -> "nat "
 	| True() -> "true "
 	| False() -> "false "
-	| If (e, e1, e2) -> String.concat "" ["if "; unparse e; " "; unparse e1; " "; unparse e2; ") "]
+	| If (e, e1, e2) -> String.concat "" ["if "; unparse e; unparse e1; unparse e2]
 	| Bool() -> "bool "
 	| Star() -> "() "
-	| Let (e1, e2) -> String.concat "" ["let "; unparse e1; " "; unparse e2; ") "]
+	| Let (e1, e2) -> String.concat "" ["let "; unparse e1; unparse e2]
 	| Unit() -> "unit "
 	| Abort e -> String.concat "" ["abort "; unparse e]
 	| Void() -> "void "
 	| Pabs (y, e) -> String.concat "" ["<"; y; "> "; unparse e]
 	| At (e1, e2) -> String.concat "" ["( "; unparse e1; "@ "; unparse e2; ") "]
-	| Pathd (e, e1, e2) -> String.concat "" ["pathd ( "; unparse e; ") "; unparse e1; " "; unparse e2]
+	| Pathd (e, e1, e2) -> String.concat "" ["pathd ( "; unparse e; ") "; unparse e1; unparse e2]
 	| Type n -> String.concat "" ["type "; string_of_int n; " "]
-  | Hole n -> String.concat "" ["?"; n; "? "]
+  | Hole (n, _) -> String.concat "" ["?"; n; "? "]
   | Wild() -> "_ "

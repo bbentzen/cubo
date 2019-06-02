@@ -10,64 +10,216 @@ open Substitution
 
 (* Returns the type of a term variable when it has been declared *)
 
-let rec synth_placeholder x ctxtrm =
-  match (List.rev ctxtrm) with
+let rec synth_placeholder x ctx =
+  match (List.rev ctx) with
   | [] -> (false, Ast.Void()) 
-  | (y, ty) :: ctxtrm' -> 
+  | ((y, ty), _) :: ctx' -> 
     if x = y
     then (true, ty)
-    else synth_placeholder x ctxtrm'
+    else synth_placeholder x ctx'
 
-let rec is_declared x ctx =
-  match (List.rev ctx) with
-  | [] -> false
-  | (y, _) :: ctx' -> 
-    if x = y
-    then true
-    else is_declared x ctx'
-
-let rec infer_var_ty x ctx = (* raise exception later *)
+let rec infer_var_ty x ctx =
   match (List.rev ctx) with
   | [] -> Ast.Void()
-  | (y, ty) :: ctx' -> 
+  | ((y, ty), _) :: ctx' -> 
     if x = y
     then ty
     else infer_var_ty x ctx'
 
-(* 
-let rec generate_placeholder = function
-| Ast.Id ty -> 0
-| Ast.Pi (y, ty1, ty2) -> generate_placeholder ty1 + generate_placeholder ty2
-| Ast.Sigma (y, ty1, ty2) -> generate_placeholder ty1 + generate_placeholder ty2
-| Ast.App(ty1, ty2) | Ast.Sum (ty1, ty2) -> generate_placeholder ty1 + generate_placeholder ty2
-| Ast.Pathd (ty1, e1, e2) -> generate_placeholder ty1
-| Ast.Int() | Ast.Nat() | Ast.Bool() | Ast.Unit() | Ast.Void() -> 0
-| Ast.Type n -> 0
-| Ast.Placeholder n -> int_of_string n + 1
-| e -> -10 (*raise (Invalid_argument "not known to be a type")*)
-*)
+(* Common element of a list *)
 
-let rec generate_placeholder = function
-  | Ast.Id _ -> 0
-	| Ast.Abs (_, e) | Ast.Pabs (_, e) -> generate_placeholder e
-	| Ast.Pi (_, e1, e2) | Ast.Sigma (_, e1, e2) -> generate_placeholder e1 + generate_placeholder e2
-	| Ast.Fst e | Ast.Snd e | Ast.Inl e | Ast.Inr e | Ast.Succ e | Ast.Abort e -> generate_placeholder e
-	| Ast.App (e1, e2) | Ast.Pair (e1, e2) | Ast.Sum (e1, e2) | Ast.Let (e1, e2) | Ast.At(e1, e2) -> generate_placeholder e1 + generate_placeholder e2
-	| Ast.Case (e, e1, e2) | Ast.Natrec (e, e1, e2) | Ast.If (e, e1, e2) | Ast.Pathd (e, e1, e2) -> generate_placeholder e + generate_placeholder e1 + generate_placeholder e2
-	| Ast.Hole n -> int_of_string n + 1
-	| _ -> 0
+let rec commonel = function
+  | [], [] -> Error()
+  | _, [] | [], _ -> Error()
+  | e :: l1 , e' :: l2 ->
+    if List.mem e l2 then
+      Ok e
+    else if List.mem e' l1 then
+      Ok e'
+    else
+      commonel (l1, l2)
 
-(* Checks whether the type of a given expression is the given type *)
-
-let is_placeholder = function
-| Hole _ -> true
-| _ -> false
+(* Unifies two expressions *)
 
 let rec synthesize vars = function
-| _ , Hole _ -> true
+| Hole (n1, l1), Hole (n2, l2) ->
+  begin match l1, l2 with
+  | [], [] -> Ok (Hole (n1, l1))
+  | l1, [] -> Ok (Hole (n1, l1))
+  | [], l2 -> Ok (Hole (n2, l2))
+  | _ ->
+    match commonel (l1,l2) with
+    | Ok e -> Ok e
+    | Error() ->
+      Error ((Hole (n1, l1), Hole (n2, l2)), 
+            "Failed to unify the placeholder\n  ?" ^ 
+            n1 ^ "?\nwhose suitable candidates are\n" ^ 
+            (String.concat " " (List.map Ast.unparse l1)) ^
+            "\nwith the placeholder\n  ?" ^ 
+            n2 ^ "?\nwhose suitable candidates are\n" ^ 
+            (String.concat " " (List.map Ast.unparse l2))) 
+  end
+
+| e , Hole (n, l) | Hole (n, l), e ->
+  begin match l with
+  | [] -> Ok e
+  | _ ->
+    let rec helper = function
+    | [] -> false
+    | e' :: l' -> e' = e || helper l' in
+    if helper l then 
+      Ok e 
+    else 
+      Error ((e , Hole (n, l)),
+              "Failed to unify the placeholder\n  " ^ 
+              unparse (Ast.Hole (n, l)) ^ "\nwith the suitable candidates\n" ^ 
+              (String.concat " " (List.map Ast.unparse l)))
+  end
+
+| Pi (x, ty1, ty2), Pi (x', ty1', ty2') -> 
+  let v1 = fresh_var ty2 ty2' vars in
+  begin match synthesize (vars+1) (ty1, ty1') with
+  | Ok s1 -> 
+    let e = fullsubst ty1 s1 (subst x (Id v1) ty2) in
+    let e' = fullsubst ty1' s1 (subst x' (Id v1) ty2') in
+    begin match synthesize (vars+1) (e, e') with
+    | Ok s2 -> Ok (Pi (v1, s1, s2))
+    | Error msg -> Error msg
+    end
+  | Error msg -> Error msg
+  end
+
+| Sigma (x, ty1, ty2), Sigma (x', ty1', ty2') ->
+  let v1 = fresh_var ty2 ty2' vars in
+  begin match synthesize (vars+1) (ty1, ty1') with
+  | Ok s1 -> 
+    let e = fullsubst ty1 s1 (subst x (Id v1) ty2) in
+    let e' = fullsubst ty1' s1 (subst x' (Id v1) ty2') in
+    begin match synthesize (vars+1) (e, e') with
+    | Ok s2 -> Ok (Sigma (v1, s1, s2))
+    | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ unparse e ^ "\nwith\n  " ^ unparse e' ^ "\n" ^ msg)
+    end
+  | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ unparse ty1 ^ "\nwith\n  " ^ unparse ty2 ^ "\n" ^ msg)
+  end
+
+| Sum (ty1, ty2) , Sum (ty1', ty2') ->
+  begin match synthesize vars (ty1, ty1'), synthesize vars (ty2, ty2') with
+  | Ok s1, Ok s2 -> Ok (Sum (s1, s2))
+  | Error msg, _ | _ , Error msg -> 
+    Error msg
+  end
+
+| Pathd (ty, e1, e2) , Pathd (ty', e1', e2') -> 
+  begin match synthesize vars (ty, ty'), synthesize vars (e1, e1'), synthesize vars (e2, e2') with
+  | Ok s, Ok s1, Ok s2 -> Ok (Pathd (s, s1, s2))
+  | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg -> 
+    Error msg
+  end
+
+| Abs (x, e), Abs (x', e') -> 
+  let v1 = fresh_var e e' vars in
+  begin match synthesize (vars+1) (subst x (Id v1) e, subst x' (Id v1) e') with
+  | Ok s -> Ok (Abs (v1, s))
+  | Error msg -> Error msg
+  end
+
+| Pabs (x, e), Pabs (x', e') -> 
+  let v1 = fresh_var e e' vars in
+  begin match synthesize (vars+1) (subst x (Id v1) e, subst x' (Id v1) e') with
+  | Ok s -> Ok (Pabs (v1, s))
+  | Error msg -> Error msg
+  end
+
+| App (e1, e2), App (e1', e2') ->
+  begin match synthesize vars (e1, e1'), synthesize vars (e2, e2') with
+  | Ok s1, Ok s2 -> Ok (App (s1, s2))
+  | Error msg, _ | _, Error msg -> Error msg
+  end
+
+| Pair (e1, e2), Pair (e1', e2') ->
+  begin match synthesize vars (e1, e1'), synthesize vars (e2, e2') with
+  | Ok s1, Ok s2 -> Ok (Pair (s1, s2))
+  | Error msg, _ | _, Error msg -> Error msg
+  end
+
+| At (e1, e2), At (e1', e2') ->
+  begin match synthesize vars (e1, e1'), synthesize vars (e2, e2') with
+  | Ok s1, Ok s2 -> Ok (At (s1, s2))
+  | Error msg, _ | _, Error msg -> Error msg
+  end
+
+| Let (e1, e2), Let (e1', e2') ->
+  begin match synthesize vars (e1, e1'), synthesize vars (e2, e2') with
+  | Ok s1, Ok s2 -> Ok (Let (s1, s2))
+  | Error msg, _ | _, Error msg -> Error msg
+  end
+
+| Fst e, Fst e' ->
+  begin match synthesize vars (e, e') with
+  | Ok s -> Ok (Fst s)
+  | Error msg -> Error msg
+  end
+
+| Snd e, Snd e' ->
+  begin match synthesize vars (e, e') with
+  | Ok s -> Ok (Snd s)
+  | Error msg -> Error msg
+  end
+
+| Inl e, Inl e' ->
+  begin match synthesize vars (e, e') with
+  | Ok s -> Ok (Inl s)
+  | Error msg -> Error msg
+  end
+
+| Inr e, Inr e' ->
+  begin match synthesize vars (e, e') with
+  | Ok s -> Ok (Inr s)
+  | Error msg -> Error msg
+  end
+
+| Succ e, Succ e' ->
+  begin match synthesize vars (e, e') with
+  | Ok s -> Ok (Succ s)
+  | Error msg -> Error msg
+  end
+
+| Abort e, Abort e' -> 
+  begin match synthesize vars (e, e') with
+  | Ok s -> Ok (Abort s)
+  | Error msg -> Error msg
+  end
+
+| Case (e, e1, e2), Case (e', e1', e2') ->
+  begin match synthesize vars (e, e'), synthesize vars (e1, e1'), synthesize vars (e2, e2') with
+  | Ok s, Ok s1, Ok s2 -> Ok (Case (s, s1, s2))
+  | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg ->
+    Error msg
+  end
+
+| Natrec (e, e1, e2), Natrec (e', e1', e2') ->
+  begin match synthesize vars (e, e'), synthesize vars (e1, e1'), synthesize vars (e2, e2') with
+  | Ok s, Ok s1, Ok s2 -> Ok (Natrec (s, s1, s2))
+  | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg ->
+    Error msg
+  end
+
+| If (e, e1, e2), If (e', e1', e2') ->
+  begin match synthesize vars (e, e'), synthesize vars (e1, e1'), synthesize vars (e2, e2') with
+  | Ok s, Ok s1, Ok s2 -> Ok (If (s, s1, s2))
+  | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg ->
+    Error msg
+  end
+
+| e , e' -> if e = e' then Ok e else Error ((e, e'), "The terms\n  " ^ unparse e ^ "\nand\n  " ^ unparse e' ^ "\nare not equal")
+
+
+(*
+let rec synthesize vars = function
+| e , Hole _ | Hole _, e -> true
 | Pi (x, ty1, ty2), Pi (x', ty1', ty2') -> (* group Pi and Sigma together *)
-  let var = fresh_var ty2 ty2' vars in
-  synthesize (vars+1) (ty1, ty1') && synthesize (vars+1) (subst x (Id var) ty2, subst x' (Id var) ty2')
+  let v1 = fresh_var ty2 ty2' vars in
+  synthesize (vars+1) (ty1, ty1') && synthesize (vars+1) (subst x (Id v1) ty2, subst x' (Id v1) ty2')
 | Sigma (x, ty1, ty2), Sigma (x', ty1', ty2') ->
   let var = fresh_var ty2 ty2' vars in
   synthesize (vars+1) (ty1, ty1') && synthesize (vars+1) (subst x (Id var) ty2, subst x' (Id var) ty2')
@@ -85,3 +237,4 @@ let rec synthesize vars = function
 | Case (e, e1, e2), Case (e', e1', e2') | Natrec (e, e1, e2), Natrec (e', e1', e2') | If (e, e1, e2), If (e', e1', e2') ->
   synthesize vars (e, e') && synthesize vars (e1, e1') && synthesize vars (e2, e2')
 | ty , ty' -> if ty = ty' then true else false 
+*)
