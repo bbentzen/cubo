@@ -84,6 +84,7 @@ rule token = parse
   | "theorem"          { DEF }
   | "thm"              { DEF }
   | "print"            { PRINT }
+  | "infer"            { INFER }
   | whitespace         { token lexbuf }
   | end_of_line        { Lexing.new_line lexbuf; token lexbuf } (* needs fix later *)
   | identifier         { ID(str) }

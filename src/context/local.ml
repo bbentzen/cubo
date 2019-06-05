@@ -10,13 +10,12 @@
 
 let rec create_ctx = function
 	| [] -> []
-	| ids_ty :: l ->
-		(match ids_ty with
-		| ((ids, ty), b) -> 
-			(match ids with
+	| ((ids, ty), b) :: l ->
+		begin match ids with
 			| [] -> []
 			| e :: ids' -> 
-				((e, ty), b) :: create_ctx ([((ids', ty), b)]) @ create_ctx l ))
+				((e, ty), b) :: create_ctx ([((ids', ty), b)]) @ create_ctx l
+		end
 
 (* Determines whether a variable has been declared *)
 

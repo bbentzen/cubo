@@ -2,6 +2,14 @@
 
 /* function type */
 
+def id {A : type 1}
+⊢ A → A :=
+λ x, x
+ 
+def iff_id {A : type 1}
+⊢ A ↔ A :=
+(id, id)
+
 def k_combinator (A B : type 1)
 ⊢ A → B → A :=
 λx, λy, x
@@ -413,11 +421,42 @@ def funext (A : type 1) (B : A → type 1) (f g : Π (x : A) app B x)
  
 /* path structure of types */
  
-def inv (b : bool)
-⊢ path bool (app bneg (app bneg b)) b :=
-if b (<i> true) (<i> false)
- 
 definition add_zero (m : nat)
 ⊢ path nat (app (app add 0) m) m :=
 natrec m (<_> 0) (λ n, λ p , <i> succ (p @ i))
+
+def bneg_inv (b : bool)
+⊢ path bool (app bneg (app bneg b)) b :=
+if b (<i> true) (<i> false)
  
+def band_comm (b1 b2 : bool)
+⊢ path bool (app (app band b1) b2) (app (app band b2) b1) :=
+if b1 (if b2 (<_> true) (<_> false)) (if b2 (<_> false) (<_> false))
+ 
+def band_assoc (b1 b2 b3 : bool)
+⊢ path bool (app (app band b1) (app (app band b2) b3)) (app (app band (app (app band b1) b2)) b3) :=
+if b1 
+  (if b2 (if b3 (<_> true) (<_> false)) (if b3 (<_> false) (<_> false))) 
+  (if b2 (if b3 (<_> false) (<_> false)) (if b3 (<_> false) (<_> false)))
+ 
+def bor_comm (b1 b2 : bool)
+⊢ path bool (app (app bor b1) b2) (app (app bor b2) b1) :=
+if b1 (if b2 (<_> true) (<_> true)) (if b2 (<_> true) (<_> false))
+ 
+def bor_assoc (b1 b2 b3 : bool)
+⊢ path bool (app (app bor b1) (app (app bor b2) b3)) (app (app bor (app (app bor b1) b2)) b3) :=
+if b1 
+  (if b2 (if b3 (<_> true) (<_> true)) (if b3 (<_> true) (<_> true))) 
+  (if b2 (if b3 (<_> true) (<_> true)) (if b3 (<_> true) (<_> false)))
+ 
+def pair_eq (A B : type 1) (a a' : A) (b b' : B)
+⊢ path A a a' × path B b b' ↔ path (A × B) (a, b) (a', b') :=
+(λ w, <i> (fst w @ i, snd w @ i),
+ λ p, (<i> fst (p @ i), <j> snd (p @ j)))
+
+def unit_eq (u : unit)
+⊢ path unit u () :=
+let u (<_> ())
+ 
+/** TODO: for the code-encode method (bool, sums, nat) we need coercion **/
+

@@ -10,7 +10,7 @@ open Ast
 
 %token <string> ID
 %token <string> NUMBER
-%token DEF PRINT LBRACE RBRACE
+%token DEF PRINT INFER LBRACE RBRACE
 %token TYPE COLON VDASH
 %token I0 I1 INTERVAL
 %token ABS APP RARROW LRARROW PI
@@ -26,11 +26,12 @@ open Ast
 %right LRARROW
 %right PI
 %right RARROW
+%left AT
 %right SUM PROD SIGMA
 %nonassoc NEG
 %nonassoc FST SND INL INR SUCC 
 %nonassoc CASE ABORT
-%left APP AT
+%left APP
 
 %start command
 %type <Ast.command> command
@@ -44,6 +45,7 @@ open Ast
 command:
   | decl command                                            {Thm($2, $1)}
   | PRINT ID command                                        {Print($3, $2)}
+  | INFER expr command                                      {Infer($3, $2)}
   | EOF                                                     {Eof()}
 
 decl:

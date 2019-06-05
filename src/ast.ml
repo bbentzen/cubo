@@ -48,6 +48,7 @@ type proof =
 type command = 
     | Thm of command * proof
     | Print of command * string
+    | Infer of command * expr
     | Eof of unit
 
 type binstr = 
@@ -87,7 +88,7 @@ let rec unparse = function
 	| Void() -> "void "
 	| Pabs (y, e) -> String.concat "" ["<"; y; "> "; unparse e]
 	| At (e1, e2) -> String.concat "" ["( "; unparse e1; "@ "; unparse e2; ") "]
-	| Pathd (e, e1, e2) -> String.concat "" ["pathd ( "; unparse e; ") "; unparse e1; unparse e2]
+	| Pathd (e, e1, e2) -> String.concat "" ["pathd ( "; unparse e; ") "; "("; unparse e1; ") ("; unparse e2; ") "]
 	| Type n -> String.concat "" ["type "; string_of_int n; " "]
   | Hole (n, _) -> String.concat "" ["?"; n; "? "]
   | Wild() -> "_ "

@@ -34,7 +34,7 @@ let rec elaborate global ctx ty ph vars = function
     begin match c, h, d with
     | true , _ , _ | _ , true , _ ->  Ok (Id x, ty)
     | false , false , true -> 
-      begin match synthesize vars (ty', ty) with
+      begin match synthesize vars (eval ty', eval ty) with
       | Ok s -> Ok (Id x, s) 
       | Error (_, msg) ->
         Error ("The variable " ^ x ^ " has type\n   " ^ unparse ty' ^ 
@@ -51,7 +51,7 @@ let rec elaborate global ctx ty ph vars = function
         Error msg
       end
     end
-  
+    
   | I0() ->
     begin match ty with
     | Ast.Int() -> 
@@ -71,20 +71,28 @@ let rec elaborate global ctx ty ph vars = function
     end
 
   | Abs (x, e) -> 
-    begin match ty with
-    | Pi (y, ty1, ty2) ->
-      let elab = elaborate global (((x, ty1), true) :: ctx) (subst y (Ast.Id x) ty2) ph vars e in
-      begin match elab with
-      | Ok (e', ty2') -> Ok (Abs (x, e'), Pi (y, ty1, ty2'))
-      | Error msg -> Error msg
+      begin match ty with
+      | Pi (y, ty1, ty2) ->
+        if has_var x ty then
+          let v1 = fresh_var e ty vars in
+          let elab = elaborate global (((v1, ty1), true) :: ctx) (subst y (Ast.Id v1) ty2) ph vars e in
+          begin match elab with
+          | Ok (e', ty2') -> Ok (Abs (v1, e'), Pi (y, ty1, ty2'))
+          | Error msg -> Error msg
+          end
+        else
+          let elab = elaborate global (((x, ty1), true) :: ctx) (subst y (Ast.Id x) ty2) ph vars e in
+          begin match elab with
+          | Ok (e', ty2') -> Ok (Abs (x, e'), Pi (y, ty1, ty2'))
+          | Error msg -> Error msg
+          end
+      | Hole _ -> 
+        let h1 = Hole.generate ty ph [] in
+        let h2 = Hole.generate ty (ph+1) [] in
+        elaborate global ctx (Pi(x, h1, h2)) (ph+2) vars (Abs (x, e))
+      | _ -> 
+        Error ("The term\n  λ " ^ x ^ ", " ^ unparse e ^ "\nhas type\n  " ^ unparse ty ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
       end
-    | Hole _ -> 
-      let h1 = Hole.generate ty ph [] in
-      let h2 = Hole.generate ty (ph+1) [] in
-      elaborate global ctx (Pi(x, h1, h2)) (ph+2) vars (Abs (x, e))
-    | _ -> 
-      Error ("The term\n  λ " ^ x ^ ", " ^ unparse e ^ "\nhas type\n  " ^ unparse ty ^ "but is expected to have type\n  Π (v? : ?0?) ?1?")
-    end
     
   | App (e1, e2) ->
     let h1 = Hole.generate ty ph [] in
@@ -276,7 +284,7 @@ let rec elaborate global ctx ty ph vars = function
 
   | Ast.Natrec (e, e1, e2) ->
       let v1 = fresh_var (Natrec(e, e1, e2)) ty vars in
-      let v2 = fresh_var (Id v1) (Id v1) vars in
+      let v2 = fresh_var (Id v1) (Id v1) (vars+1) in
       let elab = elaborate global ctx (Ast.Nat()) ph (vars+2) e in
       begin match elab with
       | Ok (e', _) ->  
@@ -310,7 +318,7 @@ let rec elaborate global ctx ty ph vars = function
           end
         
         | _ -> 
-          let elab1 = elaborate global ctx (fullsubst e (Ast.Zero()) ty) ph (vars+2) e1 in
+          let elab1 = elaborate global ctx (eval (fullsubst e (Ast.Zero()) ty)) ph (vars+2) e1 in
           let tyx = (Pi(v1, Nat(), Pi(v2, fullsubst e (Id v1) ty, fullsubst e (Succ (Id v1)) ty))) in
           let elab2 = elaborate global ctx tyx ph (vars+2) e2 in
           begin match elab1, elab2 with
@@ -581,17 +589,17 @@ let rec elaborate global ctx ty ph vars = function
           begin match ty' with
           | Abs(_, ty') ->
             (match synthesize vars (ty', ty) with
-            | Ok _ -> Ok (At (e1', e2'), ty)
+            | Ok st -> Ok (At (e1', e2'), st)
             | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
           | _ -> 
             begin match ty with
             | App(ty, i) ->
               (match synthesize vars (ty', ty), e2 = i with 
-              | Ok _, true -> Ok (At (e1', e2'), App(ty, i))
+              | Ok st, true -> Ok (At (e1', e2'), App(st, i))
               | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
             | ty -> 
               (match synthesize vars (ty', ty) with
-              | Ok _ -> Ok (At (e1', e2'), ty) 
+              | Ok st -> Ok (At (e1', e2'), st) 
               | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty))
             end
           end
@@ -916,14 +924,15 @@ let rec elaborate global ctx ty ph vars = function
       else Error ("Universe level conflict\n  " ^ string_of_int n ^ "\ncannot have type\n  " ^ string_of_int m ^ "\n(This is known as Girard's paradox)")
     | Hole _ -> Ok (Type n, Type (n+1)) 
     | _ -> Error ("Type mismatch when checking that\n  " ^ string_of_int n ^ "\nhas type\n  " ^ unparse ty))
+  
   | Wild() ->
-    begin match find_ty ty ctx with
+    (*begin match find_ty ty ctx with
     | Ok var -> Ok (Id var, ty)
-    | Error _ -> 
+    | Error _ -> *)
       Error ("Failed to synthesize placeholder for the current goal:\n" ^ 
       print ctx ^ "-------------------------------------------\n ⊢ " ^ unparse ty)
-    end
-    
+    (* end *)
+
   | Hole (n, l) -> 
     Ok (Hole (n, l), ty) (* used for tests *)
     (*Error ("Failed to synthesize placeholder ?" ^ n ^ "? for type\n  " ^ unparse ty)*)

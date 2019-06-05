@@ -10,9 +10,9 @@ let rec has_var x = function
 	| Ast.Id y -> 
 		if x = y then true else false
 	| Ast.Abs (y, e) | Ast.Pabs (y, e) -> 
-		if x = y then true else has_var x e
-	| Ast.Pi (y, e1, e2) | Ast.Sigma (y, e1, e2) -> 
-		if x = y then true else has_var x e1 || has_var x e2
+		if x = y then false else has_var x e (* if x = y then true *)
+	| Ast.Pi (y, e1, e2) | Ast.Sigma (y, e1, e2) -> (* if x = y then true *)
+		if x = y then false else has_var x e1 || has_var x e2
 	| Ast.Fst e | Ast.Snd e | Ast.Inl e | Ast.Inr e | Ast.Succ e | Ast.Abort e -> 
 		has_var x e
 	| Ast.App (e1, e2) | Ast.Pair (e1, e2) | Ast.Sum (e1, e2) | Ast.Let (e1, e2) | Ast.At(e1, e2) -> 
@@ -30,7 +30,7 @@ let rec has_var x = function
 
 let fresh_var_int e = 
 	let rec helper i e =
-		if has_var ("v" ^ string_of_int i) e = true then 
+		if has_var ("v" ^ string_of_int (i+1)) e = true then 
 			helper (i+1) e 
 		else i 
 	in	(* not free_var *)
