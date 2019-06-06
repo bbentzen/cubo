@@ -81,6 +81,7 @@ rule token = parse
   | "definition"       { DEF }
   | "def"              { DEF }
   | "lemma"            { DEF }
+  | "lem"              { DEF }
   | "theorem"          { DEF }
   | "thm"              { DEF }
   | "print"            { PRINT }

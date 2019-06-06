@@ -26,7 +26,16 @@ let rec is_declared x ctx =
 		if x = y
 		then true
 		else is_declared x ctx'
-				
+
+let rec var_type x ctx =
+	match (List.rev ctx) with
+	| [] -> Error()
+	| ((y, ty), _) :: ctx' -> 
+		if x = y then 
+			Ok ty
+		else 
+			var_type x ctx'
+
 (* Determines whether a given typed variable occurs in the context *)
 
 let rec check_var_ty x ty ctx =

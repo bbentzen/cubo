@@ -179,9 +179,9 @@ def not_not_lem (A : type 1)
 ⊢ ¬¬ (A + ¬A) :=
 λ f, app f (inr (λ x, app f (inl x)))
  
-def lem_implies_dne (A : type 1) (lem : A + ¬A)
+def lem_implies_dne (A : type 1) (v : A + ¬A)
 ⊢ ¬¬A → A :=
-λ f, case lem (λ x, x) (λ nx, abort (app f nx))
+λ f, case v (λ x, x) (λ nx, abort (app f nx))
  
 def dne_implies_lem (A : type 1) (dne : ¬¬(A + ¬A) → (A + ¬A))
 ⊢ A + ¬A :=
@@ -239,41 +239,41 @@ theorem bool_to_unit
  
 /* Boolean */
  
-definition bneg
+def bneg
 ⊢ bool → bool :=
 λ b, if b false true
  
-definition band
+def band
 ⊢ bool → bool → bool :=
 λ b1, λ b2, if b1 (if b2 true false) (if b2 false false)
  
-definition bor
+def bor
 ⊢ bool → bool → bool :=
 λ b1, λ b2, if b1 (if b2 true true) (if b2 true false)
  
-definition bimpl
+def bimpl
 ⊢ bool → bool → bool :=
 λ b1, λ b2, if b1 (if b2 true false) (if b2 true true)
  
-definition bnand
+def bnand
 ⊢ bool → bool → bool :=
 λ b1, λ b2, if b1 (if b2 false true) (if b2 true true)
  
-definition bnor
+def bnor
 ⊢ bool → bool → bool :=
 λ b1, λ b2, if b1 (if b2 false false) (if b2 false true)
  
 /* Natural numbers */
  
-definition pred
+def pred
 ⊢ nat → nat :=
 λ n, natrec n 0 (λ k, λ _, k)
  
-definition add
+def add
 ⊢ nat → nat → nat :=
 λ m, λ n, natrec n m (λ k, λ f, succ f)
  
-definition mult 
+def mult 
 ⊢ nat → nat → nat := 
 λ m, λ n, natrec n 0 (λ k, λ f, (natrec f m (λ k, λ g, succ g)))
  
@@ -421,7 +421,7 @@ def funext (A : type 1) (B : A → type 1) (f g : Π (x : A) app B x)
  
 /* path structure of types */
  
-definition add_zero (m : nat)
+def add_zero (m : nat)
 ⊢ path nat (app (app add 0) m) m :=
 natrec m (<_> 0) (λ n, λ p , <i> succ (p @ i))
 
@@ -457,6 +457,24 @@ def pair_eq (A B : type 1) (a a' : A) (b b' : B)
 def unit_eq (u : unit)
 ⊢ path unit u () :=
 let u (<_> ())
+ 
+/** proof irrevelance **/
+
+def irrel_uip (A : type 1) (a b : A) (p q : path A a b)
+⊢ path (path A a b) p q :=
+<_> p
+ 
+def irrel_line (A : type 1) (a b : A) (p q : path A a b)
+⊢ path (Π (x : I) A) (λ i, p @ i) (λ j, q @ j) :=
+<_> (λ i, p @ i)
+ 
+def irrel_k (A : type 1) (a : A) (p : path A a a)
+⊢ path (path A a a) p (<_> a) :=
+<_> p
+ 
+def irrel_example (A : type 1) (a b : A)  (B : path A a b → (Π (x : I) A) → type 1) (p q : path A a b) 
+⊢ app app B p (λ i, p @ i) →  app app B q (λ j, q @ j) :=
+id
  
 /** TODO: for the code-encode method (bool, sums, nat) we need coercion **/
 

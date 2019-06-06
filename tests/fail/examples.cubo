@@ -1,0 +1,11 @@
+/* correctly fails to type check */
+ 
+def test1 (A : type 1) (a b : A) (p : path A a b) (q : path A a a)
+⊢ path (Π (x : I) A) (λ i, p @ i) (λ i, q @ i) :=
+<_> (λ i, p @ i)
+
+def test2 (p : path bool true false)
+⊢ ??1 := --Σ (b : bool) path bool b false :=
+if (p @ i0) (false, p) (false, <_> false) 
+
+
