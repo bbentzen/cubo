@@ -9,8 +9,9 @@ open Ast
 %}
 
 %token <string> ID
+%token <string> FILENAME
 %token <string> NUMBER
-%token DEF PRINT INFER LBRACE RBRACE
+%token OPEN DEF PRINT INFER LBRACE RBRACE
 %token TYPE COLON VDASH
 %token I0 I1 INTERVAL
 %token ABS APP RARROW LRARROW PI
@@ -38,12 +39,13 @@ open Ast
 %type <Ast.proof> decl
 %type <((string list * Ast.expr) * bool) list> ctx
 %type <Ast.expr> expr
-%type <string list>ids 
+%type <string list> ids 
 
 %%
 
-command:
+command:  
   | decl command                                            {Thm($2, $1)}
+  | OPEN FILENAME command                                   {Open($3, $2)}
   | PRINT ID command                                        {Print($3, $2)}
   | INFER expr command                                      {Infer($3, $2)}
   | EOF                                                     {Eof()}

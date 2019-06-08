@@ -1,0 +1,58 @@
+/*
+ * Copyright (c) 2019 Bruno Bentzen. All rights reserved.
+ * Released under the Apache License 2.0 (see "License");
+ * Author: Bruno Bentzen
+ */
+ 
+/* Booleans */
+ 
+def bneg
+⊢ bool → bool :=
+λ b, if b false true
+ 
+def band
+⊢ bool → bool → bool :=
+λ b1, λ b2, if b1 (if b2 true false) (if b2 false false)
+ 
+def bor
+⊢ bool → bool → bool :=
+λ b1, λ b2, if b1 (if b2 true true) (if b2 true false)
+ 
+def bimpl
+⊢ bool → bool → bool :=
+λ b1, λ b2, if b1 (if b2 true false) (if b2 true true)
+ 
+def bnand
+⊢ bool → bool → bool :=
+λ b1, λ b2, if b1 (if b2 false true) (if b2 true true)
+ 
+def bnor
+⊢ bool → bool → bool :=
+λ b1, λ b2, if b1 (if b2 false false) (if b2 false true)
+ 
+/* Paths */
+ 
+def bneg_inv (b : bool)
+⊢ path bool (app bneg (app bneg b)) b :=
+if b (<i> true) (<i> false)
+ 
+def band_comm (b1 b2 : bool)
+⊢ path bool (app (app band b1) b2) (app (app band b2) b1) :=
+if b1 (if b2 (<_> true) (<_> false)) (if b2 (<_> false) (<_> false))
+ 
+def band_assoc (b1 b2 b3 : bool)
+⊢ path bool (app (app band b1) (app (app band b2) b3)) (app (app band (app (app band b1) b2)) b3) :=
+if b1 
+  (if b2 (if b3 (<_> true) (<_> false)) (if b3 (<_> false) (<_> false))) 
+  (if b2 (if b3 (<_> false) (<_> false)) (if b3 (<_> false) (<_> false)))
+ 
+def bor_comm (b1 b2 : bool)
+⊢ path bool (app (app bor b1) b2) (app (app bor b2) b1) :=
+if b1 (if b2 (<_> true) (<_> true)) (if b2 (<_> true) (<_> false))
+ 
+def bor_assoc (b1 b2 b3 : bool)
+⊢ path bool (app (app bor b1) (app (app bor b2) b3)) (app (app bor (app (app bor b1) b2)) b3) :=
+if b1 
+  (if b2 (if b3 (<_> true) (<_> true)) (if b3 (<_> true) (<_> true))) 
+  (if b2 (if b3 (<_> true) (<_> true)) (if b3 (<_> true) (<_> false)))
+

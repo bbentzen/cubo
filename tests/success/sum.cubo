@@ -1,0 +1,102 @@
+/*
+ * Copyright (c) 2019 Bruno Bentzen. All rights reserved.
+ * Released under the Apache License 2.0 (see "License");
+ * Author: Bruno Bentzen
+ */
+ 
+/* Sum type */
+ 
+def de_morgan_prod_1 {A B : type 1}
+⊢ (A × B) → ¬ (¬A + ¬B) :=
+λ w, λ v, case v (λ f, app f (fst w)) (λ g, app g (snd w))
+ 
+def de_morgan_prod_2 {A B : type 1}
+⊢  (¬ A × ¬ B) → ¬ (A + B) :=
+λ w, λ v, case v (λ x, app (fst w) x) (λ y, app (snd w) y)
+ 
+def prod_elim_sum {A B C : type 1}
+⊢  (A × B) → ((A → C) + (B → C)) → C :=
+λ w, λ v, case v (λ f, app f (fst w)) (λ g, app g (snd w))
+ 
+def weak_1 {A B : type 1}
+⊢ A → A + B :=
+λ x, inl x
+ 
+def weak_2 {A B : type 1}
+⊢ B → A + B :=
+λ y, inr y
+ 
+def sum_swap {A B : type 1} 
+⊢ (A + B) → (B + A) :=
+λ v, case v (λ x, inr x) (λ y, inl y)
+ 
+def sum_assoc {A B C : type 1} 
+⊢ (A + B + C) ↔ ((A + B) + C) :=
+(λ v1, case v1 (λ x, inl (inl x)) (λ v2, case v2 (λ y, inl (inr y)) (λ z, inr z)),
+ λ v1, case v1 (λ v2, case v2 (λ x, inl x) (λ y, inr (inl y))) (λ z, inr (inr z)))
+ 
+def sum_distrib_1 {A B C : type 1} 
+⊢ ((A + B) → C) → ((A → C) + (B → C)) :=
+λ f, inl (λ x, app f (inl x))
+ 
+def sum_distrib_2 {A B C : type 1} 
+⊢ ((A + B) → C) → ((A → C) + (B → C)) :=
+λ f, inr (λ y, app f (inr y))
+ 
+def disj_syll_1 {A B C : type 1} 
+⊢ (A + B) → (¬A) -> B  :=
+λ v, λ f, case v (λ x, abort (app f x)) (λ y, y)
+ 
+def disj_syll_2 {A B : type 1}
+⊢ (A + B) → (¬B) → A  :=
+λ v, λ g, case v (λ x, x) (λ y, abort (app g y))
+ 
+def not_not_lem {A : type 1}
+⊢ ¬¬ (A + ¬A) :=
+λ f, app f (inr (λ x, app f (inl x)))
+ 
+def lem_implies_dne {A : type 1} (v : A + ¬A)
+⊢ ¬¬A → A :=
+λ f, case v (λ x, x) (λ nx, abort (app f nx))
+ 
+def dne_implies_lem {A : type 1} (dne : ¬¬(A + ¬A) → (A + ¬A))
+⊢ A + ¬A :=
+app dne (λ f, app f (inr (λ x, app f (inl x))))
+ 
+def sum_up_1 {A B C : type 1}
+⊢ (A → C) → (B → C) → ((A + B) → C) :=
+λ f, λ g, λ v, case v f g
+ 
+def sum_up_2 {A B C : type 1}
+⊢ ((A + B) → C) → (A → C) :=
+λ f, λ x, app f (inl x)
+ 
+def sum_up_3 {A B C : type 1}
+⊢ ((A + B) → C) → (B → C) :=
+λ f, λ y, app f (inr y) 
+ 
+def sum_to_fun {A B : type 1}
+⊢ (A + B) → (¬ A → B) :=
+λ v, case v (λ x, (λ f, abort (app f x))) (λ y, λ f, y)
+ 
+def sum_neg_to_fun {A B : type 1}
+⊢ (¬ A + B) → (A → B) :=
+λ v, λ x, case v (λ nx, abort (app nx x)) (λ y, y)
+ 
+def de_morgan_sum_1 {A B : type 1}
+⊢ (A + B) → ¬ (¬ A × ¬ B) :=
+λ v, λ w, case v (λ x, app (fst w) x) (λ y, app (snd w) y)
+ 
+def de_morgan_sum_2 {A B : type 1}
+⊢ ¬(A + B) → (¬A × ¬B) :=
+λ f, (λ x, app f (inl x) , λ y, app f (inr y))
+ 
+def de_morgan_sum_3 {A B : type 1}
+⊢ (¬ A + ¬ B) → (¬ (A × B)) :=
+λ v, λ w, case v (λ f, app f (fst w)) (λ g, app g (snd w)) 
+ 
+def sum_elim {A B C : type 1}
+⊢ (A + B) → ((A → C) × (B → C)) → C :=
+λ v, λ f, case v (λ x, app (fst f) x) (λ y, app (snd f) y)
+ 
+

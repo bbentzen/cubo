@@ -11,6 +11,9 @@ open Syntax
 let identifier =
   ['A'-'Z' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_' ''']* as str
 
+let filename =
+  ['A'-'Z' '.' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_' '.' '/']* as str
+
 let number =
   ['0'-'9']* as str
 
@@ -78,6 +81,7 @@ rule token = parse
   | "⊢"                { VDASH }
   | "{"                { LBRACE }
   | "}"                { RBRACE }
+  | "open"             { OPEN }
   | "definition"       { DEF }
   | "def"              { DEF }
   | "lemma"            { DEF }
@@ -89,6 +93,7 @@ rule token = parse
   | whitespace         { token lexbuf }
   | end_of_line        { Lexing.new_line lexbuf; token lexbuf } (* needs fix later *)
   | identifier         { ID(str) }
+  | filename           { FILENAME(str) }
   | number             { NUMBER(str) }
   | _ as chr           { failwith ("Lex error: "^(Char.escaped chr))}
   | eof                { EOF }

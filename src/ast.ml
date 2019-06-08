@@ -4,8 +4,6 @@
  * Desc: The abstract syntax of terms and types
  **)
 
-(* TODO: universe lvls: id, num, max lvl lvl *)
-
 type expr = 
   | Id of string
   | Int of unit
@@ -49,6 +47,7 @@ type command =
     | Thm of command * proof
     | Print of command * string
     | Infer of command * expr
+    | Open of command * string
     | Eof of unit
 
 type binstr = 

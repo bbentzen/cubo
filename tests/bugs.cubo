@@ -1,8 +1,14 @@
 
-def bug1 (A : type 1) (C : A → type 1) (f : Π (x : A) (A → app C x)) (x : A) 
-⊢ app C x :=
-app (app f x) x
+/** TODO: 
+- open command
+- Kan conditions
+- universe levels: id, num, max lvl lvl
+- refl direct handling 
+- holes _ should try all possible combinations
+- λ id id, notation for iterated lambda sigmas pis
+**/
+
  
-def bug2 (A : type 1) (B C : A → type 1) (f : Π (x : A) (app B x → app C x)) (x : A) (g : app B x) 
-⊢ app C x :=
-app (app f x) g
+ 
+ 
+

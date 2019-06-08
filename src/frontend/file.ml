@@ -36,8 +36,38 @@ let token_list_of_string s =
     with _ -> List.rev l in 
   helper []
   
-let parsefile filename = 
+let parse_file filename = 
   parse_string (concat_string_list (read_file filename))
 
+(* Handles directories *)
 
-  
+let parent dir =
+	match String.rindex_opt dir '/' with
+	| Some n ->
+		String.sub dir 0 n
+	| None -> ""
+
+let rec dot_dir cd s =
+	let n = String.length s in
+	if s.[0] = '.' && s.[1] = '/' then
+		let s = String.sub s 1 (n - 1) in
+		cd ^ s
+	else if s.[0] = '.' && s.[1] = '.' && s.[2] = '/' then
+		let s' = String.sub s  2 (n - 2) in
+		dot_dir (parent cd) s'
+	else
+		cd ^ s
+	
+let read_dir cd s =
+	let n = String.length s in
+	if n > 2 then
+		if s.[0] = '.' then
+			let s' = dot_dir cd s in
+			if s'.[0] = '/' then
+				String.sub s 1 (n - 1)
+			else 
+				s'
+		else
+			s
+	else 
+		s

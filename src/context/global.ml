@@ -27,7 +27,7 @@ let function_of_def id ctx elab hole =
 			Ast.Abs (x, fst (helper h' ctx )), 
 			Ast.Pi (x, ty, snd (helper h' ctx))
 		| ((x, _), false) :: ctx ->  
-			let h = Hole.generate (fst (helper h' ctx)) h' [] in
+			let h = Hole.generate (fst (helper (h'+1) ctx)) h' [] in
 			Substitution.subst x h (fst (helper (h'+1) ctx)), 
 			Substitution.subst x h (snd (helper (h'+1) ctx )) 
 		in

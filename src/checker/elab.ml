@@ -29,11 +29,13 @@ let rec elaborate global ctx ty ph vars = function
     begin match var_type x ctx with
     | Ok ty' ->
       let c = check_var_ty x ty ctx in
-      let h = Hole.is ty' in
+      let h = Hole.is ty in
+      let h' = Hole.is ty' in
       let d = is_declared x ctx in
-      begin match c, h, d with
-      | true , _ , _ | _ , true , _ ->  Ok (Id x, ty)
-      | false , false , true ->
+      begin match c, h, h', d with
+      | true , _, _ , _ | _ , _, true , _ ->  Ok (Id x, ty)
+      | _ , true, _ , _ ->  Ok (Id x, ty')
+      | false , false, false , true ->
         let h1 = Hole.generate ty ph [] in
         begin match elaborate global ctx h1 ph vars ty' with
         | Ok (_, tTy') ->
@@ -47,7 +49,7 @@ let rec elaborate global ctx ty ph vars = function
         | Error msg -> (* This case is impossible *)
           Error msg
         end
-      | false , false , false -> 
+      | false , false, false , false -> 
         begin match Global.unfold x global with
         | Ok (body, ty') ->
           let h1 = Hole.generate ty ph [] in
@@ -116,7 +118,8 @@ let rec elaborate global ctx ty ph vars = function
     let elab2 = elaborate global ctx h1 (ph+1) (vars+1) e2 in
     begin match elab2 with
     | Ok (e2', ty2') ->
-      let elab1 = elaborate global ctx (Pi(v1, ty2', fullsubst e2 (Id v1) ty)) (ph+1) (vars+1) e1 in
+      let h2 = Hole.generate ty (ph+1) [Id v1; e2] in
+      let elab1 = elaborate global ctx (Pi(v1, ty2', fullsubst e2 h2 ty)) (ph+1) (vars+1) e1 in
       begin match elab1 with
       | Ok (e1', Pi(x, _, ty')) ->
         Ok (App (e1', e2'), subst x e2 ty')
@@ -1033,314 +1036,297 @@ let rec elaborate global ctx ty ph vars = function
 (* Unifies two expressions at type *)
 
 and unify global ctx ph vars = function
-| Hole (n1, l1), Hole (n2, l2), _ ->
-  begin match l1, l2 with
-  | [], [] -> Ok (Hole (n1, l1))
-  | l1, [] -> Ok (Hole (n1, l1))
-  | [], l2 -> Ok (Hole (n2, l2))
-  | _ ->
-    let rec common_el = function
-    | [], [] -> Error()
-    | _, [] | [], _ -> Error()
-    | e :: l1 , e' :: l2 ->
-      if List.mem e l2 then
-        Ok e
-      else if List.mem e' l1 then
-        Ok e'
-      else
-        common_el (l1, l2)
-    in
-    match common_el (l1,l2) with
-    | Ok e -> Ok e
-    | Error() ->
-      Error ((Hole (n1, l1), Hole (n2, l2)), 
-            "Failed to unify the placeholder\n  ?" ^ 
-            n1 ^ "?\nwhose suitable candidates are\n" ^ 
-            (String.concat " " (List.map Ast.unparse l1)) ^
-            "\nwith the placeholder\n  ?" ^ 
-            n2 ^ "?\nwhose suitable candidates are\n" ^ 
-            (String.concat " " (List.map Ast.unparse l2))) 
-  end
+| e, e', ty ->
+  if e = e' then
+    Ok e
+  else
+    match e, e', ty with
+    | Hole (n1, l1), Hole (n2, l2), _ ->
+      begin match l1, l2 with
+      | [], [] -> Ok (Hole (n1, l1))
+      | l1, [] -> Ok (Hole (n1, l1))
+      | [], l2 -> Ok (Hole (n2, l2))
+      | _ ->
+        let rec common_el = function
+        | [], [] -> Error()
+        | _, [] | [], _ -> Error()
+        | e :: l1 , e' :: l2 ->
+          if List.mem e l2 then
+            Ok e
+          else if List.mem e' l1 then
+            Ok e'
+          else
+            common_el (l1, l2)
+        in
+        match common_el (l1,l2) with
+        | Ok e -> Ok e
+        | Error() ->
+          Error ((Hole (n1, l1), Hole (n2, l2)), 
+                "Failed to unify the placeholder\n  ?" ^ 
+                n1 ^ "?\nwhose suitable candidates are\n" ^ 
+                (String.concat " " (List.map Ast.unparse l1)) ^
+                "\nwith the placeholder\n  ?" ^ 
+                n2 ^ "?\nwhose suitable candidates are\n" ^ 
+                (String.concat " " (List.map Ast.unparse l2))) 
+      end
 
-| e , _, Pathd(_, _, _) ->
-  Ok e
+    | e , _, Pathd(_, _, _) ->
+      Ok e
 
-| e , Hole (n, l), _ | Hole (n, l), e, _ ->
-  begin match l with
-  | [] -> Ok e
-  | _ ->
-    let rec helper = function
-    | [] -> false
-    | e' :: l' -> e' = e || helper l' in
-    if helper l then 
-      Ok e 
-    else 
-      Error ((e , Hole (n, l)),
-              "Failed to unify the placeholder\n  " ^ 
-              unparse (Ast.Hole (n, l)) ^ "\nwith the suitable candidates\n" ^ 
-              (String.concat " " (List.map Ast.unparse l)))
-  end
+    | e , Hole (n, l), _ | Hole (n, l), e, _ ->
+      begin match l with
+      | [] -> Ok e
+      | _ ->
+        let rec helper = function
+        | [] -> false
+        | e' :: l' -> e' = e || helper l' in
+        if helper l then 
+          Ok e 
+        else 
+          Error ((e , Hole (n, l)),
+                  "Failed to unify the placeholder\n  " ^ 
+                  unparse (Ast.Hole (n, l)) ^ "\nwith the suitable candidates\n" ^ 
+                  (String.concat " " (List.map Ast.unparse l)))
+      end
 
-| Pi (x, ty1, ty2), Pi (x', ty1', ty2'), ty -> 
-  let v1 = fresh_var ty2 ty2' vars in
-  let u1 = unify global ctx ph (vars+1) (ty1, ty1', ty) in
-  begin match u1 with
-  | Ok s1 -> 
-    let x2 = fullsubst ty1 s1 (subst x (Id v1) ty2) in
-    let x2' = fullsubst ty1' s1 (subst x' (Id v1) ty2') in
-    let u2 = unify global (((v1, s1), true) :: ctx) ph (vars+1) (x2, x2', ty) in
-    begin match u2 with
-    | Ok s2 -> Ok (Pi (v1, s1, s2))
-    | Error msg -> Error msg
-    end
-  | Error msg -> Error msg
-  end
+    | Pi (x, ty1, ty2), Pi (x', ty1', ty2'), ty -> 
+      let v1 = fresh_var ty2 ty2' vars in
+      let u1 = unify global ctx ph (vars+1) (ty1, ty1', ty) in
+      begin match u1 with
+      | Ok s1 -> 
+        let x2 = fullsubst ty1 s1 (subst x (Id v1) ty2) in
+        let x2' = fullsubst ty1' s1 (subst x' (Id v1) ty2') in
+        let u2 = unify global (((v1, s1), true) :: ctx) ph (vars+1) (x2, x2', ty) in
+        begin match u2 with
+        | Ok s2 -> Ok (Pi (v1, s1, s2))
+        | Error msg -> Error msg
+        end
+      | Error msg -> Error msg
+      end
 
-  (*
-  Error ((ty, ty), "\n=>" ^ unparse (Pi (x, ty1, ty2)) ^ "\n=>" ^ unparse (Pi (x', ty1', ty2')) ^ "\n=>" ^unparse ty)
-  *)
+    | Sigma (x, ty1, ty2), Sigma (x', ty1', ty2'), ty ->
+      let v1 = fresh_var ty2 ty2' vars in
+      let u1 = unify global ctx ph (vars+1) (ty1, ty1', ty) in
+      begin match u1 with
+      | Ok s1 -> 
+        let x2 = fullsubst ty1 s1 (subst x (Id v1) ty2) in
+        let x2' = fullsubst ty1' s1 (subst x' (Id v1) ty2') in
+        let u2 = unify global (((v1, s1), true) :: ctx) ph (vars+1) (x2, x2', ty) in
+        begin match u2 with
+        | Ok s2 -> Ok (Sigma (v1, s1, s2))
+        | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ unparse ty2 ^ "\nwith\n  " ^ unparse ty2' ^ "\n" ^ msg)
+        end
+      | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ unparse ty1 ^ "\nwith\n  " ^ unparse ty1' ^ "\n" ^ msg)
+      end
 
-| Sigma (x, ty1, ty2), Sigma (x', ty1', ty2'), ty ->
-  let v1 = fresh_var ty2 ty2' vars in
-  let u1 = unify global ctx ph (vars+1) (ty1, ty1', ty) in
-  begin match u1 with
-  | Ok s1 -> 
-    let x2 = fullsubst ty1 s1 (subst x (Id v1) ty2) in
-    let x2' = fullsubst ty1' s1 (subst x' (Id v1) ty2') in
-    let u2 = unify global (((v1, s1), true) :: ctx) ph (vars+1) (x2, x2', ty) in
-    begin match u2 with
-    | Ok s2 -> Ok (Sigma (v1, s1, s2))
-    | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ unparse ty2 ^ "\nwith\n  " ^ unparse ty2' ^ "\n" ^ msg)
-    end
-  | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ unparse ty1 ^ "\nwith\n  " ^ unparse ty1' ^ "\n" ^ msg)
-  end
+    | Sum (ty1, ty2) , Sum (ty1', ty2'), ty ->
+      let u1 = unify global ctx ph vars (ty1, ty1', ty) in
+      let u2 = unify global ctx ph vars (ty2, ty2', ty) in
+      begin match u1, u2 with
+      | Ok s1, Ok s2 -> Ok (Sum (s1, s2))
+      | Error msg, _ | _ , Error msg -> 
+        Error msg
+      end
 
-| Sum (ty1, ty2) , Sum (ty1', ty2'), ty ->
-  let u1 = unify global ctx ph vars (ty1, ty1', ty) in
-  let u2 = unify global ctx ph vars (ty2, ty2', ty) in
-  begin match u1, u2 with
-  | Ok s1, Ok s2 -> Ok (Sum (s1, s2))
-  | Error msg, _ | _ , Error msg -> 
-    Error msg
-  end
+    | Pathd (e, e1, e2) , Pathd (e', e1', e2'), ty ->
+      let u = unify global ctx ph vars (e, e', ty) in
+      let u1 = unify global ctx ph vars (e1, e1', eval (App(e, I0()))) in
+      let u2 = unify global ctx ph vars (e2, e2', eval (App(e, I1()))) in
+      begin match u, u1, u2 with
+      | Ok s, Ok s1, Ok s2 -> Ok (Pathd (s, s1, s2))
+      | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg -> 
+        Error msg
+      end
 
-| Pathd (e, e1, e2) , Pathd (e', e1', e2'), ty ->
-  let u = unify global ctx ph vars (e, e', ty) in
-  let u1 = unify global ctx ph vars (e1, e1', eval (App(e, I0()))) in
-  let u2 = unify global ctx ph vars (e2, e2', eval (App(e, I1()))) in
-  begin match u, u1, u2 with
-  | Ok s, Ok s1, Ok s2 -> Ok (Pathd (s, s1, s2))
-  | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg -> 
-    Error msg
-  end
+    | Abs (x, e), Abs (x', e'), Pi(y, ty1 , ty2) ->
+      begin match eval ty1 with
+      | Int() | Hole(_,_) ->
+        let h1 = Hole.generate ty2 ph [] in
+        let elabt0 = elaborate global ctx h1 ph vars (subst y (I0()) ty2) in
+        let elabt1 = elaborate global ctx h1 ph vars (subst y (I1()) ty2) in
+        begin match elabt0, elabt1 with
+        | Ok (tyi0, _), Ok (tyi1, _) ->
+          let elab0 = elaborate global ctx tyi0 ph vars (subst x (I0()) e) in
+          let elab0' = elaborate global ctx tyi0 ph vars (subst x' (I0()) e') in
+          let elab1 = elaborate global ctx tyi1 ph vars (subst x (I1()) e) in
+          let elab1' = elaborate global ctx tyi1 ph vars (subst x' (I1()) e') in
+          begin match elab0, elab0', elab1, elab1' with
+          | Ok (ei0, _), Ok (ei0', _), Ok (ei1, _), Ok (ei1', _) -> 
+            let u0 = unify global ctx ph (vars+1) (ei0, ei0', tyi0) in
+            let u1 = unify global ctx ph (vars+1) (ei1, ei1', tyi1) in
+            begin match u0, u1 with
+            | Ok _, Ok _ -> Ok (Abs (x, e))
+            | Error msg, _ | _, Error msg -> Error msg
+            end
+          | _ -> 
+            Error ((Abs (x, e), Abs (x', e')), "Failed endpoint unification of\n  " ^ unparse e ^ 
+              "[" ^ x ^ "/i0]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i0]\nand\n  " ^ unparse e ^ 
+              "[" ^ x ^ "/i1]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i1]\nand\n  ")
+          end
+        | Error msg, _ | _, Error msg -> (* This case is impossible *)
+          Error ((Abs (x, e), Abs (x', e')), msg)
+        end
+      | _ ->
+        let v1 = fresh_var e e' vars in
+        let u = unify global (((v1, ty1), true) :: ctx) ph (vars+1) (subst x (Id v1) e, subst x' (Id v1) e', subst y (Id v1) ty2) in
+        begin match u with
+        | Ok s -> Ok (Abs (v1, s))
+        | Error msg -> Error msg
+        end
+      end
 
-| Abs (x, e), Abs (x', e'), Pi(y, ty1 , ty2) ->
-  begin match eval ty1 with
-  | Int() | Hole(_,_) ->
-    let h1 = Hole.generate ty2 ph [] in
-    let elabt0 = elaborate global ctx h1 ph vars (subst y (I0()) ty2) in
-    let elabt1 = elaborate global ctx h1 ph vars (subst y (I1()) ty2) in
-    begin match elabt0, elabt1 with
-    | Ok (tyi0, _), Ok (tyi1, _) ->
-      let elab0 = elaborate global ctx tyi0 ph vars (subst x (I0()) e) in
-      let elab0' = elaborate global ctx tyi0 ph vars (subst x' (I0()) e') in
-      let elab1 = elaborate global ctx tyi1 ph vars (subst x (I1()) e) in
-      let elab1' = elaborate global ctx tyi1 ph vars (subst x' (I1()) e') in
-      begin match elab0, elab0', elab1, elab1' with
-      | Ok (ei0, _), Ok (ei0', _), Ok (ei1, _), Ok (ei1', _) -> 
-        let u0 = unify global ctx ph (vars+1) (ei0, ei0', tyi0) in
-        let u1 = unify global ctx ph (vars+1) (ei1, ei1', tyi1) in
-        begin match u0, u1 with
-        | Ok _, Ok _ -> Ok (Abs (x, e))
+    | App (e1, e2), App (e1', e2'), ty ->
+      let h1 = Hole.generate ty ph [] in
+      let elab2 = elaborate global ctx h1 ph vars e2 in
+      begin match elab2 with
+      | Ok (_, ty2) ->
+        let u2 = unify global ctx ph vars (e2, e2', ty2) in
+        let v1 = fresh_var (App(e1, e1')) ty vars in
+        let u1 = unify global ctx ph vars (e1, e1', Pi(v1, ty2, fullsubst e2 (Id v1) ty)) in
+        begin match u1, u2 with
+        | Ok s1, Ok s2 -> Ok (App (s1, s2))
         | Error msg, _ | _, Error msg -> Error msg
         end
-      | _ -> 
-        Error ((Abs (x, e), Abs (x', e')), "Failed endpoint unification of\n  " ^ unparse e ^ 
-          "[" ^ x ^ "/i0]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i0]\nand\n  " ^ unparse e ^ 
-          "[" ^ x ^ "/i1]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i1]\nand\n  ")
+      | Error msg -> (* This case is impossible *)
+        Error ((App (e1, e2), App (e1', e2')), msg)
       end
-    | Error msg, _ | _, Error msg -> (* This case is impossible *)
-      Error ((Abs (x, e), Abs (x', e')), msg)
-    end
-  | _ ->
-    let v1 = fresh_var e e' vars in
-    let u = unify global (((v1, ty1), true) :: ctx) ph (vars+1) (subst x (Id v1) e, subst x' (Id v1) e', subst y (Id v1) ty2) in
-    begin match u with
-    | Ok s -> Ok (Abs (v1, s))
-    | Error msg -> Error msg
-    end
-  end
 
-| App (e1, e2), App (e1', e2'), ty ->
-  let h1 = Hole.generate ty ph [] in
-  let elab2 = elaborate global ctx h1 ph vars e2 in
-  begin match elab2 with
-  | Ok (_, ty2) ->
-    let u2 = unify global ctx ph vars (e2, e2', ty2) in
-    let v1 = fresh_var (App(e1, e1')) ty vars in
-    let u1 = unify global ctx ph vars (e1, e1', Pi(v1, ty2, fullsubst e2 (Id v1) ty)) in
-    begin match u1, u2 with
-    | Ok s1, Ok s2 -> Ok (App (s1, s2))
-    | Error msg, _ | _, Error msg -> Error msg
-    end
-  | Error msg -> (* This case is impossible *)
-    Error ((App (e1, e2), App (e1', e2')), msg)
-  end
+    | Pair (e1, e2), Pair (e1', e2'), Sigma(y, ty1, ty2) ->
+      let u1 = unify global ctx ph vars (e1, e1', ty1) in
+      let u2 = unify global ctx ph vars (e2, e2', subst y (Fst e1) ty2) in
+      begin match u1, u2 with
+      | Ok s1, Ok s2 -> Ok (Pair (s1, s2))
+      | Error msg, _ | _, Error msg -> Error msg
+      end
 
-(*
-| App (e1, e2), App (e1', e2'), ty ->
-  let h1 = Hole.generate ty ph [] in
-  let elab2 = elaborate global ctx h1 ph vars e2 in
-  begin match elab2 with
-  | Ok (_, ty2) ->
-    let u2 = unify global ctx ph vars (e2, e2', ty2) in
-    let v1 = fresh_var (App(e1, e1')) ty vars in
-    let u1 = unify global ctx ph vars (e1, e1', Pi(v1, ty2, fullsubst e2 (Id v1) ty)) in
-    begin match u1, u2 with
-    | Ok s1, Ok s2 -> Ok (App (s1, s2))
-    | Error msg, _ | _, Error msg -> Error msg
-    end
-  | Error msg -> (* This case is impossible *)
-    Error ((App (e1, e2), App (e1', e2')), msg)
-  end
-*)
+    | At (e1, e2), At (e1', e2'), ty ->
+      let u2 = unify global ctx ph vars (e2, e2', Int()) in
+      let h1 = Hole.generate ty ph [] in
+      let h2 = Hole.generate ty (ph+2) [] in
+      let i = fresh_var (App(e1, e1')) ty vars in
+      let elab1 = elaborate global ctx (Pathd (Pi(i, Int(), fullsubst e2 (Id i) ty), h1, h2)) ph vars e1 in
+      begin match elab1 with
+      | Ok (_, ety) ->
+        let u1 = unify global ctx ph vars (e1, e1', ety) in
+        begin match u1, u2 with
+        | Ok s1, Ok s2 -> Ok (At (s1, s2))
+        | Error msg, _ | _, Error msg -> Error msg
+        end
+      | Error msg ->
+        Error ((At (e1, e2), At (e1', e2')), msg)
+      end
 
-| Pair (e1, e2), Pair (e1', e2'), Sigma(y, ty1, ty2) ->
-  let u1 = unify global ctx ph vars (e1, e1', ty1) in
-  let u2 = unify global ctx ph vars (e2, e2', subst y (Fst e1) ty2) in
-  begin match u1, u2 with
-  | Ok s1, Ok s2 -> Ok (Pair (s1, s2))
-  | Error msg, _ | _, Error msg -> Error msg
-  end
+    | Let (e1, e2), Let (e1', e2'), ty ->
+      let u1 = unify global ctx ph vars (e1, e1', Unit()) in
+      let u2 = unify global ctx ph vars (e2, e2', fullsubst e1 (Star()) ty) in
+      begin match u1, u2 with
+      | Ok s1, Ok s2 -> Ok (Let (s1, s2))
+      | Error msg, _ | _, Error msg -> Error msg
+      end
 
-| At (e1, e2), At (e1', e2'), ty ->
-  let u2 = unify global ctx ph vars (e2, e2', Int()) in
-  let h1 = Hole.generate ty ph [] in
-  let h2 = Hole.generate ty (ph+2) [] in
-  let i = fresh_var (App(e1, e1')) ty vars in
-  let elab1 = elaborate global ctx (Pathd (Pi(i, Int(), fullsubst e2 (Id i) ty), h1, h2)) ph vars e1 in
-  begin match elab1 with
-  | Ok (_, ety) ->
-    let u1 = unify global ctx ph vars (e1, e1', ety) in
-    begin match u1, u2 with
-    | Ok s1, Ok s2 -> Ok (At (s1, s2))
-    | Error msg, _ | _, Error msg -> Error msg
-    end
-  | Error msg ->
-    Error ((At (e1, e2), At (e1', e2')), msg)
-  end
+    | Fst e, Fst e', ty ->
+      let v1 = fresh_var e e' vars in
+      let h1 = Hole.generate ty ph [] in
+      let elab = elaborate global ctx (Sigma(v1, ty, h1)) ph vars e in
+      begin match elab with
+      | Ok (_, ety) ->
+        let u = unify global ctx ph vars (e, e', ety) in
+        begin match u with
+        | Ok s -> Ok (Fst s)
+        | Error msg -> Error msg
+        end
+      | Error msg -> (* This case is impossible *)
+        Error ((Fst e, Fst e'), msg)
+      end
+      
 
-| Let (e1, e2), Let (e1', e2'), ty ->
-  let u1 = unify global ctx ph vars (e1, e1', Unit()) in
-  let u2 = unify global ctx ph vars (e2, e2', fullsubst e1 (Star()) ty) in
-  begin match u1, u2 with
-  | Ok s1, Ok s2 -> Ok (Let (s1, s2))
-  | Error msg, _ | _, Error msg -> Error msg
-  end
+    | Snd e, Snd e', ty ->
+      let v1 = fresh_var e e' vars in
+      let h1 = Hole.generate ty ph [] in
+      let elab = elaborate global ctx (Sigma(v1, h1, fullsubst (Fst e) (Id v1) ty)) ph vars e in
+      begin match elab with
+      | Ok (_, ety) ->
+        let u = unify global ctx ph vars (e, e', ety) in
+        begin match u with
+        | Ok s -> Ok (Snd s)
+        | Error msg -> Error msg
+        end
+      | Error msg -> (* This case is impossible *)
+        Error ((Fst e, Fst e'), msg)
+      end
 
-| Fst e, Fst e', ty ->
-  let v1 = fresh_var e e' vars in
-  let h1 = Hole.generate ty ph [] in
-  let elab = elaborate global ctx (Sigma(v1, ty, h1)) ph vars e in
-  begin match elab with
-  | Ok (_, ety) ->
-    let u = unify global ctx ph vars (e, e', ety) in
-    begin match u with
-    | Ok s -> Ok (Fst s)
-    | Error msg -> Error msg
-    end
-  | Error msg -> (* This case is impossible *)
-    Error ((Fst e, Fst e'), msg)
-  end
-  
+    | Inl e, Inl e', Sum(ty1, _) ->
+      let u = unify global ctx ph vars (e, e', ty1) in
+      begin match u with
+      | Ok s -> Ok (Inl s)
+      | Error msg -> Error msg
+      end
 
-| Snd e, Snd e', ty ->
-  let v1 = fresh_var e e' vars in
-  let h1 = Hole.generate ty ph [] in
-  let elab = elaborate global ctx (Sigma(v1, h1, fullsubst (Fst e) (Id v1) ty)) ph vars e in
-  begin match elab with
-  | Ok (_, ety) ->
-    let u = unify global ctx ph vars (e, e', ety) in
-    begin match u with
-    | Ok s -> Ok (Snd s)
-    | Error msg -> Error msg
-    end
-  | Error msg -> (* This case is impossible *)
-    Error ((Fst e, Fst e'), msg)
-  end
+    | Inr e, Inr e', Sum(_, ty2) ->
+      let u = unify global ctx ph vars (e, e', ty2) in
+      begin match u with
+      | Ok s -> Ok (Inr s)
+      | Error msg -> Error msg
+      end
 
-| Inl e, Inl e', Sum(ty1, _) ->
-  let u = unify global ctx ph vars (e, e', ty1) in
-  begin match u with
-  | Ok s -> Ok (Inl s)
-  | Error msg -> Error msg
-  end
+    | Succ e, Succ e', Nat() ->
+      let u = unify global ctx ph vars (e, e', Nat()) in
+      begin match u with
+      | Ok s -> Ok (Succ s)
+      | Error msg -> Error msg
+      end
 
-| Inr e, Inr e', Sum(_, ty2) ->
-  let u = unify global ctx ph vars (e, e', ty2) in
-  begin match u with
-  | Ok s -> Ok (Inr s)
-  | Error msg -> Error msg
-  end
+    | Abort e, Abort e', _ ->
+      let u = unify global ctx ph vars (e, e', Void()) in
+      begin match u with
+      | Ok s -> Ok (Abort s)
+      | Error msg -> Error msg
+      end
 
-| Succ e, Succ e', Nat() ->
-  let u = unify global ctx ph vars (e, e', Nat()) in
-  begin match u with
-  | Ok s -> Ok (Succ s)
-  | Error msg -> Error msg
-  end
+    | Case (e, e1, e2), Case (e', e1', e2'), ty ->
+      let h1 = Hole.generate ty ph [] in
+      let h2 = Hole.generate ty (ph+1) [] in
+      let elab = elaborate global ctx (Sum(h1, h2)) ph vars e in
+      begin match elab with
+      | Ok (_, Sum(ty1, ty2)) ->
+        let u = unify global ctx ph vars (e, e', Sum(ty1, ty2)) in
+        let v1 = fresh_var e e' vars in
+        let u1 = unify global ctx ph vars (e1, e1', Pi(v1, ty1, fullsubst e (Inl (Id v1)) ty)) in
+        let u2 = unify global ctx ph vars (e2, e2', Pi(v1, ty2, fullsubst e (Inr (Id v1)) ty)) in
+        begin match u, u1, u2 with
+        | Ok s, Ok s1, Ok s2 -> Ok (Case (s, s1, s2))
+        | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg ->
+          Error msg
+        end
+      | _ -> (* This case never occurs *)
+        Error ((Case (e, e1, e2), Case (e', e1', e2')), "Unification error")
+      end
 
-| Abort e, Abort e', _ ->
-  let u = unify global ctx ph vars (e, e', Void()) in
-  begin match u with
-  | Ok s -> Ok (Abort s)
-  | Error msg -> Error msg
-  end
+    | Natrec (e, e1, e2), Natrec (e', e1', e2'), ty ->
+      let u = unify global ctx ph vars (e, e', Nat()) in
+      let u1 = unify global ctx ph vars (e1, e1', fullsubst e (Zero()) ty) in
+      let v1 = fresh_var e e' vars in
+      let v2 = fresh_var e e' (vars+1) in
+      let tys = (Pi(v1, Nat(), Pi(v2, fullsubst e (Id v1) ty, fullsubst e (Succ (Id v1)) ty))) in
+      let u2 = unify global ctx ph vars (e2, e2', tys) in
+      begin match u, u1, u2 with
+      | Ok s, Ok s1, Ok s2 -> Ok (Natrec (s, s1, s2))
+      | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg ->
+        Error msg
+      end
 
-| Case (e, e1, e2), Case (e', e1', e2'), ty ->
-  let h1 = Hole.generate ty ph [] in
-  let h2 = Hole.generate ty (ph+1) [] in
-  let elab = elaborate global ctx (Sum(h1, h2)) ph vars e in
-  begin match elab with
-  | Ok (_, Sum(ty1, ty2)) ->
-    let u = unify global ctx ph vars (e, e', Sum(ty1, ty2)) in
-    let v1 = fresh_var e e' vars in
-    let u1 = unify global ctx ph vars (e1, e1', Pi(v1, ty1, fullsubst e (Inl (Id v1)) ty)) in
-    let u2 = unify global ctx ph vars (e2, e2', Pi(v1, ty2, fullsubst e (Inr (Id v1)) ty)) in
-    begin match u, u1, u2 with
-    | Ok s, Ok s1, Ok s2 -> Ok (Case (s, s1, s2))
-    | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg ->
-      Error msg
-    end
-  | _ -> (* This case never occurs *)
-    Error ((Case (e, e1, e2), Case (e', e1', e2')), "Unification error")
-  end
+    | If (e, e1, e2), If (e', e1', e2'), ty ->
+      let u = unify global ctx ph vars (e, e', Bool()) in
+      let u1 = unify global ctx ph vars (e1, e1', fullsubst e (True()) ty) in
+      let u2 = unify global ctx ph vars (e2, e2', fullsubst e (False()) ty) in
+      begin match u, u1, u2 with
+      | Ok s, Ok s1, Ok s2 -> Ok (If (s, s1, s2))
+      | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg ->
+        Error msg
+      end
 
-| Natrec (e, e1, e2), Natrec (e', e1', e2'), ty ->
-  let u = unify global ctx ph vars (e, e', Nat()) in
-  let u1 = unify global ctx ph vars (e1, e1', fullsubst e (Zero()) ty) in
-  let v1 = fresh_var e e' vars in
-  let v2 = fresh_var e e' (vars+1) in
-  let tys = (Pi(v1, Nat(), Pi(v2, fullsubst e (Id v1) ty, fullsubst e (Succ (Id v1)) ty))) in
-  let u2 = unify global ctx ph vars (e2, e2', tys) in
-  begin match u, u1, u2 with
-  | Ok s, Ok s1, Ok s2 -> Ok (Natrec (s, s1, s2))
-  | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg ->
-    Error msg
-  end
-
-| If (e, e1, e2), If (e', e1', e2'), ty ->
-  let u = unify global ctx ph vars (e, e', Bool()) in
-  let u1 = unify global ctx ph vars (e1, e1', fullsubst e (True()) ty) in
-  let u2 = unify global ctx ph vars (e2, e2', fullsubst e (False()) ty) in
-  begin match u, u1, u2 with
-  | Ok s, Ok s1, Ok s2 -> Ok (If (s, s1, s2))
-  | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg ->
-    Error msg
-  end
-
-| e , e', _ -> 
-  if e = e' then 
-    Ok e 
-  else 
-    Error ((e, e'), "The terms\n  " ^ unparse e ^ "\nand\n  " ^ unparse e' ^ "\nare not equal")
+    | e , e', _ -> 
+      if e = e' then 
+        Ok e 
+      else 
+        Error ((e, e'), "The terms\n  " ^ unparse e ^ "\nand\n  " ^ unparse e' ^ "\nare not equal")

@@ -1,0 +1,26 @@
+/*
+ * Copyright (c) 2019 Bruno Bentzen. All rights reserved.
+ * Released under the Apache License 2.0 (see "License");
+ * Author: Bruno Bentzen
+ */
+ 
+/* Natural numbers */
+ 
+def pred
+⊢ nat → nat :=
+λ n, natrec n 0 (λ k, λ _, k)
+ 
+def add
+⊢ nat → nat → nat :=
+λ m, λ n, natrec n m (λ k, λ f, succ f)
+ 
+def mult 
+⊢ nat → nat → nat := 
+λ m, λ n, natrec n 0 (λ k, λ f, (natrec f m (λ k, λ g, succ g)))
+ 
+/* Paths */
+ 
+def add_zero (m : nat)
+⊢ path nat (app (app add 0) m) m :=
+natrec m (<_> 0) (λ n, λ p , <i> succ (p @ i))
+

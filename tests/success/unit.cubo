@@ -1,0 +1,26 @@
+/*
+ * Copyright (c) 2019 Bruno Bentzen. All rights reserved.
+ * Released under the Apache License 2.0 (see "License");
+ * Author: Bruno Bentzen
+ */
+ 
+/* The unit type */
+
+def lem_unit
+⊢ unit + ¬unit :=
+inl ()
+ 
+def unit_to_bool
+⊢ (unit + unit) → bool :=
+λ v, case v (λ u, let u true) (λ u, let u false)
+ 
+theorem bool_to_unit
+⊢ bool → (unit + unit) :=
+λ b, if b (inl ()) (inr ())
+
+/* Paths */
+ 
+def unit_eq (u : unit)
+⊢ path unit u () :=
+let u (<_> ())
+

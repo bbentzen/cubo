@@ -33,16 +33,6 @@ let rec candidates = function (* TODO: remove duplicates *)
 		candidates e @ candidates e1 @ candidates e2
 	| _ -> []
 
-	(*
-let candidates_msg e =
-	let rec helper = function
-	| [] -> ""
-	| (n, l) :: cdts ->
-		(*"\nPossible values for ?" ^ n ^"? are\n  " ^ *)
-		(String.concat " " (List.map Ast.unparse l)) ^ helper cdts in
-	helper (candidates e)
-	*)
-
 (* Checks whether the type of a given expression is the given type *)
 
 let is = function

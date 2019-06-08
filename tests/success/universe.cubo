@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2019 Bruno Bentzen. All rights reserved.
+ * Released under the Apache License 2.0 (see "License");
+ * Author: Bruno Bentzen
+ */
+ 
+/* Universes */
+ 
+def sum_type {A B : type 1} 
+⊢ type 1 :=
+A + B
+ 
+def pathd_type {A : I → type 1} (p : Π (i : I) app A i)
+⊢ type 1 :=
+pathd A (app p i0) (app p i1)
+ 
+
