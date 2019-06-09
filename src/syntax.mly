@@ -13,7 +13,7 @@ open Ast
 %token <string> NUMBER
 %token OPEN DEF PRINT INFER LBRACE RBRACE
 %token TYPE COLON VDASH
-%token I0 I1 INTERVAL
+%token I0 I1 INTERVAL COE
 %token ABS APP RARROW LRARROW PI
 %token LPAREN RPAREN COMMA FST SND PROD SIGMA
 %token INL INR CASE SUM
@@ -67,7 +67,8 @@ expr:
   | LPAREN expr RPAREN                                      { $2 }
   | I0                                                      { I0() }
   | I1                                                      { I1() }
-  | INTERVAL                                                { Int() }  
+  | INTERVAL                                                { Int() }
+  | COE expr expr expr expr %prec CASE                      { Coe($2,$3,$4,$5) }
   | ABS ID COMMA expr %prec PI                              { Abs($2,$4) }
   | ABS WILDCARD COMMA expr %prec PI                        { Abs("v?",$4) }
   | ABS LPAREN ID COLON expr RPAREN COMMA expr %prec PI     { Abs($3,$8) } 

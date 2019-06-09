@@ -56,5 +56,10 @@ def irrel_example {A : type 1} {a b : A} {B : path A a b → (Π (x : I) A) → 
 ⊢ app app B p (λ i, p @ i) →  app app B q (λ j, q @ j) :=
 λ x, x
  
+def irrel_example2 {A : type 1} (i j : I) {a b : A} (p q : I → path A a b)
+⊢ path (path A a b) (app p i) (app q j) :=
+<_> app p i
+
+ 
 /** TODO: for the code-encode method (bool, sums, nat) we need coercion **/
 

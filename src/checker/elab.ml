@@ -43,7 +43,7 @@ let rec elaborate global ctx ty ph vars = function
           begin match u with
           | Ok s -> Ok (Id x, s) 
           | Error (_, msg) ->
-            Error ("The variable " ^ x ^ " has type\n   " ^ unparse ty' ^ 
+            Error ("The variable " ^ x ^ " has type\n   " ^ unparse (eval ty') ^ 
                   "\nbut is expected to have type\n  " ^ unparse ty ^ "\n" ^ msg)
           end
         | Error msg -> (* This case is impossible *)
@@ -261,21 +261,29 @@ let rec elaborate global ctx ty ph vars = function
             let u2 = unify global ctx ph vars (ty2, ty2', tTy) in
             let tyl' = hfullsubst (Ast.Inl(Id x)) h1 tyl in
             let tyr' = hfullsubst (Ast.Inr(Id y)) h1 tyr in
-            let u = unify global ctx ph vars (tyl', tyr', tTy) in
-            begin match u1, u2, u with
-            | Ok _, Ok _, Ok st ->
-              let st' = hfullsubst h1 e st in
-              Ok (Case(e', e1', e2'), st')
-            | Ok _, Ok _, _ ->
-              Error ("Failed to unify\n  " ^ unparse tyl' ^ "\nwith\n  " ^ unparse tyr')
-            | Ok _, _, _ ->
-              Error ("The term\n  " ^ unparse e2' ^ "\nhas type\n  " ^ unparse (Ast.Pi(y, ty2', tyr)) ^ 
-              "\nbut is expected to have type\n  Π (" ^ y ^ " : " ^ unparse ty2 ^ ") ?1?")
-            | _ ->
-              Error ("The term\n  " ^ unparse e1' ^ "\nhas type\n  " ^ unparse (Ast.Pi(x, ty1', tyl)) ^ 
-                    "\nbut is expected to have type\n  Π (" ^ x ^ " : " ^ unparse ty1 ^ ") ?1?")
+            begin
+              match tyl', tyr' with
+              | Type n, Type m ->
+                if n > m then
+                  Ok (Case(e', e1', e2'), Type n)
+                else
+                Ok (Case(e', e1', e2'), Type m)
+              | _ ->
+                let u = unify global ctx ph vars (tyl', tyr', tTy) in
+                begin match u1, u2, u with
+                | Ok _, Ok _, Ok st ->
+                  let st' = hfullsubst h1 e st in
+                  Ok (Case(e', e1', e2'), st')
+                | Ok _, Ok _, _ ->
+                  Error ("Failed to unify\n  " ^ unparse tyl' ^ "\nwith\n  " ^ unparse tyr')
+                | Ok _, _, _ ->
+                  Error ("The term\n  " ^ unparse e2' ^ "\nhas type\n  " ^ unparse (Ast.Pi(y, ty2', tyr)) ^ 
+                  "\nbut is expected to have type\n  Π (" ^ y ^ " : " ^ unparse ty2 ^ ") ?1?")
+                | _ ->
+                  Error ("The term\n  " ^ unparse e1' ^ "\nhas type\n  " ^ unparse (Ast.Pi(x, ty1', tyl)) ^ 
+                        "\nbut is expected to have type\n  Π (" ^ x ^ " : " ^ unparse ty1 ^ ") ?1?")
+              end
             end
-
           | Error msg -> (* This case is impossible *)
             Error msg
           end
@@ -287,7 +295,7 @@ let rec elaborate global ctx ty ph vars = function
         | Error msg, _ | _, Error msg -> Error msg
         end
       | _ -> 
-        let v1 = fresh_var (Sum(ty1,ty2)) ty vars in
+        let v1 = fresh_var (Sum(ty1, ty2)) ty vars in
         let elab1 = elaborate global ctx (Pi(v1, ty1, fullsubst e (Inl (Id v1)) ty)) ph (vars+1) e1 in
         let elab2 = elaborate global ctx (Pi(v1, ty2, fullsubst e (Inr (Id v1)) ty)) ph (vars+1) e2 in
         begin match elab1, elab2 with
@@ -402,37 +410,46 @@ let rec elaborate global ctx ty ph vars = function
         let h1 = Hole.generate ty 0 [] in
         let tyt = hfullsubst (Ast.True()) h1 ty1' in
         let tyf = hfullsubst (Ast.False()) h1 ty2' in
-        let elabTy = elaborate global ctx h1 ph vars ty in
-        begin match elabTy with
-        | Ok (_, tTy) ->
-          let u = unify global ctx ph vars (tyt, tyf, tTy) in
-          begin match u with 
-          | Ok sty ->
-            let tyt' = fullsubst h1 (Ast.True()) sty in
-            let tyf' = fullsubst h1 (Ast.False()) sty in
-            let elabt = elaborate global ctx tyt' ph vars e1' in
-            let elabf = elaborate global ctx tyf' ph vars e2' in
-            begin match elabt, elabf with
-            | Ok _, Ok _ ->
-              Ok (If (e', e1', e2'), fullsubst h1 e' sty)
-            | _ -> 
-              Error ("Failed to unify the types\n  " ^ unparse (fullsubst (Ast.True()) h1 ty1') ^ 
-                    "\nand\n  " ^ unparse (fullsubst (Ast.False()) h1 ty2'))
-            end
+        begin
+          match tyt, tyf with
+          | Type n, Type m ->
+            if n > m then
+              Ok (If(e', e1', e2'), Type n)
+            else
+            Ok (If(e', e1', e2'), Type m)
           | _ ->
-            let tyt' = fullsubst (Ast.False()) h1 ty1' in
-            let tyf' = fullsubst (Ast.True()) h1 ty2' in
-            let elabt = elaborate global ctx tyf' ph vars e1' in
-            let elabf = elaborate global ctx tyt' ph vars e2' in
-            begin match elabt, elabf with
-            | Ok _, _ | _, Ok _ -> Ok (If (e', e1', e2'), ty)
-            | _ ->
-              Error ("Failed to unify the types\n  " ^ unparse (fullsubst (Ast.True()) h1 ty1') ^ 
-                    "\nand\n  " ^ unparse (fullsubst (Ast.False()) h1 ty2'))
+            let elabTy = elaborate global ctx h1 ph vars ty in
+            begin match elabTy with
+            | Ok (_, tTy) ->
+              let u = unify global ctx ph vars (tyt, tyf, tTy) in
+              begin match u with 
+              | Ok sty ->
+                let tyt' = fullsubst h1 (Ast.True()) sty in
+                let tyf' = fullsubst h1 (Ast.False()) sty in
+                let elabt = elaborate global ctx tyt' ph vars e1' in
+                let elabf = elaborate global ctx tyf' ph vars e2' in
+                begin match elabt, elabf with
+                | Ok _, Ok _ ->
+                  Ok (If (e', e1', e2'), fullsubst h1 e' sty)
+                | _ -> 
+                  Error ("Failed to unify the types\n  " ^ unparse (fullsubst (Ast.True()) h1 ty1') ^ 
+                        "\nand\n  " ^ unparse (fullsubst (Ast.False()) h1 ty2'))
+                end
+              | _ ->
+                let tyt' = fullsubst (Ast.False()) h1 ty1' in
+                let tyf' = fullsubst (Ast.True()) h1 ty2' in
+                let elabt = elaborate global ctx tyf' ph vars e1' in
+                let elabf = elaborate global ctx tyt' ph vars e2' in
+                begin match elabt, elabf with
+                | Ok _, _ | _, Ok _ -> Ok (If (e', e1', e2'), ty)
+                | _ ->
+                  Error ("Failed to unify the types\n  " ^ unparse (fullsubst (Ast.True()) h1 ty1') ^ 
+                        "\nand\n  " ^ unparse (fullsubst (Ast.False()) h1 ty2'))
+                end
+              end
+            | Error msg -> (* This case is impossible *)
+              Error msg
             end
-          end
-        | Error msg -> (* This case is impossible *)
-          Error msg
         end
 
       | _ ->
@@ -478,8 +495,81 @@ let rec elaborate global ctx ty ph vars = function
     | Error msg -> Error msg
     end
   
-  | Ast.Abort e -> 
-    elaborate global ctx (Ast.Void()) ph vars e
+  | Ast.Abort e ->
+    let elab = elaborate global ctx (Ast.Void()) ph vars e in
+    begin
+      match elab with
+      | Ok (e', _) ->
+        Ok (Abort e', ty)
+      | Error msg -> Error msg
+    end
+  
+  | Ast.Coe(i, j, ety, e) ->
+    begin
+      let h0 = Hole.generate ty 0 [] in
+      let elabi = elaborate global ctx (Int()) ph vars i in
+      let elabj = elaborate global ctx (Int()) ph vars j in
+      let elabti = elaborate global ctx h0 ph vars (eval (App(ety, i))) in
+      let elabtj = elaborate global ctx h0 ph vars (eval (App(ety, j))) in
+      begin
+        match elabi, elabj, elabti, elabtj with
+        | Ok (i', _), Ok (j', _), Ok (tyi, eTy), Ok (tyj, _) ->
+          let elab = elaborate global ctx (eval tyi) ph vars e in
+          let elabt = elaborate global ctx h0 ph vars ty in
+          begin
+            match elab, elabt with
+            | Ok (e', _), Ok (ty', _) ->
+              let u = unify global ctx ph vars (eval tyj, ty', eTy) in
+              begin match u with
+              | Ok st ->
+                Ok (Coe (i', j', eval ety, e'), st)
+              | Error (_, msg) -> 
+                Error msg
+              end
+            | Error msg, _ ->
+              Error ("Failed coercion because\n  " ^ unparse e ^ "\ndoes not have type\n  " ^ unparse tyi ^ "\n" ^ msg)
+            | _, Error msg ->
+              Error msg
+          end
+
+        | Error msg, _, _, _ | _, Error msg, _, _ | _, _, Error msg, _ | _, _, _, Error msg ->
+          Error msg
+      end
+    end
+  
+  (*
+  | Ast.Coe(i, j, ety, e) ->
+    begin
+      let h0 = Hole.generate ty 0 [] in
+      let elabi = elaborate global ctx (Int()) ph vars i in
+      let elabj = elaborate global ctx (Int()) ph vars j in
+      let elabet = elaborate global ctx h0 ph vars (eval ety) in
+      let elabt = elaborate global ctx h0 ph vars (eval ty) in
+      begin
+        match elabi, elabj, elabet, elabt with
+        | Ok (i', _), Ok (j', _), Ok (ety', eTy), Ok (ty', _) ->
+          let tyi = eval (App(ety', i')) in
+          let tyj = eval (App(ety', j')) in
+
+          let elab = elaborate global ctx tyi ph vars e in
+          begin
+            match elab with
+            | Ok (e', _) ->
+              let u = unify global ctx ph vars (tyj, ty', eTy) in
+              begin match u with
+              | Ok st ->
+                Ok (Coe (i', j', ety', e'), st)
+              | Error (_, msg) -> Error msg
+              end
+            | Error msg ->
+              Error msg
+          end
+          
+        | Error msg, _, _, _ | _, Error msg, _, _ | _, _, Error msg, _ | _, _, _, Error msg ->
+          Error msg
+      end
+    end
+  *)
   
   | Pabs (i, e) ->
     let h0 = Hole.generate ty 0 [] in
@@ -763,9 +853,9 @@ let rec elaborate global ctx ty ph vars = function
         Error ("Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
       end
     
-    | Ok (ty1', Type _), _ -> 
-      Error ("Failed to check that\n  " ^ unparse ty1' ^ "\nis type ")
-    | _ -> Error ("Failed to check that\n  " ^ unparse ty2 ^ "\nis type ")
+    | Ok (_, Type _), _ -> 
+      Error ("Failed to check that\n  " ^ unparse (eval ty2) ^ "\nis type ")
+    | _ -> Error ("Failed to check that\n  " ^ unparse (eval ty1) ^ "\nis type ")
     end
   
   | Sigma(x, ty1, ty2) ->
@@ -1026,7 +1116,7 @@ let rec elaborate global ctx ty ph vars = function
     | Ok var -> Ok (Id var, ty)
     | Error _ -> *)
       Error ("Failed to synthesize placeholder for the current goal:\n" ^ 
-      print ctx ^ "-------------------------------------------\n ⊢ " ^ unparse ty)
+      print ctx ^ "-------------------------------------------\n ⊢ " ^ unparse (eval ty))
     (* end *)
 
   | Hole (n, l) -> 
@@ -1198,6 +1288,24 @@ and unify global ctx ph vars = function
       | Ok s1, Ok s2 -> Ok (Pair (s1, s2))
       | Error msg, _ | _, Error msg -> Error msg
       end
+    
+    | Coe (i, j, e1, e2) , Coe (i', j', e1', e2'), ty ->
+      let ui = unify global ctx ph vars (i, i', Int()) in
+      let uj = unify global ctx ph vars (j, j', Int()) in
+      let h0 = Hole.generate ty ph [] in
+      let elab = elaborate global ctx h0 ph vars e1 in
+      begin
+        match elab with
+        | Ok (_, eTy) ->
+          let u1 = unify global ctx ph vars (e1, e1', eTy) in
+          let u2 = unify global ctx ph vars (e2, e2', eval (App(e1', i'))) in
+          begin match ui, uj, u1, u2 with
+          | Ok si, Ok sj, Ok s1, Ok s2 -> Ok (Coe (si, sj, s1, s2))
+          | Error msg, _, _, _ | _ , Error msg, _, _ | _ , _, Error msg, _ | _ , _, _, Error msg -> 
+            Error msg
+          end
+        | Error msg -> Error ((Coe (i, j, e1, e2) , Coe (i', j', e1', e2')), msg)
+      end      
 
     | At (e1, e2), At (e1', e2'), ty ->
       let u2 = unify global ctx ph vars (e2, e2', Int()) in
@@ -1326,7 +1434,7 @@ and unify global ctx ph vars = function
       end
 
     | e , e', _ -> 
-      if e = e' then 
+      if eval e = eval e' then 
         Ok e 
       else 
         Error ((e, e'), "The terms\n  " ^ unparse e ^ "\nand\n  " ^ unparse e' ^ "\nare not equal")

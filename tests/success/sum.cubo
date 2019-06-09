@@ -98,5 +98,33 @@ def de_morgan_sum_3 {A B : type 1}
 def sum_elim {A B C : type 1}
 ⊢ (A + B) → ((A → C) × (B → C)) → C :=
 λ v, λ f, case v (λ x, app (fst f) x) (λ y, app (snd f) y)
+
+/* Sum equations */
+
+def sum_eq_inl {A B : type 1} {a a' : A}
+⊢ path (A + B) inl a inl a' → path A a a' :=
+λ p, <i> case (p @ i) (λ x, x) (λ _, a)
+
+def sum_eq_inr {A B : type 1} {b b' : B}
+⊢ path (A + B) inr b inr b' → path B b b' :=
+λ p, <i> case (p @ i) (λ _, b) (λ x, x)
+
+def sum_neq {A B : type 1} {a : A} {b : B}
+⊢ ¬ path (A + B) (inl a) (inr b) :=
+λ p, coe i0 i1 (λ i, case (p @ i) (λ _, unit) (λ _, void)) ()
+
+def sum_neq' {A B : type 1} {a : A} {b : B}
+⊢ ¬ path (A + B) (inr b) (inl a) :=
+λ p, coe i1 i0 (λ i, case (p @ i) (λ _, unit) (λ _, void)) ()
+
+def sum_code (A B : type 1) (v v' : A + B)
+⊢ type 1 :=
+case v (λ x, case v' (λ x', path (A + B) (inl x) (inl x')) (λ _, void)) (λ y, case v' (λ _, void) (λ y', path (A + B) (inr y) (inr y')))
  
+def sum_eq {A B : type 1} (v v' : A + B)
+⊢ path (A + B) v v' ↔ app app app app sum_code A B v v' :=
+case v 
+  (λ y, case v' 
+    (λ y', (λ x, x, λ x, x)) (λ y', (sum_neq, λ e, abort e))) 
+  (λ y, case v' (λ y', (sum_neq', λ e, abort e)) (λ x', (λ x, x, λ x, x)))
 

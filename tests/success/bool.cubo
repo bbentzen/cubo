@@ -4,7 +4,7 @@
  * Author: Bruno Bentzen
  */
  
-/* Booleans */
+/* Boolean */
  
 def bneg
 ⊢ bool → bool :=
@@ -30,15 +30,23 @@ def bnor
 ⊢ bool → bool → bool :=
 λ b1, λ b2, if b1 (if b2 false false) (if b2 false true)
  
-/* Paths */
+/* Boolean equations */
+
+def bool_neq 
+⊢ ¬ path bool true false :=
+λ p, coe i0 i1 (λ i, if (p @ i) unit void) ()
+
+def bool_neq'
+⊢ ¬ path bool false true :=
+λ p, coe i1 i0 (λ i, if (p @ i) unit void) ()
  
 def bneg_inv (b : bool)
 ⊢ path bool (app bneg (app bneg b)) b :=
 if b (<i> true) (<i> false)
  
-def band_comm (b1 b2 : bool)
-⊢ path bool (app (app band b1) b2) (app (app band b2) b1) :=
-if b1 (if b2 (<_> true) (<_> false)) (if b2 (<_> false) (<_> false))
+def band_comm (b b' : bool)
+⊢ path bool (app (app band b) b') (app (app band b') b) :=
+if b (if b' (<_> true) (<_> false)) (if b' (<_> false) (<_> false))
  
 def band_assoc (b1 b2 b3 : bool)
 ⊢ path bool (app (app band b1) (app (app band b2) b3)) (app (app band (app (app band b1) b2)) b3) :=
@@ -46,13 +54,29 @@ if b1
   (if b2 (if b3 (<_> true) (<_> false)) (if b3 (<_> false) (<_> false))) 
   (if b2 (if b3 (<_> false) (<_> false)) (if b3 (<_> false) (<_> false)))
  
-def bor_comm (b1 b2 : bool)
-⊢ path bool (app (app bor b1) b2) (app (app bor b2) b1) :=
-if b1 (if b2 (<_> true) (<_> true)) (if b2 (<_> true) (<_> false))
+def bor_comm (b b' : bool)
+⊢ path bool (app (app bor b) b') (app (app bor b') b) :=
+if b (if b' (<_> true) (<_> true)) (if b' (<_> true) (<_> false))
  
 def bor_assoc (b1 b2 b3 : bool)
 ⊢ path bool (app (app bor b1) (app (app bor b2) b3)) (app (app bor (app (app bor b1) b2)) b3) :=
 if b1 
   (if b2 (if b3 (<_> true) (<_> true)) (if b3 (<_> true) (<_> true))) 
   (if b2 (if b3 (<_> true) (<_> true)) (if b3 (<_> true) (<_> false)))
+
+
+
+/* Path structure (code-decode) */
+
+def bool_code (b b' : bool)
+⊢ type 1 :=
+if b (if b' (path bool true true) void) (if b' void (path bool false false))
+ 
+def bool_eq (b b' : bool)
+⊢ path bool b b' ↔ app app bool_code b b' :=
+if b 
+  (if b' (λ x, x, λ x, x) (bool_neq, λ e, abort e)) 
+  (if b' (bool_neq', λ e, abort e) (λ x, x, λ x, x))
+
+
 

@@ -18,9 +18,35 @@ def mult
 ⊢ nat → nat → nat := 
 λ m, λ n, natrec n 0 (λ k, λ f, (natrec f m (λ k, λ g, succ g)))
  
-/* Paths */
+/* Equations */
  
 def add_zero (m : nat)
 ⊢ path nat (app (app add 0) m) m :=
 natrec m (<_> 0) (λ n, λ p , <i> succ (p @ i))
+
+def nat_eq_succ {n m : nat}
+⊢ path nat (succ n) (succ m) → path nat n m :=
+λ p, <i> natrec (p @ i) n (λ k, λ _, k)
+ 
+def nat_neq {n : nat}
+⊢ ¬ path nat 0 (succ n) :=
+λ p, coe i0 i1 (λ i, natrec (p @ i) unit (λ _, λ _, void)) ()
+
+def nat_neq' {n : nat}
+⊢ ¬ path nat (succ n) 0 :=
+λ p, coe i1 i0 (λ i, natrec (p @ i) unit (λ _, λ _, void)) ()
+
+/* Code-decode */
+
+def nat_code (n m : nat)
+⊢ type 1 :=
+natrec n 
+  (natrec m (path nat 0 0) (λ _, λ _, void)) 
+  (λ n', λ C, natrec m void (λ m', λ _, path nat succ n' succ m'))
+ 
+def nat_eq {n m : nat}
+⊢ path nat n m ↔ app app nat_code n m :=
+natrec n
+ (natrec m (λ x, x, λ x, x) (λ k, λ _, (nat_neq, λ e, abort e)))
+ (λ k, λ _, natrec m (nat_neq', λ e, abort e) (λ k', λ _, (λ x, x, λ x, x)))
 

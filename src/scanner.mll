@@ -31,6 +31,7 @@ rule token = parse
   | "i1"               { I1 }
   | "I"                { INTERVAL }
   | "𝕀"                { INTERVAL }
+  | "coe"              { COE }
   | "λ"                { ABS }
   | "app"              { APP }
   | "->"               { RARROW }

@@ -34,12 +34,12 @@ let rec compile global filename = function
 							| Ok elab ->
 								compile (Global.add_to_global_env global id ctx' elab) filename cmd
 							| Error msg -> 
-								Error ("The following error has been found at '" ^ id ^ "'\n" ^ msg)
+								Error ("The following error was found at '" ^ id ^ "'\n" ^ msg)
 							end
 						| Error msg -> Error msg
 						end
 				| Error msg, _ | _, Error msg -> 
-					Error ("The following error has been found at '" ^ id ^ "'\n" ^ msg) 
+					Error ("The following error was found at '" ^ id ^ "'\n" ^ msg) 
 				end
 			| Error msg -> Error msg
 		end

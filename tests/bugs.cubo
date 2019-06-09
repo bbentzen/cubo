@@ -1,11 +1,58 @@
 
+/* variable renaming bug */
+
+def sum_eq {A B : type 1} (v v' : A + B)
+⊢ path (A + B) v v' ↔ app app sum_code v v' :=
+case v 
+  (λ x, case v' (λ x', _) _) 
+  (λ y, case v' _ _)
+
+def sum_eq {A B : type 1} (v v' : A + B)
+⊢ path (A + B) v v' ↔ app app app app sum_code A B v v' :=
+case v 
+  (λ y, case v' 
+    (λ y', iff_id) (λ y', sum_neq)) 
+  (λ y, case v' (λ y', sum_neq') (λ y', iff_id))
+
+/** { } cannot infer type **/
+
+def sum_code {A B : type 1} (v v' : A + B)
+⊢ type 1 :=
+case v (λ x, case v' (λ x', path (A + B) (inl x) (inl x')) (λ _, void)) (λ y, case v' (λ _, void) (λ y', path (A + B) (inr y) (inr y')))
+  
+def sum_eq {A B : type 1} (v v' : A + B)
+⊢ app app sum_code v v' :=
+_
+
+def sum_eq {A B : type 1}
+⊢ λ v, λ v', 
+  case v 
+  (λ x, case v' (λ x', path (A + B) (inl x) (inl x')) (λ _, void)) 
+  (λ y, case v' (λ _, void) (λ y', path (A + B) (inr y) (inr y'))) :=
+_ 
+
+/* test if this works with nat */
+
+def sumsasae (A B : type 1) (v v' : A + B)
+⊢ ??1 :=
+case v (λ x, path (A + B) (inl x) (inl x)) (λ _, void) 
+
+
 /** TODO: 
-- open command
-- Kan conditions
+- cannot open an already opened file
+- coe type computation rules
+- hcom
 - universe levels: id, num, max lvl lvl
 - refl direct handling 
 - holes _ should try all possible combinations
 - λ id id, notation for iterated lambda sigmas pis
+
+-De Brujin variables
+-Better lexer/parser error messages
+-Fix Enter bug
+-Line comments
+-Use juxtaposition for App
+
 **/
 
  
