@@ -4,6 +4,8 @@
  * Author: Bruno Bentzen
  */
  
+open ./function.cubo 
+
 /* Boolean */
  
 def bneg
@@ -12,23 +14,23 @@ def bneg
  
 def band
 ⊢ bool → bool → bool :=
-λ b1, λ b2, if b1 (if b2 true false) (if b2 false false)
+λ b b', if b (if b' true false) (if b' false false)
  
 def bor
 ⊢ bool → bool → bool :=
-λ b1, λ b2, if b1 (if b2 true true) (if b2 true false)
+λ b b', if b (if b' true true) (if b' true false)
  
 def bimpl
 ⊢ bool → bool → bool :=
-λ b1, λ b2, if b1 (if b2 true false) (if b2 true true)
+λ b b', if b (if b' true false) (if b' true true)
  
 def bnand
 ⊢ bool → bool → bool :=
-λ b1, λ b2, if b1 (if b2 false true) (if b2 true true)
+λ b b', if b (if b' false true) (if b' true true)
  
 def bnor
 ⊢ bool → bool → bool :=
-λ b1, λ b2, if b1 (if b2 false false) (if b2 false true)
+λ b b', if b (if b' false false) (if b' false true)
  
 /* Boolean equations */
 
@@ -48,23 +50,21 @@ def band_comm (b b' : bool)
 ⊢ path bool (app (app band b) b') (app (app band b') b) :=
 if b (if b' (<_> true) (<_> false)) (if b' (<_> false) (<_> false))
  
-def band_assoc (b1 b2 b3 : bool)
-⊢ path bool (app (app band b1) (app (app band b2) b3)) (app (app band (app (app band b1) b2)) b3) :=
-if b1 
-  (if b2 (if b3 (<_> true) (<_> false)) (if b3 (<_> false) (<_> false))) 
-  (if b2 (if b3 (<_> false) (<_> false)) (if b3 (<_> false) (<_> false)))
+def band_assoc (b b' b'' : bool)
+⊢ path bool (app (app band b) (app (app band b') b'')) (app (app band (app (app band b) b')) b'') :=
+if b 
+  (if b' (if b'' (<_> true) (<_> false)) (if b'' (<_> false) (<_> false))) 
+  (if b' (if b'' (<_> false) (<_> false)) (if b'' (<_> false) (<_> false)))
  
 def bor_comm (b b' : bool)
 ⊢ path bool (app (app bor b) b') (app (app bor b') b) :=
 if b (if b' (<_> true) (<_> true)) (if b' (<_> true) (<_> false))
  
-def bor_assoc (b1 b2 b3 : bool)
-⊢ path bool (app (app bor b1) (app (app bor b2) b3)) (app (app bor (app (app bor b1) b2)) b3) :=
-if b1 
-  (if b2 (if b3 (<_> true) (<_> true)) (if b3 (<_> true) (<_> true))) 
-  (if b2 (if b3 (<_> true) (<_> true)) (if b3 (<_> true) (<_> false)))
-
-
+def bor_assoc (b b' b'' : bool)
+⊢ path bool (app (app bor b) (app (app bor b') b'')) (app (app bor (app (app bor b) b')) b'') :=
+if b 
+  (if b' (if b'' (<_> true) (<_> true)) (if b'' (<_> true) (<_> true))) 
+  (if b' (if b'' (<_> true) (<_> true)) (if b'' (<_> true) (<_> false)))
 
 /* Path structure (code-decode) */
 
@@ -75,8 +75,8 @@ if b (if b' (path bool true true) void) (if b' void (path bool false false))
 def bool_eq (b b' : bool)
 ⊢ path bool b b' ↔ app app bool_code b b' :=
 if b 
-  (if b' (λ x, x, λ x, x) (bool_neq, λ e, abort e)) 
-  (if b' (bool_neq', λ e, abort e) (λ x, x, λ x, x))
+  (if b' id_iff_id (bool_neq, absurd)) 
+  (if b' (bool_neq', absurd) id_iff_id)
 
 
 

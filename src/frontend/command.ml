@@ -11,7 +11,7 @@ open Eval
 open File
 open Context
 
-let rec compile global filename = function
+let rec compile global lopen filename = function
 	| Ast.Thm (cmd, Prf (id, l, ty, e)) ->
 
 		let ctx = Local.create_ctx l in
@@ -32,7 +32,7 @@ let rec compile global filename = function
 							let elab = Elab.elaborate global ctx' (eval ty') 0 0 (reduce e') in
 							begin match elab with 
 							| Ok elab ->
-								compile (Global.add_to_global_env global id ctx' elab) filename cmd
+								compile (Global.add_to_global_env global id ctx' elab) lopen filename cmd
 							| Error msg -> 
 								Error ("The following error was found at '" ^ id ^ "'\n" ^ msg)
 							end
@@ -47,15 +47,15 @@ let rec compile global filename = function
 	| Ast.Print (cmd, id) -> 
 		begin match Global.check_def_id id global with
 		| Ok (e, ty) ->
-			begin match compile global filename cmd with
-			| Ok res -> 
-				Ok (fst res, 
-						id ^ " := " ^ Ast.unparse e ^ ": \n" ^
+			begin match compile global lopen filename cmd with
+			| Ok (global', (s, lopen)) -> 
+				Ok (global', 
+						(id ^ " := " ^ Ast.unparse e ^ ": \n" ^
 						String.make (String.length id + 4) ' ' ^ Ast.unparse ty ^ 
-						"\n" ^ snd res)
+						"\n" ^ s, lopen))
 			| Error s -> Error s
 			end
-		| Error s -> Ok (global, "Error: " ^ s)
+		| Error s -> Ok (global, ("Error: " ^ s, lopen))
 		end
 	
 	| Ast.Infer (cmd, e) ->
@@ -63,28 +63,32 @@ let rec compile global filename = function
 		let elab = Elab.elaborate global [] h1 0 0 e in 
 		begin match elab with
 		| Ok (e, ty) ->
-			begin match compile global filename cmd with
-			| Ok res -> 
-				Ok (fst res, 
-						"infer := " ^ Ast.unparse e ^ ": \n" ^
+			begin match compile global lopen filename cmd with
+			| Ok (global', (s, lopen)) -> 
+				Ok (global', 
+						("infer := " ^ Ast.unparse e ^ ": \n" ^
 						"         " ^ Ast.unparse ty ^ 
-						"\n" ^ snd res)
+						"\n" ^ s, lopen))
 			| Error s -> Error s
 			end
-		| Error s -> Ok (global, "Error: " ^ s)
+		| Error s -> Ok (global, ("Error: " ^ s, lopen))
 		end
 	
 	| Ast.Open (cmd, s) ->
 		let cd = File.parent filename in
 		let path' = File.read_dir cd s in
-		begin match checkfile global path' with
-		| Ok (global', _) -> 
-			compile global' filename cmd
-		| Error s -> 
-			Error ("Failed to open the file '" ^ filename ^ "'\n" ^ s)
-		end
+		if List.mem path' lopen then
+			compile global lopen filename cmd
+		else
+			begin 
+				match checkfile global lopen path' with
+				| Ok (global', (_, lopen')) -> 
+					compile global' (path' :: lopen') filename cmd
+				| Error s -> 
+					Error ("Failed to open the file '" ^ path' ^ "'\n" ^ s)
+			end
 	
-	| Ast.Eof() -> Ok (global, "")
+	| Ast.Eof() -> Ok (global, ("", lopen))
 
-and checkfile global filename =
-	compile global filename (parse_file filename)
+and checkfile global lopen filename =
+	compile global lopen filename (parse_file filename)

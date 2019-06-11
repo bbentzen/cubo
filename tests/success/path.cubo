@@ -3,7 +3,9 @@
  * Released under the Apache License 2.0 (see "License");
  * Author: Bruno Bentzen
  */
-   
+ 
+open ./function.cubo
+ 
 /* Path type */
  
 def rfl {A : type 1} {a : A} 
@@ -54,7 +56,7 @@ def irrel_k {A : type 1} {a : A} (p : path A a a)
  
 def irrel_example {A : type 1} {a b : A} {B : path A a b → (Π (x : I) A) → type 1} (p q : path A a b) 
 ⊢ app app B p (λ i, p @ i) →  app app B q (λ j, q @ j) :=
-λ x, x
+id
  
 def irrel_example2 {A : type 1} (i j : I) {a b : A} (p q : I → path A a b)
 ⊢ path (path A a b) (app p i) (app q j) :=

@@ -10,33 +10,33 @@ def id {A : type 1}
 ⊢ A → A :=
 λ x, x
  
-def iff_id {A : type 1}
+def id_iff_id {A : type 1}
 ⊢ A ↔ A :=
 (id, id)
 
 def k_combinator {A B : type 1}
 ⊢ A → B → A :=
-λx, λy, x
+λ x y, x
  
 def s_combinator {A B C : type 1}
 ⊢ (A → B → C) → (A → B) → (A → C) :=
-λf, λg, λx, app (app f x) (app g x)
+λ f g x, app (app f x) (app g x)
  
 def b_combinator {A B C : type 1}
 ⊢ (B → C) → (A → B) → (A → C) :=
-λf, λg, λx, app f (app g x)
+λ f g x, app f (app g x)
  
 def arg_exg {A B C : type 1}
 ⊢ (A → B → C) → (B → A → C) :=
-λf, λy, λx, app (app f x) y
+λ f y x, app (app f x) y
  
 def w_combinator {A B : type 1} 
 ⊢ (A → A → B) → (A → B) :=
-λf, λx, app (app f x) x
+λ f x, app (app f x) x
  
 def comp {A B C : type 1} 
 ⊢ (A → B) → (B → C) → (A → C) :=
-λf, λg, λx, app g (app f x)
+λf g x, app g (app f x)
  
 /* Negation & Empty type */
  
@@ -46,65 +46,69 @@ def not_false
  
 def dni {A : type 1}
 ⊢ A → ¬¬A :=
-λx, λf, app f x
+λx f, app f x
  
 def tne {A : type 1}
 ⊢ ¬¬¬A → ¬A :=
-λf, λx, app f (λnx, app nx x)
+λf x, app f (λnx, app nx x)
  
 def contrap {A B : type 1}
 ⊢ (A → B) → (¬ B → ¬ A) :=
-λf, λg, λx, app g (app f x)
+λf g x, app g (app f x)
  
 def neg_distr {A B : type 1}
 ⊢ ¬ (A → B) → (A → ¬ B) :=
-λf, λ_, λy, app f (λ_, y)
+λf _ y, app f (λ_, y)
  
 def neg_ant {A B : type 1}
 ⊢ (A → B) → (A → ¬ B) → ¬ A :=
-λ f, λ g, (λ x, app (app g x) (app f x))
+λ f g, (λ x, app (app g x) (app f x))
  
 def ex_falso {A B : type 1}
 ⊢ A → ¬ A → B :=
-λ x, λ f, abort (app f x)
+λ x f, abort (app f x)
+ 
+def absurd {A : type 1}
+⊢ void → A :=
+λ x, abort x
   
 /* Dependent function type */
  
 def dcombinator_s {A : type 1} {B C : A → type 1}
 ⊢ (Π (x : A) app B x → app C x) → (Π (x : A) app B x) → (Π (x : A) app C x) :=
-λ f, λ g, λ x, app (app f x) (app g x)
+λ f g x, app (app f x) (app g x)
  
 theorem pi_comm {A : type 1} {B : A → A → type 1}
-⊢ (Π (x : A) Π (y : A) app (app B x) y) → Π (y : A) Π (x : A) (app (app B x) y) :=
-λ f, λ y, λ x, app (app f x) y
+⊢ (Π (x : A) (y : A) app (app B x) y) → Π (y : A) (x : A) (app (app B x) y) :=
+λ f y x, app (app f x) y
  
 theorem pi_fun_distr1 {A B : type 1} {C : A → type 1}
 ⊢ (B → (Π (x : A) app C x)) → (Π (x : A) (B → app C x)) :=
-λ f, λ y, λ x, app (app f x) y
+λ f y x, app (app f x) y
  
 theorem pi_fun_distr2 {A B : type 1} {C : A → type 1}
 ⊢ (Π (x : A) (B → app C x)) → (B → (Π (x : A) app C x)) :=
-λ f, λ y, λ x, app (app f x) y
+λ f y x, app (app f x) y
  
 theorem dprod_up_2_fst {A : type 1} {B C : A → type 1}
 ⊢ (Π (x : A) app B x × app C x) → (Π (x : A) app B x) :=
-λ f, λ x, fst (app f x)
+λ f x, fst (app f x)
  
 theorem dprod_up_2_snd {A : type 1} {B C : A → type 1}
 ⊢ (Π (x : A) app B x × app C x) → (Π (x : A) app C x) :=
-λ f, λ x, snd (app f x)
+λ f x, snd (app f x)
  
 theorem pi_prod_distr {A B : type 1} {C : A → type 1}
 ⊢ (B × Π (x : A) app C x) → (Π (x : A) B × app C x) :=
-λ w, λ x, (fst w, app (snd w) x)
+λ w x, (fst w, app (snd w) x)
  
 theorem pi_sum_distr {A : type 1} {B C : A → type 1}
 ⊢ ((Π (x : A) app B x) + (Π (x : A) app C x)) → (Π (x : A) app B x + app C x) :=
-λ w, λ x, case w (λ f, inl (app f x)) (λ g, inr (app g x))
+λ w x, case w (λ f, inl (app f x)) (λ g, inr (app g x))
  
 theorem pi_sum_distrb {A B : type 1} {C : A → type 1}
 ⊢ (B + (Π (x : A) app C x)) → (Π (x : A) B + app C x) :=
-λ w, λ x, case w (λ y, inl y) (λ f, inr (app f x))
+λ w x, case w (λ y, inl y) (λ f, inr (app f x))
  
 theorem dcase {A B : type 1} {C : (A + B) → type 1} (f : Π (x : A) app C (inl x)) (g : Π (y : B) app C (inr y))
 ⊢ Π (x : A + B) app C x :=

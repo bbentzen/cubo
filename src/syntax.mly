@@ -6,6 +6,22 @@
  **)
 
 open Ast
+
+let rec abs_of_list e = function
+  | [] -> e
+  | id :: l ->
+    Ast.Abs(id, abs_of_list e l)
+
+let rec pi_of_list e = function
+  | [] -> e
+  | (id, ty) :: l ->
+    Ast.Pi (id, ty, pi_of_list e l)
+
+let rec sigma_of_list e = function
+  | [] -> e
+  | (id, ty) :: l ->
+    Ast.Sigma (id, ty, sigma_of_list e l)
+
 %}
 
 %token <string> ID
@@ -28,7 +44,7 @@ open Ast
 %right PI
 %right RARROW
 %left AT
-%right SUM PROD SIGMA
+%right SUM PROD
 %nonassoc NEG
 %nonassoc FST SND INL INR SUCC 
 %nonassoc CASE ABORT
@@ -40,6 +56,7 @@ open Ast
 %type <((string list * Ast.expr) * bool) list> ctx
 %type <Ast.expr> expr
 %type <string list> ids 
+%type <((string * expr) list) * expr> blocks
 
 %%
 
@@ -54,13 +71,23 @@ decl:
   | DEF ID ctx expr COLONEQ expr                            {Prf($2, $3, $4, $6)}
 
 ctx: 
-  | LPAREN ids expr RPAREN ctx                              {(($2, $3), true) :: $5}
-  | LBRACE ids expr RBRACE ctx                              {(($2, $3), false) :: $5}
+  | LPAREN ids COLON expr RPAREN ctx                        {(($2, $4), true) :: $6}
+  | LBRACE ids COLON expr RBRACE ctx                        {(($2, $4), false) :: $6}
   | VDASH                                                   {([])}
 
 ids:
-  | ID ids                                                  {$1 :: $2}
-  | COLON                                                   {([])}
+  | ID                                                      { [$1] }
+  | ID ids                                                  { $1 :: $2 }
+
+vars:
+  | ID                                                      { [$1] }
+  | WILDCARD                                                { ["v?"] }
+  | ID vars                                                 { $1 :: $2 }
+  | WILDCARD vars                                           { "v?" :: $2 }
+
+blocks:
+  | expr                                                   { ([], $1) }
+  | LPAREN ID COLON expr RPAREN blocks                     { (($2, $4) :: fst $6, snd $6) }
 
 expr: 
   | ID                                                      { Id($1) }
@@ -69,20 +96,22 @@ expr:
   | I1                                                      { I1() }
   | INTERVAL                                                { Int() }
   | COE expr expr expr expr %prec CASE                      { Coe($2,$3,$4,$5) }
-  | ABS ID COMMA expr %prec PI                              { Abs($2,$4) }
-  | ABS WILDCARD COMMA expr %prec PI                        { Abs("v?",$4) }
+  | ABS vars COMMA expr %prec PI                            { abs_of_list ($4) ($2) }
+  
   | ABS LPAREN ID COLON expr RPAREN COMMA expr %prec PI     { Abs($3,$8) } 
   | APP expr expr                                           { App($2,$3) }
   | expr RARROW expr                                        { Pi("v?",$1,$3) }
-  | PI ID COLON expr expr %prec CASE                        { Pi($2,$4,$5) } 
-  | PI LPAREN ID COLON expr RPAREN expr %prec PI            { Pi($3,$5,$7) }
-  | expr LRARROW expr                                       { Sigma("v?",Pi("v?",$1,$3),Pi("v?",$3,$1))}
+
+  
+  | PI blocks                                               { pi_of_list (snd $2) (fst $2) }
+
+  | expr LRARROW expr                                       { Sigma("v?", Pi("v?",$1,$3), Pi("v?",$3,$1)) }
   | LPAREN expr COMMA expr RPAREN                           { Pair($2,$4) }
   | FST expr                                                { Fst($2) }
   | SND expr                                                { Snd($2) }
   | expr PROD expr                                          { Sigma("v?",$1,$3) }
-  | SIGMA ID COLON expr expr %prec SIGMA                    { Sigma($2,$4,$5) }
-  | SIGMA LPAREN ID COLON expr RPAREN expr %prec SIGMA      { Sigma($3,$5,$7) } 
+  
+  | SIGMA blocks                                            { sigma_of_list (snd $2) (fst $2) }
   | INL expr                                                { Inl($2) }
   | INR expr                                                { Inr($2) }
   | CASE expr expr expr %prec CASE                          { Case($2,$3,$4) }

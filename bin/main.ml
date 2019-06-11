@@ -9,8 +9,8 @@ open Command
 
 let () =
   let filename = "tests/test.cubo" in
-  match checkfile [] filename with 
-  | Ok (env, s) ->
+  match checkfile [] [] filename with 
+  | Ok (env, (s, _)) ->
     let n = String.length s in
     let s' = 
       if n > 0 && s.[n-1] = '\n' then 
@@ -19,5 +19,5 @@ let () =
         s 
     in
     print_endline s';
-    print_endline (string_of_int (List.length env) ^ " definition(s)/theorem(s) compiled successfully. " );
+    print_endline (string_of_int (List.length env) ^ " definition(s)/theorem(s) compiled successfully. ");
   | Error msg -> print_endline ("Error: " ^ msg);

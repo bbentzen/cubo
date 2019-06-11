@@ -37,6 +37,12 @@ def sumsasae (A B : type 1) (v v' : A + B)
 ⊢ ??1 :=
 case v (λ x, path (A + B) (inl x) (inl x)) (λ _, void) 
 
+/** Fatal error: exception Failure("Lex error: *") ***/
+
+open ./success/all.cubo
+ 
+open ./success/function.cubo
+ 
 
 /** TODO: 
 - cannot open an already opened file
@@ -54,8 +60,3 @@ case v (λ x, path (A + B) (inl x) (inl x)) (λ _, void)
 -Use juxtaposition for App
 
 **/
-
- 
- 
- 
-
