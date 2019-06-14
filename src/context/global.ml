@@ -224,5 +224,25 @@ let rec unfold_all global vars = function
 			| Ok e', Ok e1', Ok e2' -> Ok (Ast.Pathd (e', e1', e2'))
 			| Error msg, _, _ | _, Error msg , _ | _, _, Error msg -> Error msg
 		end
+	
+	| Ast.Coe (i, j, e1, e2) ->
+		let ui = unfold_all global vars i in
+		let uj = unfold_all global vars j in
+		let u1 = unfold_all global vars e1 in
+		let u2 = unfold_all global vars e2 in
+		begin match ui, uj, u1, u2 with
+			| Ok i', Ok j', Ok e1', Ok e2' -> Ok (Ast.Coe (i', j', e1', e2'))
+			| Error msg, _, _, _ | _, Error msg , _, _ | _, _, Error msg, _ | _, _, _, Error msg -> 
+				Error msg
+		end
+	
+	| Ast.Hfill (e, e1, e2) -> 
+		let u = unfold_all global vars e in
+		let u1 = unfold_all global vars e1 in
+		let u2 = unfold_all global vars e2 in
+		begin match u, u1, u2 with
+			| Ok e', Ok e1', Ok e2' -> Ok (Ast.Hfill (e', e1', e2'))
+			| Error msg, _, _ | _, Error msg , _ | _, _, Error msg -> Error msg
+		end
 
 	| e -> Ok e 

@@ -12,89 +12,6 @@ open Substitution
 (* Returns a value and a flag determined whether there was a reduction *)
 
 let rec has_reduction = function
-	| Ast.Abs (x, e) -> 
-		(match e with
-		| Ast.App (e1 , e2) ->
-			if e2 = Ast.Id x && not (free_var x e1) 
-			then fst (has_reduction e1), true
-			else Ast.Abs (x, Ast.App (fst (has_reduction e1), fst (has_reduction e2))),
-					 snd (has_reduction e1) || snd (has_reduction e2)
-		| _ -> Ast.Abs (x, fst (has_reduction e)), snd (has_reduction e))
-
-	| Ast.App (e1, e2) -> 
-		(match e1 with
-		| Ast.Abs (x , e) -> (subst x e2 (fst (has_reduction e)), true)
-		| _ -> 
-			Ast.App (fst (has_reduction e1), fst (has_reduction e2)), 
-			snd (has_reduction e1) || snd (has_reduction e2))
-
-	| Ast.Pair (e1, e2) -> 
-		Ast.Pair (fst (has_reduction e1), fst (has_reduction e2)),
-		snd (has_reduction e1) || snd (has_reduction e2)
-
-	| Ast.Fst e ->
-	 	(match e with
-		| Ast.Pair (e1 , _) -> (e1, true)
-		| _ -> Ast.Fst (fst (has_reduction e)), snd (has_reduction e))
-
-	| Ast.Snd e -> 
-		(match e with
-		| Ast.Pair (_ , e2) -> (e2, true)
-		| _ -> Ast.Snd (fst (has_reduction e)), snd (has_reduction e))
-
-	| Ast.Inl e -> 
-		Ast.Inl (fst (has_reduction e)), snd (has_reduction e)
-
-	| Ast.Inr e -> 
-		Ast.Inr (fst (has_reduction e)), snd (has_reduction e)
-
-	| Ast.Case (e, e1, e2) -> 
-	  (match e with
-		| Ast.Inl a -> Ast.App (e1,a), true
-		| Ast.Inr b -> Ast.App (e2,b), true
-		| _ -> 
-			Ast.Case (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
-			snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2))
-
-	| Ast.Succ e -> 
-		Ast.Succ (fst (has_reduction e)), snd (has_reduction e)
-
-	| Ast.Natrec (e, e1, e2) -> 
-		(match e with
-		| Ast.Zero() -> e1, true
-		| Ast.Succ k -> Ast.App (Ast.App (e2,k),Natrec(k,e1,e2)), true
-		| _ -> 
-			Ast.Natrec (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
-			snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2))
-
-	| Ast.If (e, e1, e2) -> 
-		(match e with
-		| Ast.True() -> e1, true
-		| Ast.False() -> e2, true
-		| _ -> 
-			Ast.If (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
-			snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2))
-
-	| Ast.Let (e, e1) -> 
-		(match e with
-		| Ast.Star() -> e1, true
-		| _ -> Ast.Let (fst (has_reduction e), e1), snd (has_reduction e))
-
-	| Ast.Pabs (x, e) -> 
-		(match e with
-		| Ast.At (e1 , e2) ->
-			if e2 = Ast.Id x && not (free_var x e1) 
-			then fst (has_reduction e1), true
-			else Ast.Pabs (x, Ast.At (fst (has_reduction e1), fst (has_reduction e2))), 
-					 snd (has_reduction e1) || snd (has_reduction e2)
-		| _ -> Ast.Pabs (x, fst (has_reduction e)), snd (has_reduction e))
-
-	| Ast.At (e1, e2) -> 
-		(match e1 with
-		| Ast.Pabs (x , e) -> (subst x e2 (fst (has_reduction e)), true)
-		| _ -> 
-			Ast.At (fst (has_reduction e1), fst (has_reduction e2)), 
-			snd (has_reduction e1) || snd (has_reduction e2))
 
 	| Ast.Coe (i, j, e1, e2) ->
 		let coe' = 
@@ -115,6 +32,131 @@ let rec has_reduction = function
 					coe'
 		end
 
+	| Ast.Hfill (e, e1, e2) -> 
+		Ast.Hfill (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
+		snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2)
+	
+	| Ast.App (Ast.Hfill (e, _, _), Ast.I0()) -> e, true
+
+	| Ast.App (Ast.App (Ast.Hfill (_, e1, _), i), Ast.I0()) -> fst (has_reduction (Ast.App(e1, i))), true
+
+	| Ast.App (Ast.App (Ast.Hfill (_, _, e2), i), Ast.I1()) -> fst (has_reduction (Ast.App(e2, i))), true
+
+	| Ast.Abs (x, e) -> 
+		begin 
+			match e with
+			| Ast.App (e1 , e2) ->
+				if e2 = Ast.Id x && not (free_var x e1) then 
+					fst (has_reduction e1), true
+				else 
+					Ast.Abs (x, fst (has_reduction e)), snd (has_reduction e)
+			| _ -> Ast.Abs (x, fst (has_reduction e)), snd (has_reduction e)
+		end
+
+	| Ast.App (e1, e2) -> 
+		begin 
+			match e1 with
+			| Ast.Abs (x , e) -> (subst x e2 (fst (has_reduction e)), true)
+			| _ -> 
+				Ast.App (fst (has_reduction e1), fst (has_reduction e2)), 
+				snd (has_reduction e1) || snd (has_reduction e2)
+		end
+
+	| Ast.Pair (e1, e2) ->
+		begin
+			match e1, e2 with
+			| Fst e1', Snd e2' ->
+				if e1' = e2' then
+					e1', true
+				else
+					Ast.Pair (fst (has_reduction e1), fst (has_reduction e2)),
+					snd (has_reduction e1) || snd (has_reduction e2)
+			| _ ->
+				Ast.Pair (fst (has_reduction e1), fst (has_reduction e2)),
+				snd (has_reduction e1) || snd (has_reduction e2)
+		end
+
+	| Ast.Fst e ->
+		begin 
+			match e with
+			| Ast.Pair (e1 , _) -> (e1, true)
+			| _ -> Ast.Fst (fst (has_reduction e)), snd (has_reduction e)
+		end
+
+	| Ast.Snd e -> 
+		begin
+			match e with
+			| Ast.Pair (_ , e2) -> (e2, true)
+			| _ -> Ast.Snd (fst (has_reduction e)), snd (has_reduction e)
+		end
+
+	| Ast.Inl e -> 
+		Ast.Inl (fst (has_reduction e)), snd (has_reduction e)
+
+	| Ast.Inr e -> 
+		Ast.Inr (fst (has_reduction e)), snd (has_reduction e)
+
+	| Ast.Case (e, e1, e2) -> 
+		begin
+			match e with
+			| Ast.Inl a -> Ast.App (e1,a), true
+			| Ast.Inr b -> Ast.App (e2,b), true
+			| _ -> 
+				Ast.Case (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
+				snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2)
+		end
+
+	| Ast.Succ e -> 
+		Ast.Succ (fst (has_reduction e)), snd (has_reduction e)
+
+	| Ast.Natrec (e, e1, e2) -> 
+		begin 
+			match e with
+			| Ast.Zero() -> e1, true
+			| Ast.Succ k -> Ast.App (Ast.App (e2,k),Natrec(k,e1,e2)), true
+			| _ -> 
+				Ast.Natrec (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
+				snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2)
+		end
+
+	| Ast.If (e, e1, e2) -> 
+		begin
+			match e with
+			| Ast.True() -> e1, true
+			| Ast.False() -> e2, true
+			| _ -> 
+				Ast.If (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
+				snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2)
+		end
+
+	| Ast.Let (e, e1) -> 
+		begin
+			match e with
+			| Ast.Star() -> e1, true
+			| _ -> Ast.Let (fst (has_reduction e), e1), snd (has_reduction e)
+		end
+
+	| Ast.Pabs (x, e) -> 
+		begin 
+			match e with
+			| Ast.At (e1 , e2) ->
+				if e2 = Ast.Id x && not (free_var x e1) then 
+					fst (has_reduction e1), true
+				else 
+					Ast.Pabs (x, fst (has_reduction e)), snd (has_reduction e)
+			| _ -> 
+				Ast.Pabs (x, fst (has_reduction e)), snd (has_reduction e)
+		end
+
+	| Ast.At (e1, e2) -> 
+		begin
+			match e1 with
+			| Ast.Pabs (x , e) -> (subst x e2 (fst (has_reduction e)), true)
+			| _ -> 
+				Ast.At (fst (has_reduction e1), fst (has_reduction e2)), 
+				snd (has_reduction e1) || snd (has_reduction e2)
+		end
+	
 	| Ast.Pi (x, e1, e2) -> 
 		Ast.Pi (x, fst (has_reduction e1), fst (has_reduction e2)), 
 		snd (has_reduction e1) || snd (has_reduction e2)

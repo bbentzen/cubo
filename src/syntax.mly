@@ -29,7 +29,7 @@ let rec sigma_of_list e = function
 %token <string> NUMBER
 %token OPEN DEF PRINT INFER LBRACE RBRACE
 %token TYPE COLON VDASH
-%token I0 I1 INTERVAL COE
+%token I0 I1 INTERVAL COE HCOM HFILL BAR
 %token ABS APP RARROW LRARROW PI
 %token LPAREN RPAREN COMMA FST SND PROD SIGMA
 %token INL INR CASE SUM
@@ -37,7 +37,7 @@ let rec sigma_of_list e = function
 %token TRUE FALSE IF BOOL
 %token STAR LET UNIT
 %token ABORT VOID NEG
-%token LANGLE RANGLE AT REFL PATHD PATH
+%token LANGLE RANGLE AT REFL SYMM TRANS PATHD PATH
 %token WILDCARD PLACEHOLDER COLONEQ
 %token EOF
 %right LRARROW
@@ -45,10 +45,12 @@ let rec sigma_of_list e = function
 %right RARROW
 %left AT
 %right SUM PROD
+%right TRANS
 %nonassoc NEG
 %nonassoc FST SND INL INR SUCC 
 %nonassoc CASE ABORT
 %left APP
+%nonassoc SYMM
 
 %start command
 %type <Ast.command> command
@@ -96,21 +98,22 @@ expr:
   | I1                                                      { I1() }
   | INTERVAL                                                { Int() }
   | COE expr expr expr expr %prec CASE                      { Coe($2,$3,$4,$5) }
+  | HCOM expr  
+    BAR I0 RARROW expr 
+    BAR I1 RARROW expr %prec CASE                           { App(Hfill($2,$6,$10),I1()) }
+  | HFILL expr  
+    BAR I0 RARROW expr 
+    BAR I1 RARROW expr %prec CASE                           { Hfill($2,$6,$10) }
   | ABS vars COMMA expr %prec PI                            { abs_of_list ($4) ($2) }
-  
   | ABS LPAREN ID COLON expr RPAREN COMMA expr %prec PI     { Abs($3,$8) } 
   | APP expr expr                                           { App($2,$3) }
   | expr RARROW expr                                        { Pi("v?",$1,$3) }
-
-  
   | PI blocks                                               { pi_of_list (snd $2) (fst $2) }
-
   | expr LRARROW expr                                       { Sigma("v?", Pi("v?",$1,$3), Pi("v?",$3,$1)) }
   | LPAREN expr COMMA expr RPAREN                           { Pair($2,$4) }
   | FST expr                                                { Fst($2) }
   | SND expr                                                { Snd($2) }
   | expr PROD expr                                          { Sigma("v?",$1,$3) }
-  
   | SIGMA blocks                                            { sigma_of_list (snd $2) (fst $2) }
   | INL expr                                                { Inl($2) }
   | INR expr                                                { Inr($2) }
@@ -130,10 +133,12 @@ expr:
   | ABORT expr %prec ABORT                                  { Abort($2) }
   | VOID                                                    { Void() }
   | NEG expr                                                { Pi("v?",$2,Void()) }
-  | LANGLE ID RANGLE expr %prec CASE                        { Pabs($2,$4) }
-  | LANGLE WILDCARD RANGLE expr %prec CASE                  { Pabs("v?",$4) }
+  | LANGLE ID RANGLE expr %prec PI                          { Pabs($2,$4) }
+  | LANGLE WILDCARD RANGLE expr %prec PI                    { Pabs("v?",$4) }
   | expr AT expr                                            { At($1,$3) }
   | REFL                                                    { Pabs("v?", Wild()) }
+  | expr SYMM                                               { App(Id "path_symm", $1) }
+  | expr TRANS expr                                         { App(App(Id "path_trans", $1), $3) }
   | PATHD expr expr expr %prec ABORT                        { Pathd($2,$3,$4) }
   | PATH expr expr expr %prec ABORT                         { Pathd(Abs("v?",$2),$3,$4) }
   | TYPE ZERO                                               { Type(0) }

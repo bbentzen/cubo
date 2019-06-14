@@ -111,25 +111,34 @@ let rec elaborate global ctx ty ph vars = function
       | _ -> 
         Error ("The term\n  λ " ^ x ^ ", " ^ unparse e ^ "\nhas type\n  " ^ unparse ty ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
       end
-    
+  
   | App (e1, e2) ->
     let h1 = Hole.generate ty ph [] in
     let v1 = fresh_var (App(e1, e2)) ty vars in
     let elab2 = elaborate global ctx h1 (ph+1) (vars+1) e2 in
     begin match elab2 with
     | Ok (e2', ty2') ->
-      let h2 = Hole.generate ty (ph+1) [Id v1; e2] in
-      let elab1 = elaborate global ctx (Pi(v1, ty2', fullsubst e2 h2 ty)) (ph+1) (vars+1) e1 in
-      begin match elab1 with
-      | Ok (e1', Pi(x, _, ty')) ->
-        Ok (App (e1', e2'), subst x e2 ty')
-      | Ok _ -> 
-        Error ("The term\n  " ^ unparse e1 ^ 
-                "\nhas type\n  " ^ unparse ty ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1? ") 
-      | Error msg -> 
-        Error ("The term\n  " ^ unparse e1 ^ 
-              "\nhas type\n  " ^ unparse ty ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1? \n" ^ msg)
-      end
+      let h2 = Hole.generate ty (ph+1) [Id v1; e2; e2'] in
+      let helper ty1' =
+        let elab1 = elaborate global ctx ty1' (ph+1) (vars+1) e1 in
+        begin match elab1 with
+        | Ok (e1', Pi(x, _, ty')) ->
+          Ok (App (e1', e2'), subst x e2 ty')
+        | Ok _ -> 
+          Error ("The term\n  " ^ unparse e1 ^ 
+                  "\nis expected to have type\n " ^ unparse ty1') 
+        | Error msg -> 
+          Error ("The term\n  " ^ unparse e1 ^ 
+                "\nis expected to have type\n  " ^ unparse ty1' ^ "\n" ^ msg)
+        end
+      in
+      if e2 = e2' then
+        let ty1' = Pi(v1, fullsubst e2 h2 ty2', fullsubst e2 h2 ty) in
+        helper ty1'
+      else
+        let subs x = hfullsubst e2' h2 (fullsubst e2 h2 x) in
+        let ty1' = Pi(v1, subs ty2', subs ty) in
+        helper ty1'
     | Error msg -> Error msg
     end
   
@@ -537,39 +546,73 @@ let rec elaborate global ctx ty ph vars = function
       end
     end
   
-  (*
-  | Ast.Coe(i, j, ety, e) ->
+  | Ast.Hfill(e, e1, e2) ->
     begin
-      let h0 = Hole.generate ty 0 [] in
-      let elabi = elaborate global ctx (Int()) ph vars i in
-      let elabj = elaborate global ctx (Int()) ph vars j in
-      let elabet = elaborate global ctx h0 ph vars (eval ety) in
-      let elabt = elaborate global ctx h0 ph vars (eval ty) in
-      begin
-        match elabi, elabj, elabet, elabt with
-        | Ok (i', _), Ok (j', _), Ok (ety', eTy), Ok (ty', _) ->
-          let tyi = eval (App(ety', i')) in
-          let tyj = eval (App(ety', j')) in
-
-          let elab = elaborate global ctx tyi ph vars e in
+      match ty with
+      | Ast.Pi(_, int, Pi(_, int', ty')) ->
+        if eval int = Int() && eval int = eval int' then
           begin
-            match elab with
-            | Ok (e', _) ->
-              let u = unify global ctx ph vars (tyj, ty', eTy) in
-              begin match u with
-              | Ok st ->
-                Ok (Coe (i', j', ety', e'), st)
-              | Error (_, msg) -> Error msg
-              end
-            | Error msg ->
-              Error msg
+            let elabi0 = elaborate global ctx ty' ph vars (eval (Ast.App(e, Ast.I0()))) in
+            let elabi1 = elaborate global ctx ty' ph vars (eval (Ast.App(e, Ast.I1()))) in
+            let elab1i0 = elaborate global ctx ty' ph vars (eval (Ast.App(e1, Ast.I0()))) in
+            let elab2i1 = elaborate global ctx ty' ph vars (eval (Ast.App(e2, Ast.I0()))) in
+            begin
+              match elabi0, elabi1, elab1i0, elab2i1 with
+              | Ok (ei0, _), Ok (ei1, _), Ok (e1i0, _), Ok (e2i0, _) ->
+                begin
+                  let u1 = unify global ctx ph vars (eval ei0, e1i0, ty') in
+                  let u2 = unify global ctx ph vars (eval ei1, e2i0, ty') in
+                  begin 
+                    match u1, u2 with
+                    | Ok _, Ok _ ->
+                      Ok (Hfill(e, e1, e2), ty)
+                    | Error (_, msg), _ | _, Error (_, msg) -> 
+                      Error msg
+                  end
+                end
+                
+              | Error msg, _, _, _ | _, Error msg, _, _ | _, _, Error msg, _ | _, _, _, Error msg ->
+                Error msg
+            end
           end
-          
-        | Error msg, _, _, _ | _, Error msg, _, _ | _, _, Error msg, _ | _, _, _, Error msg ->
-          Error msg
+        else
+          Error ("The homogeneous filling\n  " ^ unparse (Hfill(e, e1, e2)) ^ 
+            "\nhas type\n  " ^ unparse int ^ "→  " ^ unparse int' ^ "→ " ^ unparse ty' ^
+            "\nbut is expected to have type\n  I → I → ?0?")
+      
+      | Hole (_, _) | Pi(_, _, Hole (_, _)) -> 
+        let h0 = Hole.generate ty 0 [] in
+        let elabi0 = elaborate global ctx h0 ph vars (eval (Ast.App(e, Ast.I0()))) in
+        begin
+          match elabi0 with
+          | Ok (ei0, ty') ->
+            let elabi1 = elaborate global ctx ty' ph vars (eval (Ast.App(e, Ast.I1()))) in
+            let elab1i0 = elaborate global ctx ty' ph vars (eval (Ast.App(e1, Ast.I0()))) in
+            let elab2i1 = elaborate global ctx ty' ph vars (eval (Ast.App(e2, Ast.I0()))) in
+            begin
+              match elabi1, elab1i0, elab2i1 with
+              | Ok (ei1, _), Ok (e1i0, _), Ok (e2i0, _) ->
+                begin
+                  let u1 = unify global ctx ph vars (eval ei0, e1i0, ty') in
+                  let u2 = unify global ctx ph vars (eval ei1, e2i0, ty') in
+                  begin 
+                    match u1, u2 with
+                    | Ok _, Ok _ ->
+                      Ok (Hfill(e, e1, e2), Ast.Pi("v?", Int(), Pi("v?", Int(), ty')))
+                    | Error (_, msg), _ | _, Error (_, msg) -> 
+                      Error msg
+                  end
+                end
+
+              | Error msg, _, _ | _, Error msg, _ | _, _, Error msg ->
+                Error msg
+            end
+          | Error msg -> Error msg
+        end
+      | e ->
+        Error ("The homogeneous filling\n  " ^ unparse (Hfill(e, e1, e2)) ^ 
+        "\nhas type\n  " ^ unparse e ^ "\nbut is expected to have type\n  I → I → ?0?")
       end
-    end
-  *)
   
   | Pabs (i, e) ->
     let h0 = Hole.generate ty 0 [] in
@@ -673,7 +716,7 @@ let rec elaborate global ctx ty ph vars = function
                       msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
             end
           | _ ->
-            Error ("Failed to unify\n  " ^ 
+            Error ("Failed to unify\n  " ^
                   unparse e2 ^ "\nwith\n  " ^ unparse ei1 ^ "≡ " ^ unparse e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
                   msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
           end
@@ -699,7 +742,9 @@ let rec elaborate global ctx ty ph vars = function
               begin match u with
               | Ok st ->
                 elaborate global ctx (Pathd(Abs(v1,st), ei0, ei1)) (ph+1) vars (Pabs (i, e))
-              | Error (_, msg) -> Error msg (* TODO: better error msg *)
+              | Error (_, msg) ->
+                Error ("Failed to unity the types\n  " ^ unparse ty' ^ "\nand\n  " ^ unparse ty'' ^ "\n" ^ msg)
+                
               end
             | Error msg -> (* This case never occurs *)
               Error msg
@@ -709,7 +754,7 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (ty', _) -> 
       Error ("The expression\n  <" ^ i ^ "> " ^ unparse e ^ "\nis expected to have type\n  pathd ?0? ?1? ?2?\nbut has type\n  " ^ unparse ty')
     | Error msg -> 
-      Error ("Failed to prove that\n  " ^ unparse ty ^ "\nis a type\n" ^ msg)
+      Error ("Failed to prove that\n  " ^ unparse (eval ty) ^ "\nis a type\n" ^ msg)
     end
   
   | At (e1, e2) ->
@@ -724,7 +769,7 @@ let rec elaborate global ctx ty ph vars = function
       | Pathd (ty', a, b) ->
         if eval e2' = I0() then
           match a, ty' with
-          | Hole _, Abs(v, ty') -> (* synthesize ty' and ty*)
+          | Hole _, Abs(v, ty') -> (* unify ty' and ty*)
             Ok (At (e1', I0()), subst v (I0()) ty')
           | Hole _, Hole _ -> 
             Ok (At (e1', I0()), ty)
@@ -1028,15 +1073,21 @@ let rec elaborate global ctx ty ph vars = function
         let elab1 = elaborate global ctx (Hole (n,l)) (ph+1) vars e1 in
         let elab2 = elaborate global ctx (Hole (n,l)) (ph+1) vars e2 in
         begin match elab1, elab2 with
-        | Ok (e1', _), Ok (e2', _) ->
+        | Ok (e1', tye1), Ok (e2', tye2) ->
           begin match ty with
           | Type m ->
-            Ok (Pathd(Hole (n,l), e1', e2'), Type m)
+            if eval tye1 = eval tye2 then
+              Ok (Pathd(tye1, e1', e2'), Type m)
+            else
+              Ok (Pathd(Hole (n,l), e1', e2'), Type m)
           | Hole (m,k) ->
-            Ok (Pathd(Hole (n,l), e1', e2'), Hole (m,k))
+            if eval tye1 = eval tye2 then
+              Ok (Pathd(eval tye1, e1', e2'), Hole (m,k))
+            else 
+              Ok (Pathd(Hole (n,l), e1', e2'), Hole (m,k))
           | _ -> Error ("Failed to check that\n  " ^ unparse ty ^ "\nis a type")
           end
-          | _ -> Error ("Failed to check that\n  " ^ unparse e1 ^ "\nhas type\n ?0?")
+        | _ -> Error ("Failed to check that\n  " ^ unparse e1 ^ "\nhas type\n ?0?")
         end
       end
     | Abs(x, Hole (n,l)) ->
@@ -1069,7 +1120,7 @@ let rec elaborate global ctx ty ph vars = function
       let elabi0 = elaborate global ctx h1 (ph+1) vars (eval (App (ty1, I0()))) in
       let elabi1 = elaborate global ctx h1 (ph+1) vars (eval (App (ty1, I1()))) in
       begin match elabi0, elabi1 with
-      | Ok (tyi0, _), Ok (tyi1, _) ->
+      | Ok (tyi0, tTyi0), Ok (tyi1, _) ->
         let elab = elaborate global ctx h1 (ph+1) vars (eval ty1) in
         let elab1 = elaborate global ctx tyi0 (ph+1) vars (eval e1) in
         let elab2 = elaborate global ctx tyi1 (ph+1) vars (eval e2) in
@@ -1089,7 +1140,8 @@ let rec elaborate global ctx ty ph vars = function
               Ok (Pathd(ty1', e1', e2'), Type n)
             | _ -> Error ("Failed to check that\n  " ^ unparse ty2 ^ "\nis a type")
             end
-          | Int() , _ | Hole _, _ -> Error ("Failed to check that\n  " ^ unparse ty2 ^ "\nis a type ") 
+          | Int() , Hole _ | Hole _, Hole _ -> 
+            Ok (Pathd(ty1', e1', e2'), tTyi0)
           | _ -> Error ("Failed to unify \n  " ^ unparse i ^ "with\n  I ")
           end
         | Ok (ty1', _), Ok _, Ok _ ->
@@ -1178,7 +1230,7 @@ and unify global ctx ph vars = function
                   unparse (Ast.Hole (n, l)) ^ "\nwith the suitable candidates\n" ^ 
                   (String.concat " " (List.map Ast.unparse l)))
       end
-
+    
     | Pi (x, ty1, ty2), Pi (x', ty1', ty2'), ty -> 
       let v1 = fresh_var ty2 ty2' vars in
       let u1 = unify global ctx ph (vars+1) (ty1, ty1', ty) in
@@ -1219,51 +1271,70 @@ and unify global ctx ph vars = function
       end
 
     | Pathd (e, e1, e2) , Pathd (e', e1', e2'), ty ->
-      let u = unify global ctx ph vars (e, e', ty) in
+      let u = unify global ctx ph vars (e, e', Pi("v?", Int(), ty)) in
       let u1 = unify global ctx ph vars (e1, e1', eval (App(e, I0()))) in
       let u2 = unify global ctx ph vars (e2, e2', eval (App(e, I1()))) in
       begin match u, u1, u2 with
-      | Ok s, Ok s1, Ok s2 -> Ok (Pathd (s, s1, s2))
-      | Error msg, _, _ | _ , Error msg, _| _ , _, Error msg -> 
-        Error msg
+      | Ok s, Ok s1, Ok s2 -> 
+        Ok (Pathd (s, s1, s2))
+
+        (* If not unifiable, we give it the benefit of the doubt *)
+
+      | Ok s, _, Ok s2 -> 
+        let h1 = Hole.generate (App(s, s2)) ph [] in
+        let h2 = Hole.generate (App(s, s2)) (ph+1) [] in
+        Ok (Pathd (s, At(h1, h2), s2))
+      | Ok s, Ok s1, _ ->
+        let h1 = Hole.generate (App(s, s1)) ph [] in
+        let h2 = Hole.generate (App(s, s1)) (ph+1) [] in
+        Ok (Pathd (s, s1, At(h1, h2)))
+      | Error msg, _, _ | _ , Error msg, _ -> 
+        Error (fst msg, "Don't know how to unify the pathd types due to the following errors:\n " ^ snd msg)
       end
 
     | Abs (x, e), Abs (x', e'), Pi(y, ty1 , ty2) ->
-      begin match eval ty1 with
-      | Int() | Hole(_,_) ->
-        let h1 = Hole.generate ty2 ph [] in
-        let elabt0 = elaborate global ctx h1 ph vars (subst y (I0()) ty2) in
-        let elabt1 = elaborate global ctx h1 ph vars (subst y (I1()) ty2) in
-        begin match elabt0, elabt1 with
-        | Ok (tyi0, _), Ok (tyi1, _) ->
-          let elab0 = elaborate global ctx tyi0 ph vars (subst x (I0()) e) in
-          let elab0' = elaborate global ctx tyi0 ph vars (subst x' (I0()) e') in
-          let elab1 = elaborate global ctx tyi1 ph vars (subst x (I1()) e) in
-          let elab1' = elaborate global ctx tyi1 ph vars (subst x' (I1()) e') in
-          begin match elab0, elab0', elab1, elab1' with
-          | Ok (ei0, _), Ok (ei0', _), Ok (ei1, _), Ok (ei1', _) -> 
-            let u0 = unify global ctx ph (vars+1) (ei0, ei0', tyi0) in
-            let u1 = unify global ctx ph (vars+1) (ei1, ei1', tyi1) in
-            begin match u0, u1 with
-            | Ok _, Ok _ -> Ok (Abs (x, e))
-            | Error msg, _ | _, Error msg -> Error msg
+      if e = e' then
+        Ok (Abs (x, e))
+      else if Hole.is e' then
+        Ok (Abs (x, e))
+      else if Hole.is e then
+        Ok (Abs (x, e'))
+      else 
+        begin match eval ty1 with
+        | Int() | Hole(_,_) ->
+          let h1 = Hole.generate ty2 ph [] in
+          let elabt0 = elaborate global ctx h1 ph vars (subst y (I0()) ty2) in
+          let elabt1 = elaborate global ctx h1 ph vars (subst y (I1()) ty2) in
+          begin match elabt0, elabt1 with
+          | Ok (tyi0, _), Ok (tyi1, _) ->
+            let elab0 = elaborate global ctx tyi0 ph vars (subst x (I0()) e) in
+            let elab0' = elaborate global ctx tyi0 ph vars (subst x' (I0()) e') in
+            let elab1 = elaborate global ctx tyi1 ph vars (subst x (I1()) e) in
+            let elab1' = elaborate global ctx tyi1 ph vars (subst x' (I1()) e') in
+            begin match elab0, elab0', elab1, elab1' with
+            | Ok (ei0, _), Ok (ei0', _), Ok (ei1, _), Ok (ei1', _) -> 
+              let u0 = unify global ctx ph (vars+1) (ei0, ei0', tyi0) in
+              let u1 = unify global ctx ph (vars+1) (ei1, ei1', tyi1) in
+              begin match u0, u1 with
+              | Ok _, Ok _ -> Ok (Abs (x, e))
+              | Error msg, _ | _, Error msg -> Error msg
+              end
+            | Error msg, _, _, _ | _, Error msg, _, _ | _, _, Error msg, _ | _, _, _, Error msg -> 
+              Error ((Abs (x, e), Abs (x', e')), "Failed endpoint unification of\n  " ^ unparse e ^ 
+                "[" ^ x ^ "/i0]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i0]\nand\n  " ^ unparse e ^ 
+                "[" ^ x ^ "/i1]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i1]\n" ^ msg)
             end
-          | _ -> 
-            Error ((Abs (x, e), Abs (x', e')), "Failed endpoint unification of\n  " ^ unparse e ^ 
-              "[" ^ x ^ "/i0]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i0]\nand\n  " ^ unparse e ^ 
-              "[" ^ x ^ "/i1]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i1]\nand\n  ")
+          | Error msg, _ | _, Error msg -> (* This case is impossible *)
+            Error ((Abs (x, e), Abs (x', e')), msg)
           end
-        | Error msg, _ | _, Error msg -> (* This case is impossible *)
-          Error ((Abs (x, e), Abs (x', e')), msg)
+        | _ ->
+          let v1 = fresh_var e e' vars in
+          let u = unify global (((v1, ty1), true) :: ctx) ph (vars+1) (subst x (Id v1) e, subst x' (Id v1) e', subst y (Id v1) ty2) in
+          begin match u with
+          | Ok s -> Ok (Abs (v1, s))
+          | Error msg -> Error msg
+          end
         end
-      | _ ->
-        let v1 = fresh_var e e' vars in
-        let u = unify global (((v1, ty1), true) :: ctx) ph (vars+1) (subst x (Id v1) e, subst x' (Id v1) e', subst y (Id v1) ty2) in
-        begin match u with
-        | Ok s -> Ok (Abs (v1, s))
-        | Error msg -> Error msg
-        end
-      end
 
     | App (e1, e2), App (e1', e2'), ty ->
       let h1 = Hole.generate ty ph [] in
@@ -1275,12 +1346,79 @@ and unify global ctx ph vars = function
         let u1 = unify global ctx ph vars (e1, e1', Pi(v1, ty2, fullsubst e2 (Id v1) ty)) in
         begin match u1, u2 with
         | Ok s1, Ok s2 -> Ok (App (s1, s2))
-        | Error msg, _ | _, Error msg -> Error msg
+        | Error msg, _ | _, Error msg ->
+          begin
+            
+            (* If not unifiable check endpoints *)
+
+            match eval ty2 with
+            | Int() ->
+              let i0 x = eval (App (x, I0())) in
+              let i1 x = eval (App (x, I1())) in
+              let ui0 = unify global ctx ph vars (i0 e1, i0 e1', ty2) in
+              let ui1 = unify global ctx ph vars (i1 e1, i1 e1', ty2) in
+              begin 
+                match ui0, ui1 with
+                | Ok _, Ok _ -> Ok (App (e1, e2))
+                | Error msg, _ | _, Error msg -> Error msg
+              end
+            | _ ->
+              Error msg
+          end
         end
       | Error msg -> (* This case is impossible *)
         Error ((App (e1, e2), App (e1', e2')), msg)
       end
+    
+    | App (e, i), e', _ | e', App (e, i), _ ->
+      begin
+        let h1 = Hole.generate ty ph [] in
+        let elab2 = elaborate global ctx h1 ph vars i in
+        begin 
+          match elab2 with
+          | Ok (_, Int()) ->
+            let e0 = eval (App (e, I0())) in
+            let e1 = eval (App (e, I1())) in
+            let e0' = eval (fullsubst i (I0()) e') in
+            let e1' = eval (fullsubst i (I1()) e') in
+            let ui0 = unify global ctx ph vars (e0, e0', ty) in
+            let ui1 = unify global ctx ph vars (e1, e1', ty) in
+            begin 
+              match ui0, ui1 with
+              | Ok _, Ok _ -> Ok (App (e, i))
+              | Error msg, _ -> (* PROBLEM HERE*)
+                Error ((e0, e0'), "Don't know how to unify\n  " ^ unparse e0 ^ "\nwith\n  " ^ unparse e0' ^ "\n" ^ unparse (eval e0') ^ "\n" ^ snd msg ) 
+              | _, Error msg -> Error ((e1, e1'), "Don't know how to unify\n  " ^ unparse e1 ^ "\nwith\n  " ^ unparse e1' ^ "\n" ^ snd msg)
 
+            end
+          | _ ->
+            Error ((e, e'), "Don't know how to unify\n  " ^ unparse (App (e, i)) ^ "\nwith\n  " ^ unparse e')
+        end
+        
+      end
+      (*
+      begin
+        let h1 = Hole.generate ty ph [] in
+        let elab2 = elaborate global ctx h1 ph vars e2 in
+        begin 
+          match elab2 with
+          | Ok (_, Int()) ->
+            let i0 x = eval (App (x, I0())) in
+            let i1 x = eval (App (x, I1())) in
+            let ui0 = unify global ctx ph vars (i0 e1, eval (fullsubst e2 (I0()) e'), ty) in
+            let ui1 = unify global ctx ph vars (i1 e1, eval (fullsubst e2 (I1()) e'), ty) in
+            begin 
+              match ui0, ui1 with
+              | Ok _, Ok _ -> Ok (App (e1, e2))
+              | Error msg, _ | _, Error msg -> Error msg
+            end
+          | _ ->
+            Error ((e, e'), "Don't know how to unify\n  " ^ unparse (App (e1, e2)) ^ "\nwith\n  " ^ unparse e')
+        end
+        
+      end
+      *)
+    
     | Pair (e1, e2), Pair (e1', e2'), Sigma(y, ty1, ty2) ->
       let u1 = unify global ctx ph vars (e1, e1', ty1) in
       let u2 = unify global ctx ph vars (e2, e2', subst y (Fst e1) ty2) in
@@ -1305,8 +1443,28 @@ and unify global ctx ph vars = function
             Error msg
           end
         | Error msg -> Error ((Coe (i, j, e1, e2) , Coe (i', j', e1', e2')), msg)
-      end      
+      end
+    
+    | Hfill (e, e1, e2) , Hfill (e', e1', e2'), ty ->
+      let h0 = Hole.generate ty ph [] in
+      let elab = elaborate global ctx h0 ph vars e in
+      begin
+        match elab with
+        | Ok (_, eTy) ->
+          let u = unify global ctx ph vars (e, e', eTy) in
+          let u1 = unify global ctx ph vars (e1, e1', eTy) in
+          let u2 = unify global ctx ph vars (e2, e2', eTy) in
+          begin match u, u1, u2 with
+          | Ok se, Ok se1, Ok se2 -> Ok (Hfill (se, se1, se2))
+          | Error msg, _, _ | _ , Error msg, _ | _ , _, Error msg -> 
+            Error msg
+          end
+        | Error msg -> Error ((Hfill (e, e1, e2) , Hfill (e', e1', e2')), msg)
+      end
 
+    | At (Hole _, Hole _), e', _ | e', At (Hole _, Hole _), _ ->
+      Ok e'
+    
     | At (e1, e2), At (e1', e2'), ty ->
       let u2 = unify global ctx ph vars (e2, e2', Int()) in
       let h1 = Hole.generate ty ph [] in
@@ -1323,6 +1481,22 @@ and unify global ctx ph vars = function
       | Error msg ->
         Error ((At (e1, e2), At (e1', e2')), msg)
       end
+
+    | At (e1, e2), e', ty | e', At (e1, e2), ty ->
+      if eval e2 = I0() || eval e2 = I1() then
+        let elab = elaborate global ctx ty ph vars (At (e1, e2)) in
+        begin match elab with
+        | Ok (e, ety) ->
+          let u1 = unify global ctx ph vars (e, e', ety) in
+          begin match u1 with
+          | Ok se -> Ok se
+          | Error msg -> Error msg
+          end
+        | Error msg ->
+          Error ((At (e1, e2), e'), msg)
+        end
+      else
+      Error ((e, e'), "The terms\n  " ^ unparse (At (e1, e2)) ^ "\nand\n  " ^ unparse e' ^ "\nare not equal")
 
     | Let (e1, e2), Let (e1', e2'), ty ->
       let u1 = unify global ctx ph vars (e1, e1', Unit()) in

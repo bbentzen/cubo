@@ -17,8 +17,10 @@ let rec has_var x = function
 		has_var x e
 	| Ast.App (e1, e2) | Ast.Pair (e1, e2) | Ast.Sum (e1, e2) | Ast.Let (e1, e2) | Ast.At(e1, e2) -> 
 		has_var x e1 || has_var x e2
-	| Ast.Case (e, e1, e2) | Ast.Natrec (e, e1, e2) | Ast.If (e, e1, e2) | Ast.Pathd (e, e1, e2) -> 
+	| Ast.Case (e, e1, e2) | Ast.Natrec (e, e1, e2) | Ast.If (e, e1, e2) | Ast.Pathd (e, e1, e2) | Ast.Hfill (e, e1, e2) -> 
 		has_var x e || has_var x e1 || has_var x e2
+	| Ast.Coe (i, j, e1, e2) -> 
+		has_var x i || has_var x j || has_var x e1 || has_var x e2
 	| Ast.Type _ -> false
 	| Ast.Hole (_, l) ->
 		let rec helper = function
@@ -49,6 +51,8 @@ let rec presubst x t hole_flag = function
 	| Ast.Coe (i, j, e1, e2) -> 
 		Ast.Coe (presubst x t hole_flag i, presubst x t hole_flag j, 
 		presubst x t hole_flag e1, presubst x t hole_flag e2)
+	| Ast.Hfill (e, e1, e2) -> 
+		Ast.Hfill (presubst x t hole_flag e, presubst x t hole_flag e1, presubst x t hole_flag e2)
 	| Ast.Abs (y, e) -> 
 		if x = y then 
 			Ast.Abs (y, e) 
@@ -144,6 +148,8 @@ let rec alphasubst x t flag hole_flag = function
 	| Ast.Coe (i, j, e1, e2) -> 
 		Ast.Coe (alphasubst x t flag hole_flag i, alphasubst x t flag hole_flag j, 
 		alphasubst x t flag hole_flag e1, alphasubst x t flag hole_flag e2)
+	| Ast.Hfill (e, e1, e2) -> 
+		Ast.Hfill (alphasubst x t flag hole_flag e, alphasubst x t flag hole_flag e1, alphasubst x t flag hole_flag e2)
 	| Ast.Abs (y, e) ->
 		let var = fresh_var e t 0 in
 		if x = y then Ast.Abs (y, e) else 
@@ -354,6 +360,22 @@ let rec termsubst e t hole_flag = function
 								Ast.Coe (termsubst i t hole_flag ex, termsubst j t hole_flag ex, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
 				end
 			end
+		| Ast.Hfill (e, e1, e2) -> 
+			if ex = e
+			then if ex = e1 
+				then if ex = e2 
+					then Ast.Hfill (t, t, t) 
+					else Ast.Hfill (t, t, termsubst e2 t hole_flag ex)
+				else if ex = e2 
+					then Ast.Hfill (t, termsubst e1 t hole_flag ex, t)
+					else Ast.Hfill (t, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+			else if ex = e1 
+				then if ex = e2 
+					then Ast.Hfill (termsubst e t hole_flag ex, t, t) 
+					else Ast.Hfill (termsubst e t hole_flag ex, t, termsubst e2 t hole_flag ex)
+				else if ex = e2 
+					then Ast.Hfill (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, t)
+					else Ast.Hfill (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
 		| Ast.Sum (e1, e2) -> 
 			if ex = e1 
 			then if ex = e2 
