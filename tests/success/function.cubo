@@ -139,4 +139,12 @@ def apd {A : type 1} {B : A → type 1} (f : Π (x : A) app B x) {a b : A} (p : 
 def funext {A : type 1} {B : A → type 1} (f g : Π (x : A) app B x) 
 ⊢ (Π (x : A) path (app B x) (app f x) (app g x)) → path (Π (x : A) app B x) f g :=
 λh, <i> (λ x, (app h x) @ i)
+
+/* Homogeneous composition */
+   
+def function_hcom {A B : type 1} {f g : A → B} (p : path (A → B) f g) (i : I)
+⊢ path (A → B) 
+  (app (hcom (λ _, f) | i0 →  λ _, f | i1 → λ j, p @ j) i) 
+  (λ x, app (hcom (λ _, app f x) | i0 →  (λ _, app f x) | i1 → λ j, app (p @ j) x) i) := 
+<_> app (hcom (λ _, f) | i0 →  λ _, f | i1 → λ j, p @ j) i
  

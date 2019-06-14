@@ -120,5 +120,13 @@ def pair_eq {A B : type 1} (a a' : A) (b b' : B)
 ⊢ path A a a' × path B b b' ↔ path (A × B) (a, b) (a', b') :=
 (λ w, <i> (fst w @ i, snd w @ i),
  λ p, (<i> fst (p @ i), <j> snd (p @ j)))
-
-
+ 
+/* Homogeneous composition */
+  
+def product_hcom {A B : type 1} {w w' : A × B} (p : path (A × B) w w') (i : I)
+⊢ path (A × B) 
+  (app (hcom (λ _, w) | i0 →  λ _, w | i1 → λ j, p @ j) i) 
+  (app (hcom (λ _, fst w) | i0 →  (λ _, fst w) | i1 → λ j, fst (p @ j)) i, 
+   app (hcom (λ _, snd w) | i0 →  (λ _, snd w) | i1 → λ j, snd (p @ j)) i) := 
+<_> app (hcom (λ _, w) | i0 →  λ _, w | i1 → λ j, p @ j) i
+ 
