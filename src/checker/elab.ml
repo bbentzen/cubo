@@ -1386,7 +1386,7 @@ and unify global ctx ph vars = function
             begin 
               match ui0, ui1 with
               | Ok _, Ok _ -> Ok (App (e, i))
-              | Error msg, _ -> (* PROBLEM HERE*)
+              | Error msg, _ -> 
                 Error ((e0, e0'), "Don't know how to unify\n  " ^ unparse e0 ^ "\nwith\n  " ^ unparse e0' ^ "\n" ^ unparse (eval e0') ^ "\n" ^ snd msg ) 
               | _, Error msg -> Error ((e1, e1'), "Don't know how to unify\n  " ^ unparse e1 ^ "\nwith\n  " ^ unparse e1' ^ "\n" ^ snd msg)
 
@@ -1396,28 +1396,6 @@ and unify global ctx ph vars = function
         end
         
       end
-      (*
-      begin
-        let h1 = Hole.generate ty ph [] in
-        let elab2 = elaborate global ctx h1 ph vars e2 in
-        begin 
-          match elab2 with
-          | Ok (_, Int()) ->
-            let i0 x = eval (App (x, I0())) in
-            let i1 x = eval (App (x, I1())) in
-            let ui0 = unify global ctx ph vars (i0 e1, eval (fullsubst e2 (I0()) e'), ty) in
-            let ui1 = unify global ctx ph vars (i1 e1, eval (fullsubst e2 (I1()) e'), ty) in
-            begin 
-              match ui0, ui1 with
-              | Ok _, Ok _ -> Ok (App (e1, e2))
-              | Error msg, _ | _, Error msg -> Error msg
-            end
-          | _ ->
-            Error ((e, e'), "Don't know how to unify\n  " ^ unparse (App (e1, e2)) ^ "\nwith\n  " ^ unparse e')
-        end
-        
-      end
-      *)
     
     | Pair (e1, e2), Pair (e1', e2'), Sigma(y, ty1, ty2) ->
       let u1 = unify global ctx ph vars (e1, e1', ty1) in

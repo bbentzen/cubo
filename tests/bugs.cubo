@@ -1,3 +1,20 @@
+/* this cannot be recognized as a type because we need a heterogeneous composition at the snd clause */
+ 
+def pr_hcom2 {A : type 1} {B : A → type 1} {w1 w1' w2 w2' : Σ (x : A) app B x} (p : path (Σ (x : A) app B x) w1 w2) (q : path (Σ (x : A) app B x) w1 w1') (r : path (Σ (x : A) app B x) w2 w2') (i : I)
+⊢ Σ (x : A) app B x := 
+(app (hcom (λ i, fst (p @ i)) | i0 →  λ j, fst (q @ j) | i1 → λ j, fst (r @ j)) i, 
+ app (hcom (λ i, snd (p @ i)) | i0 →  λ j, snd (q @ j) | i1 → λ j, snd (r @ j)) i)
+
+/* i.e. λ i, snd (p @ i) : I → app B (fst (p @ i));
+        λ i, snd (q @ i) : I → app B (fst (q @ i));
+        λ i, snd (r @ i) : I → app B (fst (r @ i))  */ 
+
+def product_hcom {A : type 1} {B : A → type 1} {w1 w1' w2 w2' : Σ (x : A) app B x} (p : path (Σ (x : A) app B x) w1 w2) (q : path (Σ (x : A) app B x) w1 w1') (r : path (Σ (x : A) app B x) w2 w2') (i : I)
+⊢ path (Σ (x : A) app B x) 
+  (app (hcom (λ i, p @ i) | i0 →  λ j, q @ j | i1 → λ j, r @ j) i) 
+  (app (hcom (λ i, fst (p @ i)) | i0 →  λ j, fst (q @ j) | i1 → λ j, fst (r @ j)) i, 
+   app (hcom (λ i, snd (p @ i)) | i0 →  λ j, snd (q @ j) | i1 → λ j, snd (r @ j)) i) := 
+<_> app (hcom (λ i, p @ i) | i0 →  λ j, q @ j | i1 → λ j, r @ j) i
 
 /* variable renaming bug */
 
