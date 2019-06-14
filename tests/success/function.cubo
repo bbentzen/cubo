@@ -1,0 +1,142 @@
+/*
+ * Copyright (c) 2019 Bruno Bentzen. All rights reserved.
+ * Released under the Apache License 2.0 (see "License");
+ * Author: Bruno Bentzen
+ */
+
+/* function type */
+
+def id {A : type 1}
+⊢ A → A :=
+λ x, x
+ 
+def id_iff_id {A : type 1}
+⊢ A ↔ A :=
+(id, id)
+
+def k_combinator {A B : type 1}
+⊢ A → B → A :=
+λ x y, x
+ 
+def s_combinator {A B C : type 1}
+⊢ (A → B → C) → (A → B) → (A → C) :=
+λ f g x, app (app f x) (app g x)
+ 
+def b_combinator {A B C : type 1}
+⊢ (B → C) → (A → B) → (A → C) :=
+λ f g x, app f (app g x)
+ 
+def arg_exg {A B C : type 1}
+⊢ (A → B → C) → (B → A → C) :=
+λ f y x, app (app f x) y
+ 
+def w_combinator {A B : type 1} 
+⊢ (A → A → B) → (A → B) :=
+λ f x, app (app f x) x
+ 
+def comp {A B C : type 1} 
+⊢ (A → B) → (B → C) → (A → C) :=
+λf g x, app g (app f x)
+ 
+/* Negation & Empty type */
+ 
+def not_false
+⊢ ¬ void :=
+λx, x
+ 
+def dni {A : type 1}
+⊢ A → ¬¬A :=
+λx f, app f x
+ 
+def tne {A : type 1}
+⊢ ¬¬¬A → ¬A :=
+λf x, app f (λnx, app nx x)
+ 
+def contrap {A B : type 1}
+⊢ (A → B) → (¬ B → ¬ A) :=
+λf g x, app g (app f x)
+ 
+def neg_distr {A B : type 1}
+⊢ ¬ (A → B) → (A → ¬ B) :=
+λf _ y, app f (λ_, y)
+ 
+def neg_ant {A B : type 1}
+⊢ (A → B) → (A → ¬ B) → ¬ A :=
+λ f g, (λ x, app (app g x) (app f x))
+ 
+def ex_falso {A B : type 1}
+⊢ A → ¬ A → B :=
+λ x f, abort (app f x)
+ 
+def absurd {A : type 1}
+⊢ void → A :=
+λ x, abort x
+  
+/* Dependent function type */
+ 
+def dcombinator_s {A : type 1} {B C : A → type 1}
+⊢ (Π (x : A) app B x → app C x) → (Π (x : A) app B x) → (Π (x : A) app C x) :=
+λ f g x, app (app f x) (app g x)
+ 
+theorem pi_comm {A : type 1} {B : A → A → type 1}
+⊢ (Π (x : A) (y : A) app (app B x) y) → Π (y : A) (x : A) (app (app B x) y) :=
+λ f y x, app (app f x) y
+ 
+theorem pi_fun_distr1 {A B : type 1} {C : A → type 1}
+⊢ (B → (Π (x : A) app C x)) → (Π (x : A) (B → app C x)) :=
+λ f y x, app (app f x) y
+ 
+theorem pi_fun_distr2 {A B : type 1} {C : A → type 1}
+⊢ (Π (x : A) (B → app C x)) → (B → (Π (x : A) app C x)) :=
+λ f y x, app (app f x) y
+ 
+theorem dprod_up_2_fst {A : type 1} {B C : A → type 1}
+⊢ (Π (x : A) app B x × app C x) → (Π (x : A) app B x) :=
+λ f x, fst (app f x)
+ 
+theorem dprod_up_2_snd {A : type 1} {B C : A → type 1}
+⊢ (Π (x : A) app B x × app C x) → (Π (x : A) app C x) :=
+λ f x, snd (app f x)
+ 
+theorem pi_prod_distr {A B : type 1} {C : A → type 1}
+⊢ (B × Π (x : A) app C x) → (Π (x : A) B × app C x) :=
+λ w x, (fst w, app (snd w) x)
+ 
+theorem pi_sum_distr {A : type 1} {B C : A → type 1}
+⊢ ((Π (x : A) app B x) + (Π (x : A) app C x)) → (Π (x : A) app B x + app C x) :=
+λ w x, case w (λ f, inl (app f x)) (λ g, inr (app g x))
+ 
+theorem pi_sum_distrb {A B : type 1} {C : A → type 1}
+⊢ (B + (Π (x : A) app C x)) → (Π (x : A) B + app C x) :=
+λ w x, case w (λ y, inl y) (λ f, inr (app f x))
+ 
+theorem dcase {A B : type 1} {C : (A + B) → type 1} (f : Π (x : A) app C (inl x)) (g : Π (y : B) app C (inr y))
+⊢ Π (x : A + B) app C x :=
+λ v, case v f g
+ 
+theorem dlet {C : unit → type 1} (c : app C ())
+⊢ Π (x : unit) app C x :=
+λ u, let u c
+ 
+theorem dif {C : bool → type 1} (c1 : app C true) (c2 : app C false)
+⊢ Π (x : bool) app C x :=
+λ b, if b c1 c2
+ 
+theorem dnatrec {C : nat → type 1} (c0 : app C 0) (cs : Π (n : nat) app C n → app C (succ n))
+⊢ Π (n : nat) app C n :=
+λ n, natrec n c0 cs
+ 
+/* Function application and extensionality */
+ 
+def ap {A B : type 1} (f : A → B) {a b : A} 
+⊢ path A a b → path B (app f a) (app f b) :=
+λp, <i> app f (p @ i)
+ 
+def apd {A : type 1} {B : A → type 1} (f : Π (x : A) app B x) {a b : A} (p : path A a b)
+⊢ pathd (λi, app B (p @ i)) (app f a) (app f b) :=
+<i> app f (p @ i)	
+ 
+def funext {A : type 1} {B : A → type 1} (f g : Π (x : A) app B x) 
+⊢ (Π (x : A) path (app B x) (app f x) (app g x)) → path (Π (x : A) app B x) f g :=
+λh, <i> (λ x, (app h x) @ i)
+ 

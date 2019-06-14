@@ -1,0 +1,73 @@
+/*
+ * Copyright (c) 2019 Bruno Bentzen. All rights reserved.
+ * Released under the Apache License 2.0 (see "License");
+ * Author: Bruno Bentzen
+ */
+ 
+open ./function.cubo
+ 
+/* Connections for paths */
+ 
+def meet {A : type 1} {a b : A} (p : path A a b) 
+⊢ pathd (λ i, path A a (p @ i)) (<_> a) p  := 
+<j> <i> app app 
+hfill (λ _, a) 
+ | i0 →  λ _, a 
+ | i1 → λ j, p @ j 
+j i  
+
+/*                a                 --> i
+       a ================== a     j | 
+       ||                   |       v
+       ||                   |
+       ||                   |
+     a ||    meet p j i     | p @ j
+       ||                   |
+       ||                   |
+       ||                   v
+       a -----------------> b
+                p @ i
+*/
+ 
+def join {A : type 1} {a b : A} (p : path A a b) 
+⊢ pathd (λ i, path A (p @ i) b) p (<_> b)  := 
+<j> <i> app app 
+hfill (λ i, p @ i) 
+ | i0 →  λ j, p @ j 
+ | i1 → λ _, b 
+j i 
+
+/*             p @ i                --> i
+       a -----------------> b     j | 
+       |                   ||       v
+       |                   ||
+       |                   ||
+ p @ j |    join p j i     || b
+       |                   ||
+       |                   ||
+       |                   ||
+       b ================== b
+                 b
+*/
+ 
+def both {A : type 1} {a b c : A} (p : path A a b) (q : path A b c) 
+⊢ pathd (λ i, path A (p @ i) (q @ i)) p q  := 
+<j> <i> app app 
+hfill (λ i, p @ i) 
+ | i0 →  λ j, p @ j 
+ | i1 → λ j, q @ j 
+j i 
+
+/*             p @ i                --> i
+       a -----------------> b     j | 
+       |                   ||       v
+       |                   ||
+       |                   ||
+ p @ j |    both p q j i   || q @ j
+       |                   ||
+       |                   ||
+       |                   ||
+       b ================== c
+                 q @ i
+*/
+
