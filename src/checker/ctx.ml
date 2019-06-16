@@ -20,5 +20,5 @@ let check global ctx =
                  "'\nIt occurs as a definition/theorem name but is declared as a local variable")
       else Ok (((x, eval (fst elab)), b) :: ctx'')
     | Error msg, _ | _ , Error msg -> 
-      Error (msg ^ "\n The specified context is invalid") in
+      Error (msg ^ "\nThe specified context is invalid") in
     helper (List.rev ctx)

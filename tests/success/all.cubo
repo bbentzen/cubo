@@ -5,6 +5,7 @@
  */
  
 open ./bool.cubo 
+open ./com.cubo 
 open ./connection.cubo 
 open ./function.cubo 
 open ./nat.cubo 

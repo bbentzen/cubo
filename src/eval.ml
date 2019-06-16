@@ -46,7 +46,7 @@ let rec has_reduction = function
 		begin 
 			match e with
 			| Ast.App (e1 , e2) ->
-				if e2 = Ast.Id x && not (free_var x e1) then 
+				if e2 = Ast.Id x && not (has_var x e1) then 
 					fst (has_reduction e1), true
 				else 
 					Ast.Abs (x, fst (has_reduction e)), snd (has_reduction e)

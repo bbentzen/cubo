@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2019 Bruno Bentzen. All rights reserved.
+ * Released under the Apache License 2.0 (see "License");
+ * Author: Bruno Bentzen
+ */
+
+/* Heterogeneous composition (of paths) */
+ 
+def fill {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : pathd (λ j, app A j) a c) (q : path (app A i0) a b) (r : path (app A i1) c d)
+⊢ I → Π (k : I) app A k := 
+λ i k, app app 
+hfill (λ i, coe i k (λ i, app A i) (p @ i))
+ | i0 →  (λ j, coe j k (λ i, app A i) (q @ j)) 
+ | i1 → (λ j, coe i1 k (λ i, app A i) (r @ j)) 
+i k 
+ 
+def com {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : pathd (λ j, app A j) a c) (q : path (app A i0) a b) (r : path (app A i1) c d)
+⊢ Π (k : I) app A k := 
+app (app app app fill p q r) i1
+
+
