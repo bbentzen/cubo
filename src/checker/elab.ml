@@ -747,7 +747,7 @@ let rec elaborate global ctx ty ph vars = function
               | Ok st ->
                 elaborate global ctx (Pathd(Abs(v1,st), ei0, ei1)) (ph+1) vars (Pabs (i, e))
               | Error (_, msg) ->
-                Error ("Failed to unity the types\n  " ^ unparse ty' ^ "\nand\n  " ^ unparse ty'' ^ "\n" ^ msg)
+                Error ("Failed to unify the types\n  " ^ unparse ty' ^ "\nand\n  " ^ unparse ty'' ^ "\n" ^ msg)
                 
               end
             | Error msg -> (* This case never occurs *)
@@ -1483,7 +1483,8 @@ and unify global ctx ph vars = function
       | Error msg ->
         Error ((At (e1, e2), At (e1', e2')), msg)
       end
-
+    
+    (*
     | At (e1, e2), e', ty | e', At (e1, e2), ty ->
       if eval e2 = I0() || eval e2 = I1() then
         let elab = elaborate global ctx ty ph vars (At (e1, e2)) in
@@ -1499,6 +1500,74 @@ and unify global ctx ph vars = function
         end
       else
       Error ((e, e'), "The terms\n  " ^ unparse (At (e1, e2)) ^ "\nand\n  " ^ unparse e' ^ "\nare not equal")
+    *)
+
+    | At (e, i), e', ty | e', At (e, i), ty ->
+
+      (* if i = ε we elaborate and unify e @ ε with e' : ty *)
+
+      if eval i = I0() || eval i = I1() then
+      
+        let elab = elaborate global ctx ty ph vars (At (e, eval i)) in
+        begin match elab with
+        | Ok (ei, ety) ->
+          let u1 = unify global ctx ph vars (ei, e', ety) in
+          begin match u1 with
+          | Ok se -> Ok se
+          | Error msg -> Error msg
+          end
+        | Error msg ->
+          Error ((At (e, eval i), e'), msg)
+        end
+
+      else
+
+      (* if i is a variable, we elaborate and unify e @ ε with e' [ε/i] : ty [ε/i] *)
+
+        begin
+          let h1 = Hole.generate ty ph [] in
+          
+          begin 
+            match i with
+            | Id x ->
+              
+              let elabt0 = elaborate global ctx h1 ph vars (eval (subst x (I0()) ty)) in
+              let elabt1 = elaborate global ctx h1 ph vars (eval (subst x (I1()) ty)) in
+              begin
+                match elabt0, elabt1 with
+                | Ok (ty0, _), Ok (ty1, _) ->
+
+                  let elab0 = elaborate global ctx ty0 ph vars (At (eval (subst x (I0()) e), I0())) in
+                  let elab1 = elaborate global ctx ty1 ph vars (At (eval (subst x (I1()) e), I1())) in
+                  let elab0' = elaborate global ctx ty0 ph vars (eval (subst x (I0()) e')) in
+                  let elab1' = elaborate global ctx ty1 ph vars (eval (subst x (I1()) e')) in
+
+                  begin
+                    match elab0, elab1, elab0', elab1' with
+                    | Ok (e0, _), Ok (e1, _), Ok (e0', _), Ok (e1', _) ->
+
+                      let ui0 = unify global ctx ph vars (e0, e0', ty0) in
+                      let ui1 = unify global ctx ph vars (e1, e1', ty1) in
+                      
+                      begin 
+                        match ui0, ui1 with
+                        | Ok _, Ok _ -> Ok (App (e, i))
+                        | Error msg, _ -> 
+                          Error ((e0, e0'), "Don't know how to unify\n  " ^ unparse e0 ^ "\nwith\n  " ^ unparse e0' ^ "\n" ^ unparse (eval e0') ^ "\n" ^ snd msg ) 
+                        | _, Error msg -> 
+                          Error ((e1, e1'), "Don't know how to unify\n  " ^ unparse e1 ^ "\nwith\n  " ^ unparse e1' ^ "\n" ^ snd msg)
+                      end
+                    | Error msg, _, _, _ | _, Error msg, _, _ | _, _, Error msg, _ |  _, _, _, Error msg ->
+                      Error ((At (e, i), e'), msg)
+                  end
+
+                | Error msg, _ | _, Error msg -> Error ((At (e, i), e'), msg) (* This case is impossible *)
+              end
+            | _ ->
+              Error ((e, e'), "Don't know how to unify\n  " ^ unparse (App (e, i)) ^ "\nwith\n  " ^ unparse e')
+          end
+          
+        end
 
     | Let (e1, e2), Let (e1', e2'), ty ->
       let u1 = unify global ctx ph vars (e1, e1', Unit()) in

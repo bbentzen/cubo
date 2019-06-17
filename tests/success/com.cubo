@@ -10,12 +10,43 @@ def fill {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : pathd (λ j, 
 ⊢ I → Π (k : I) app A k := 
 λ i k, app app 
 hfill (λ i, coe i k (λ i, app A i) (p @ i))
- | i0 →  (λ j, coe j k (λ i, app A i) (q @ j)) 
+ | i0 →  (λ j, coe i0 k (λ i, app A i) (q @ j)) 
  | i1 → (λ j, coe i1 k (λ i, app A i) (r @ j)) 
 i k 
  
 def com {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : pathd (λ j, app A j) a c) (q : path (app A i0) a b) (r : path (app A i1) c d)
 ⊢ Π (k : I) app A k := 
 app (app app app fill p q r) i1
+ 
+/* Coercion structure */
+ 
+def function_coe (A : I → type 1) (B : Π (i : I) app A i → type 1) (f : Π (x : app A i0) app app B i0 x) 
+⊢ path (Π (x : app A i1) app app B i1 x) 
+  (coe i0 i1 (λ i, Π (x : app A i) app app B i x) f)
+  (λ a, coe i0 i1 (λ i, app app B i (coe i1 i (λ i, app A i) a)) app f (coe i1 i0 (λ i, app A i) a)) :=
+<_> coe i0 i1 (λ i, Π (x : app A i) app app B i x) f
+ 
+def product_coe (A : I → type 1) (B : Π (i : I) app A i → type 1) (w : Σ (x : app A i0) app app B i0 x) 
+⊢ path (Σ (x : app A i1) app app B i1 x) 
+  (coe i0 i1 (λ i, Σ (x : app A i) app app B i x) w)
+  (coe i0 i1 (λ i, app A i) fst w, coe i0 i1 (λ i, app app B i (coe i0 i (λ i, app A i) fst w)) snd w) :=
+<_> coe i0 i1 (λ i, Σ (x : app A i) app app B i x) w
+ 
+def path_com {A : I → type 1} {a : app A i0} {b : app A i1} (p : pathd (λ i, app A i) a b) (k : I)
+⊢ app A k := 
+app app 
+hfill (λ i, coe i k (λ i, app A i) (p @ i))
+ | i0 →  (λ _, coe i0 k (λ i, app A i) (p @ i0)) 
+ | i1 → (λ _, coe i1 k (λ i, app A i) (p @ i1)) 
+i1 k 
 
-
+def path_coe (A : I → I → type 1) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (λ i, app app A i0 i) a b) 
+⊢ pathd (λ i, app app A i1 i) 
+  coe i0 i1 (λ i, app app A i i0) a 
+  coe i0 i1 (λ i, app app A i i1) b :=
+coe i0 i1 
+ (λ j, pathd (λ i, app app A j i) 
+ (coe i0 j (λ i, app app A i i0) a) 
+ (coe i0 j (λ i, app app A i i1) b) 
+) p
+ 

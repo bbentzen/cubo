@@ -13,6 +13,15 @@ open Substitution
 
 let rec has_reduction = function
 
+	| Ast.Coe (i, j, Ast.Abs(k, Pi(x, ty1, ty2)), e) ->	
+		let v1 = fresh_var (Pi(x, ty1, ty2)) e 2 in
+		let c x = Ast.Coe (j, x, Ast.Abs(k, ty1), Id v1) in
+		Ast.Abs(v1, Ast.Coe (i, j, Ast.Abs(k, subst x (c (Id k)) ty2), App(e, c i))), true
+	
+	| Ast.Coe (i, j, Ast.Abs(k, Sigma(x, ty1, ty2)), e) ->	
+		let c x = Ast.Coe (i, x, Ast.Abs(k, ty1), Ast.Fst e) in
+		Ast.Pair(c j, Ast.Coe (i, j, Ast.Abs(k, subst x (c (Id k)) ty2), Snd e)), true
+
 	| Ast.Coe (i, j, e1, e2) ->
 		let coe' = 
 			Ast.Coe (fst (has_reduction i), fst (has_reduction j), fst (has_reduction e1), fst (has_reduction e2)), 
@@ -31,7 +40,7 @@ let rec has_reduction = function
 				| _ -> 
 					coe'
 		end
-
+	
 	| Ast.Hfill (e, e1, e2) -> 
 		Ast.Hfill (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
 		snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2)

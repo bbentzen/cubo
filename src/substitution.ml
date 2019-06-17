@@ -32,7 +32,7 @@ let rec has_var x = function
 
 let fresh_var_int e = 
 	let rec helper i e =
-		if has_var ("v" ^ string_of_int (i+1)) e = true then 
+		if has_var ("v" ^ string_of_int (i+1)) e then 
 			helper (i+1) e 
 		else i 
 	in	(* not free_var *)

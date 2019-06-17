@@ -1,3 +1,10 @@
+/** iterated pis **/
+
+def dp22m {A : type 1} {B : A → type 1} {w1 w1' w2 w2' : Σ (x : A) app B x} (p : path (Σ (x : A) app B x) w1 w2) (q : path (Σ (x : A) app B x) w1 w1) (r : path (Σ (x : A) app B x) w2 w2)
+⊢ Π (j i : I) A := 
+λ i, coe i0 j (λ x, app B (app app (hfill (λ i, fst (p @ i)) | i0 →  λ j, fst (q @ j) | i1 → λ j, fst (r @ j)) x i)) (snd (p @ i)) 
+
+
 /** this is correctly rejected, but error message could be improved **/
 
 def com {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : pathd (λ j, app A j) a c) (q : path (app A i0) a b) (r : path (app A i1) c d) 
