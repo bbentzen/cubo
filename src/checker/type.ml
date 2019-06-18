@@ -12,7 +12,7 @@ let check global ctx ty =
   match ty with
   | Hole _ -> Ok (Hole ("0",[]), ty)
   | _ ->
-    let s = ("Failed to prove that \n  " ^ unparse (Eval.eval ty) ^ "\nis a type") in
+    let s = ("Failed to prove that \n  " ^ Pretty.print (Eval.eval ty) ^ "\nis a type") in
     match Elab.elaborate global ctx (Hole ("0",[])) 1 0 (Eval.reduce ty) with
     | Ok elab -> 
       begin match snd elab with

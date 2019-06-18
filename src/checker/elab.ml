@@ -16,11 +16,11 @@ let rec print ctx =
 	match (List.rev ctx) with
 	| [] -> "" 
 	| ((id, ty), _) :: ctx' -> 
-		" " ^ id ^ " : " ^ unparse ty ^ "\n" ^ print ctx'
+		" " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ print ctx'
 
 let goal_msg ctx e ty =
-  "when checking that\n  " ^ unparse e ^ "\nhas the expected type\n" ^ print ctx ^ 
-  "-------------------------------------------\n ⊢ " ^ unparse ty
+  "when checking that\n  " ^ Pretty.print e ^ "\nhas the expected type\n" ^ print ctx ^ 
+  "-------------------------------------------\n ⊢ " ^ Pretty.print ty
 
 (* Checks whether the type of a given expression is the given type *)
 
@@ -43,8 +43,8 @@ let rec elaborate global ctx ty ph vars = function
           begin match u with
           | Ok s -> Ok (Id x, s) 
           | Error (_, msg) ->
-            Error ("The variable " ^ x ^ " has type\n   " ^ unparse (eval ty') ^ 
-                  "\nbut is expected to have type\n  " ^ unparse ty ^ "\n" ^ msg)
+            Error ("The variable " ^ x ^ " has type\n   " ^ Pretty.print (eval ty') ^ 
+                  "\nbut is expected to have type\n  " ^ Pretty.print ty ^ "\n" ^ msg)
           end
         | Error msg -> (* This case is impossible *)
           Error msg
@@ -59,7 +59,7 @@ let rec elaborate global ctx ty ph vars = function
             begin match u with
             | Ok s -> Ok (body, s)
             | _ -> 
-              Error (x ^ " has type \n  " ^ unparse ty' ^ "\nbut is expected to have type\n  " ^ unparse ty)
+              Error (x ^ " has type \n  " ^ Pretty.print ty' ^ "\nbut is expected to have type\n  " ^ Pretty.print ty)
             end
           | Error msg -> (* This case is impossible *)
             Error msg
@@ -76,7 +76,7 @@ let rec elaborate global ctx ty ph vars = function
       Ok (I0(), Int())
     | Hole _ -> 
       Ok (I0(), Int())
-    | _ -> Error ("Type mismatch when checking that the term i0 of type I has type " ^ unparse ty)
+    | _ -> Error ("Type mismatch when checking that the term i0 of type I has type " ^ Pretty.print ty)
   end
   
   | I1() ->
@@ -85,7 +85,7 @@ let rec elaborate global ctx ty ph vars = function
       Ok (I1(), Int())
     | Hole _ -> 
       Ok (I1(), Int())
-    | _ -> Error ("Type mismatch when checking that the term i1 of type I has type " ^ unparse ty)
+    | _ -> Error ("Type mismatch when checking that the term i1 of type I has type " ^ Pretty.print ty)
     end
 
   | Abs (x, e) -> 
@@ -109,7 +109,7 @@ let rec elaborate global ctx ty ph vars = function
       let h2 = Hole.generate ty (ph+1) [] in
       elaborate global ctx (Pi(x, h1, h2)) (ph+2) vars (Abs (x, e))
     | _ -> 
-      Error ("The term\n  λ " ^ x ^ ", " ^ unparse e ^ "\nhas type\n  " ^ unparse ty ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
+      Error ("The term\n  λ " ^ x ^ ", " ^ Pretty.print e ^ "\nhas type\n  " ^ Pretty.print ty ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
     end
   
   | App (e1, e2) ->
@@ -125,11 +125,11 @@ let rec elaborate global ctx ty ph vars = function
         | Ok (e1', Pi(x, _, ty')) ->
           Ok (App (e1', e2'), subst x e2 ty')
         | Ok _ -> 
-          Error ("The term\n  " ^ unparse e1 ^ 
-                  "\nis expected to have type\n " ^ unparse ty1') 
+          Error ("The term\n  " ^ Pretty.print e1 ^ 
+                  "\nis expected to have type\n " ^ Pretty.print ty1') 
         | Error msg -> 
-          Error ("The term\n  " ^ unparse e1 ^ 
-                "\nis expected to have type\n  " ^ unparse ty1' ^ "\n" ^ msg)
+          Error ("The term\n  " ^ Pretty.print e1 ^ 
+                "\nis expected to have type\n  " ^ Pretty.print ty1' ^ "\n" ^ msg)
         end
       in
       if e2 = e2' then
@@ -166,7 +166,7 @@ let rec elaborate global ctx ty ph vars = function
       let h2 = Hole.generate ty 1 [] in
       elaborate global ctx (Sigma(v1, h1, h2)) (ph+2) (vars+1) (Pair (e1, e2))
     | _ ->
-      Error ("Type mismatch when checking that the term (" ^ unparse e1 ^ ", " ^ unparse e2 ^ ") of type Σ (v? : ?0?) ?1? has type " ^ unparse ty)
+      Error ("Type mismatch when checking that the term (" ^ Pretty.print e1 ^ ", " ^ Pretty.print e2 ^ ") of type Σ (v? : ?0?) ?1? has type " ^ Pretty.print ty)
     end
     
   | Ast.Fst e ->
@@ -182,15 +182,15 @@ let rec elaborate global ctx ty ph vars = function
         | Ok _ ->
           Ok (Fst e', ty') 
         | Error (_, msg) ->
-          Error ("Don't know how to unify\n  " ^ unparse ty ^ "\nwith\n  " ^ unparse ty' ^ "\n" ^ msg)
+          Error ("Don't know how to unify\n  " ^ Pretty.print ty ^ "\nwith\n  " ^ Pretty.print ty' ^ "\n" ^ msg)
         end
       | Error msg -> (* This case is impossible *)
         Error msg
       end
     | Ok (e', ty') -> 
-      Error ("The term\n  " ^ unparse e' ^ "\nhas type\n  " ^ unparse ty' ^ "\nbut is expected to have type\n  Σ (v0 : ?0?) ?1?")
+      Error ("The term\n  " ^ Pretty.print e' ^ "\nhas type\n  " ^ Pretty.print ty' ^ "\nbut is expected to have type\n  Σ (v0 : ?0?) ?1?")
     | Error msg ->
-      Error ("The term\n  " ^ unparse e ^ "\nis expected to have type\n  Σ (v0 : ?0?) ?1?" ^ "\n" ^ msg)
+      Error ("The term\n  " ^ Pretty.print e ^ "\nis expected to have type\n  Σ (v0 : ?0?) ?1?" ^ "\n" ^ msg)
     end
 
   | Snd e ->
@@ -207,16 +207,16 @@ let rec elaborate global ctx ty ph vars = function
         | Ok _ ->
           Ok (Snd e', ty')
         | Error (_, msg) ->
-          Error ("Don't know how to unify\n  " ^ unparse ty ^ "\nwith\n  " ^ unparse ty' ^ "\n" ^ msg)
+          Error ("Don't know how to unify\n  " ^ Pretty.print ty ^ "\nwith\n  " ^ Pretty.print ty' ^ "\n" ^ msg)
         end
       | Error msg -> (* This case is impossible *)
         Error msg
       end
       
     | Ok (e', ty') -> 
-      Error ("The term\n  " ^ unparse e' ^ "\nhas type\n  " ^ unparse ty' ^ "\nbut is expected to have type\n  Σ (v0 : ?0?) ?1?")
+      Error ("The term\n  " ^ Pretty.print e' ^ "\nhas type\n  " ^ Pretty.print ty' ^ "\nbut is expected to have type\n  Σ (v0 : ?0?) ?1?")
     | Error msg ->
-      Error ("The term\n  " ^ unparse e ^ "\nis expected to have type\n  Σ (v0 : ?0?) ?1?" ^ "\n" ^ msg)
+      Error ("The term\n  " ^ Pretty.print e ^ "\nis expected to have type\n  Σ (v0 : ?0?) ?1?" ^ "\n" ^ msg)
     end
   
   | Ast.Inl e ->
@@ -232,7 +232,7 @@ let rec elaborate global ctx ty ph vars = function
       let h2 = Hole.generate ty 1 [] in
       elaborate global ctx (Sum(h1, h2)) (ph+2) vars (Inl e)
     | _ ->
-      Error ("Type mismatch when checking that the term inl " ^ unparse e ^ " of type ?0? + ?1? has type " ^ unparse ty)
+      Error ("Type mismatch when checking that the term inl " ^ Pretty.print e ^ " of type ?0? + ?1? has type " ^ Pretty.print ty)
     end
 
   | Ast.Inr e -> 
@@ -248,7 +248,7 @@ let rec elaborate global ctx ty ph vars = function
       let h2 = Hole.generate ty 1 [] in
       elaborate global ctx (Sum(h1, h2)) (ph+2) vars (Inr e)
     | _ -> 
-      Error ("Type mismatch when checking that the term inr " ^ unparse e ^ " of type ?0? + ?1? has type " ^ unparse ty)
+      Error ("Type mismatch when checking that the term inr " ^ Pretty.print e ^ " of type ?0? + ?1? has type " ^ Pretty.print ty)
     end
   
   | Case (e, e1, e2) ->
@@ -284,13 +284,13 @@ let rec elaborate global ctx ty ph vars = function
                   let st' = hfullsubst h1 e st in
                   Ok (Case(e', e1', e2'), st')
                 | Ok _, Ok _, _ ->
-                  Error ("Failed to unify\n  " ^ unparse tyl' ^ "\nwith\n  " ^ unparse tyr')
+                  Error ("Failed to unify\n  " ^ Pretty.print tyl' ^ "\nwith\n  " ^ Pretty.print tyr')
                 | Ok _, _, _ ->
-                  Error ("The term\n  " ^ unparse e2' ^ "\nhas type\n  " ^ unparse (Ast.Pi(y, ty2', tyr)) ^ 
-                  "\nbut is expected to have type\n  Π (" ^ y ^ " : " ^ unparse ty2 ^ ") ?1?")
+                  Error ("The term\n  " ^ Pretty.print e2' ^ "\nhas type\n  " ^ Pretty.print (Ast.Pi(y, ty2', tyr)) ^ 
+                  "\nbut is expected to have type\n  Π (" ^ y ^ " : " ^ Pretty.print ty2 ^ ") ?1?")
                 | _ ->
-                  Error ("The term\n  " ^ unparse e1' ^ "\nhas type\n  " ^ unparse (Ast.Pi(x, ty1', tyl)) ^ 
-                        "\nbut is expected to have type\n  Π (" ^ x ^ " : " ^ unparse ty1 ^ ") ?1?")
+                  Error ("The term\n  " ^ Pretty.print e1' ^ "\nhas type\n  " ^ Pretty.print (Ast.Pi(x, ty1', tyl)) ^ 
+                        "\nbut is expected to have type\n  Π (" ^ x ^ " : " ^ Pretty.print ty1 ^ ") ?1?")
               end
             end
           | Error msg -> (* This case is impossible *)
@@ -298,9 +298,9 @@ let rec elaborate global ctx ty ph vars = function
           end
 
         | Ok (e1', ty'), Ok (_, Pi(_,_,_)) -> 
-          Error ("The term\n  " ^ unparse e1' ^ "\nhas type\n  " ^ unparse ty' ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
+          Error ("The term\n  " ^ Pretty.print e1' ^ "\nhas type\n  " ^ Pretty.print ty' ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
         | Ok _, Ok (e2', ty') -> 
-          Error ("The term\n  " ^ unparse e2' ^ "\nhas type\n  " ^ unparse ty' ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
+          Error ("The term\n  " ^ Pretty.print e2' ^ "\nhas type\n  " ^ Pretty.print ty' ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
         | Error msg, _ | _, Error msg -> Error msg
         end
       | _ -> 
@@ -313,7 +313,7 @@ let rec elaborate global ctx ty ph vars = function
         | Error msg, _ | _, Error msg -> Error msg
         end
       end
-    | Ok (e', ty') -> Error ("Type mismatch when checking that the term " ^ unparse e' ^ " of type " ^ unparse ty' ^ "has type ?0? + ?1?")
+    | Ok (e', ty') -> Error ("Type mismatch when checking that the term " ^ Pretty.print e' ^ " of type " ^ Pretty.print ty' ^ "has type ?0? + ?1?")
     | Error msg -> Error msg
     end
 
@@ -324,7 +324,7 @@ let rec elaborate global ctx ty ph vars = function
     | Hole _ -> 
       Ok (Zero(), Nat())
     | _ -> 
-      Error ("Type mismatch when checking that the term 0 of type nat has type " ^ unparse ty)
+      Error ("Type mismatch when checking that the term 0 of type nat has type " ^ Pretty.print ty)
      end
 
   | Ast.Succ e ->
@@ -336,7 +336,7 @@ let rec elaborate global ctx ty ph vars = function
       Ok (Succ e', Nat())
     | Error msg, _ -> Error msg
     | _, _ -> 
-      Error ("Type mismatch when checking that the term succ " ^ unparse e ^ " of type nat has type " ^ unparse ty)
+      Error ("Type mismatch when checking that the term succ " ^ Pretty.print e ^ " of type nat has type " ^ Pretty.print ty)
     end
 
   | Ast.Natrec (e, e1, e2) ->
@@ -361,10 +361,10 @@ let rec elaborate global ctx ty ph vars = function
               | Ok _ ->
                 Ok (Natrec(e', e1', e2'), ty')
               | Error (_, msg) ->
-                Error ("Don't know how to unify\n  " ^ unparse nat ^ "\nwith\n  nat\n" ^ msg)
+                Error ("Don't know how to unify\n  " ^ Pretty.print nat ^ "\nwith\n  nat\n" ^ msg)
               end
             | Ok (e2', ty') -> 
-              Error ("The term\n  " ^ unparse e2' ^ "\nhas type\n  " ^ unparse ty' ^ 
+              Error ("The term\n  " ^ Pretty.print e2' ^ "\nhas type\n  " ^ Pretty.print ty' ^ 
                   "\nbut is expected to have type\n  Π (v? : nat) ?0? → ?1?")  
             | Error msg -> 
               Error msg
@@ -395,7 +395,7 @@ let rec elaborate global ctx ty ph vars = function
     | Hole _ -> 
       Ok (True(), Bool()) 
     | _ -> 
-      Error ("Type mismatch when checking that the term true of type bool has type " ^ unparse ty)
+      Error ("Type mismatch when checking that the term true of type bool has type " ^ Pretty.print ty)
     end
   
     | Ast.False() ->
@@ -405,7 +405,7 @@ let rec elaborate global ctx ty ph vars = function
     | Hole _ -> 
       Ok (False(), Bool())
     | _ -> 
-      Error ("Type mismatch when checking that the term false of type bool has type " ^ unparse ty)
+      Error ("Type mismatch when checking that the term false of type bool has type " ^ Pretty.print ty)
     end
     
   | Ast.If (e, e1, e2) ->
@@ -441,8 +441,8 @@ let rec elaborate global ctx ty ph vars = function
                 | Ok _, Ok _ ->
                   Ok (If (e', e1', e2'), fullsubst h1 e' sty)
                 | _ -> 
-                  Error ("Failed to unify the types\n  " ^ unparse (fullsubst (Ast.True()) h1 ty1') ^ 
-                        "\nand\n  " ^ unparse (fullsubst (Ast.False()) h1 ty2'))
+                  Error ("Failed to unify the types\n  " ^ Pretty.print (fullsubst (Ast.True()) h1 ty1') ^ 
+                        "\nand\n  " ^ Pretty.print (fullsubst (Ast.False()) h1 ty2'))
                 end
               | _ ->
                 let tyt' = fullsubst (Ast.False()) h1 ty1' in
@@ -452,8 +452,8 @@ let rec elaborate global ctx ty ph vars = function
                 begin match elabt, elabf with
                 | Ok _, _ | _, Ok _ -> Ok (If (e', e1', e2'), ty)
                 | _ ->
-                  Error ("Failed to unify the types\n  " ^ unparse (fullsubst (Ast.True()) h1 ty1') ^ 
-                        "\nand\n  " ^ unparse (fullsubst (Ast.False()) h1 ty2'))
+                  Error ("Failed to unify the types\n  " ^ Pretty.print (fullsubst (Ast.True()) h1 ty1') ^ 
+                        "\nand\n  " ^ Pretty.print (fullsubst (Ast.False()) h1 ty2'))
                 end
               end
             | Error msg -> (* This case is impossible *)
@@ -475,7 +475,7 @@ let rec elaborate global ctx ty ph vars = function
     | Hole _ -> 
       Ok (Star(), Unit())
     | _ -> 
-      Error ("Type mismatch when checking that the term () of type unit has type " ^ unparse ty)
+      Error ("Type mismatch when checking that the term () of type unit has type " ^ Pretty.print ty)
     end
   
   | Ast.Let (e1, e2) ->
@@ -536,7 +536,7 @@ let rec elaborate global ctx ty ph vars = function
                 Error msg
               end
             | Error msg, _ ->
-              Error ("Failed coercion because\n  " ^ unparse e ^ "\ndoes not have type\n  " ^ unparse tyi ^ "\n" ^ msg)
+              Error ("The coercion failed because\n  " ^ Pretty.print e ^ "\ndoes not have type\n  " ^ Pretty.print tyi ^ "\n" ^ msg)
             | _, Error msg ->
               Error msg
           end
@@ -580,8 +580,8 @@ let rec elaborate global ctx ty ph vars = function
 
           end
         else
-          Error ("The homogeneous filling\n  " ^ unparse (Hfill(e, e1, e2)) ^ 
-            "\nhas type\n  " ^ unparse int ^ "→  " ^ unparse int' ^ "→ " ^ unparse ty' ^
+          Error ("The homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
+            "\nhas type\n  " ^ Pretty.print int ^ "→  " ^ Pretty.print int' ^ "→ " ^ Pretty.print ty' ^
             "\nbut is expected to have type\n  I → I → ?0?")
       
       | Hole (_, _) | Pi(_, _, Hole (_, _)) -> 
@@ -604,18 +604,23 @@ let rec elaborate global ctx ty ph vars = function
                     | Ok _, Ok _ ->
                       Ok (Hfill(e, e1, e2), Ast.Pi("v?", Int(), Pi("v?", Int(), ty')))
                     | Error (_, msg), _ | _, Error (_, msg) -> 
-                      Error msg
+                      Error ("Failed composition, endpoints do not match:\n" ^ msg)
                   end
                 end
 
-              | Error msg, _, _ | _, Error msg, _ | _, _, Error msg ->
-                Error msg
+              | Error msg, _, _ ->
+                Error ("Error when checking that the line\n  " ^ Pretty.print (eval (Ast.App(e, Ast.I1()))) ^ "\nhas type\n  " ^ Pretty.print ty' ^ 
+                  "\nin the homogeneous filling\n  hfill (" ^ Pretty.print e ^ 
+                  ")\n    | i0 → " ^ Pretty.print e1 ^
+                   "\n    | i1 → " ^ Pretty.print e2 ^ "\n" ^ msg)
+              | _, Error msg, _ | _, _, Error msg ->
+                Error ("Failed composition: " ^ msg)
             end
           | Error msg -> Error msg
         end
       | e ->
-        Error ("The homogeneous filling\n  " ^ unparse (Hfill(e, e1, e2)) ^ 
-        "\nhas type\n  " ^ unparse e ^ "\nbut is expected to have type\n  I → I → ?0?")
+        Error ("The homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
+        "\nhas type\n  " ^ Pretty.print e ^ "\nbut is expected to have type\n  I → I → ?0?")
       end
   
   | Pabs (i, e) ->
@@ -652,11 +657,11 @@ let rec elaborate global ctx ty ph vars = function
           end
         | _ , Ok _ ->
           Error ("Failed to unify\n  " ^
-                  unparse e1 ^ "\nwith\n  " ^ unparse ei0 ^ "≡ " ^ unparse e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
+                  Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
                   goal_msg ctx (Pabs (i, e)) ty) 
         | _ ->
           Error ("Failed to unify\n  " ^ 
-                  unparse e2 ^ "\nwith\n  " ^ unparse ei1 ^ "≡ " ^ unparse e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
+                  Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
                   goal_msg ctx (Pabs (i, e)) ty)
         end
       | Error msg, _, _| _, Error msg, _ | _, _, Error msg -> Error msg
@@ -685,17 +690,17 @@ let rec elaborate global ctx ty ph vars = function
                 Ok (Pabs (i, e'), Pathd (ty1, ei0, ei1))
               | Error (_, msg) ->
                 Error ("Failed to unify\n  " ^ 
-                unparse e1 ^ "\nwith\n  " ^ unparse ei0 ^ "≡ " ^ unparse e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
+                Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
                 msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
               end
             | _ -> 
               Error ("Failed to unify\n  " ^ 
-                      unparse e1 ^ "\nwith\n  " ^ unparse ei0 ^ "≡ " ^ unparse e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
+                      Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
                       msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty)
             end
           | _ ->
             Error ("Failed to unify\n  " ^ 
-                  unparse e1 ^ "\nwith\n  " ^ unparse ei0 ^ "≡ " ^ unparse e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
+                  Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
                   msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty)
           end
         | _ , Error ((s,s'), msg) ->
@@ -710,18 +715,18 @@ let rec elaborate global ctx ty ph vars = function
               | Ok _ -> Ok (Pabs (i, e'), Pathd (ty1, ei0, ei1))
               | Error (_, msg) ->
                 Error ("Failed to unify\n  " ^ 
-                unparse e2 ^ "\nwith\n  " ^ unparse ei1 ^ "≡ " ^ unparse e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
+                Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
                 msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
               end
 
             | _ -> 
               Error ("Failed to unify\n  " ^ 
-                      unparse e2 ^ "\nwith\n  " ^ unparse ei1 ^ "≡ " ^ unparse e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
+                      Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
                       msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
             end
           | _ ->
             Error ("Failed to unify\n  " ^
-                  unparse e2 ^ "\nwith\n  " ^ unparse ei1 ^ "≡ " ^ unparse e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
+                  Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
                   msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
           end
         end
@@ -747,7 +752,7 @@ let rec elaborate global ctx ty ph vars = function
               | Ok st ->
                 elaborate global ctx (Pathd(Abs(v1,st), ei0, ei1)) (ph+1) vars (Pabs (i, e))
               | Error (_, msg) ->
-                Error ("Failed to unify the types\n  " ^ unparse ty' ^ "\nand\n  " ^ unparse ty'' ^ "\n" ^ msg)
+                Error ("Failed to unify the types\n  " ^ Pretty.print ty' ^ "\nand\n  " ^ Pretty.print ty'' ^ "\n" ^ msg)
                 
               end
             | Error msg -> (* This case never occurs *)
@@ -756,9 +761,9 @@ let rec elaborate global ctx ty ph vars = function
         | Error msg, _ | _, Error msg -> Error msg
       end
     | Ok (ty', _) -> 
-      Error ("The expression\n  <" ^ i ^ "> " ^ unparse e ^ "\nis expected to have type\n  pathd ?0? ?1? ?2?\nbut has type\n  " ^ unparse ty')
+      Error ("The expression\n  <" ^ i ^ "> " ^ Pretty.print e ^ "\nis expected to have type\n  pathd ?0? ?1? ?2?\nbut has type\n  " ^ Pretty.print ty')
     | Error msg -> 
-      Error ("Failed to prove that\n  " ^ unparse (eval ty) ^ "\nis a type\n" ^ msg)
+      Error ("Failed to prove that\n  " ^ Pretty.print (eval ty) ^ "\nis a type\n" ^ msg)
     end
   
   | At (e1, e2) ->
@@ -801,7 +806,7 @@ let rec elaborate global ctx ty ph vars = function
                   match u with
                   | Ok st -> Ok (At (e1', e2'), st)
                   | _ -> 
-                    Error ("Failed to unify\n  " ^ unparse ty2' ^ "\nwith\n  " ^ unparse ty)
+                    Error ("Failed to unify\n  " ^ Pretty.print ty2' ^ "\nwith\n  " ^ Pretty.print ty)
                 end
               | Error msg -> (* This case is impossible *)
                 Error msg
@@ -818,7 +823,7 @@ let rec elaborate global ctx ty ph vars = function
                   begin 
                     match u, e2 = i with 
                     | Ok st, true -> Ok (At (e1', e2'), App(st, i))
-                    | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty)
+                    | _ -> Error ("Failed to unify\n  " ^ Pretty.print ty' ^ "\nwith\n  " ^ Pretty.print ty)
                   end
                 | Error msg -> (* This case is impossible *)
                   Error msg
@@ -832,7 +837,7 @@ let rec elaborate global ctx ty ph vars = function
                   begin
                     match u with
                     | Ok st -> Ok (At (e1', e2'), st) 
-                    | _ -> Error ("Failed to unify\n  " ^ unparse ty' ^ "\nwith\n  " ^ unparse ty)
+                    | _ -> Error ("Failed to unify\n  " ^ Pretty.print ty' ^ "\nwith\n  " ^ Pretty.print ty)
                   end
               | Error msg -> (* This case is impossible *)
                 Error msg
@@ -840,8 +845,8 @@ let rec elaborate global ctx ty ph vars = function
             end
           end
       | _ -> 
-        Error ("Type mismatch when checking that\n  " ^ unparse e1' ^ 
-        "\nof type\n  " ^ unparse ty1' ^ "\nhas type\n  pathd ?0? ?1? ?2? ")
+        Error ("Type mismatch when checking that\n  " ^ Pretty.print e1' ^ 
+        "\nof type\n  " ^ Pretty.print ty1' ^ "\nhas type\n  pathd ?0? ?1? ?2? ")
       end
     | Error msg, _ | _, Error msg -> Error msg
     end
@@ -857,7 +862,7 @@ let rec elaborate global ctx ty ph vars = function
         if m >= n1 && m >= n2 then 
           Ok (Pi(x, ty1', ty2'), Type m) 
         else 
-          Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ 
+          Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
                 "\nof type \n  type (max(" ^ string_of_int n1 ^ ", " ^ string_of_int n2 ^ "))\n has type\n  " ^ string_of_int m)
       | Hole _ -> 
         if n1 > n2 then 
@@ -865,7 +870,7 @@ let rec elaborate global ctx ty ph vars = function
         else 
           Ok (Pi(x, ty1', ty2'), Type n2)
       | _ ->
-        Error ("Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (ty1', Type n), Ok (Hole (k,l), _) -> 
       begin match ty with
@@ -873,12 +878,12 @@ let rec elaborate global ctx ty ph vars = function
         if m >= n then 
           Ok (Pi(x, ty1', Hole (k,l)), Type m) 
         else 
-          Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ 
+          Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
                 "\nof type \n  type " ^ string_of_int n ^ "))\n has type\n  " ^ string_of_int m)
       | Hole _ -> 
         Ok (Pi(x, ty1', Hole (k,l)), Type n)
       | _ ->
-        Error ("Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (Hole (k,l), _), Ok (ty2', Type n) -> 
       begin match ty with
@@ -886,12 +891,12 @@ let rec elaborate global ctx ty ph vars = function
         if m >= n then 
           Ok (Pi(x, Hole (k,l), ty2'), Type m) 
         else 
-          Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ 
+          Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
                 "\nof type \n  type " ^ string_of_int n ^ "))\n has type\n  " ^ string_of_int m)
       | Hole _ -> 
         Ok (Pi(x, Hole (k,l), ty2'), Type n)
       | _ ->
-        Error ("Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (Hole (k1,l1), _), Ok (Hole (k2,l2), _) ->
       begin match ty with
@@ -900,12 +905,12 @@ let rec elaborate global ctx ty ph vars = function
       | Hole (k, l) -> 
           Ok (Pi(x, Hole (k1,l1), Hole (k2,l2)), Hole(k, l))
       | _ ->
-        Error ("Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     
     | Ok (_, Type _), Error msg -> 
-      Error ("Failed to check that\n  " ^ unparse (eval ty2) ^ "\nis a type\n" ^ msg)
-    | _ -> Error ("Failed to check that\n  " ^ unparse (eval ty1) ^ "\nis a type")
+      Error ("Failed to check that\n  " ^ Pretty.print (eval ty2) ^ "\nis a type\n" ^ msg)
+    | _ -> Error ("Failed to check that\n  " ^ Pretty.print (eval ty1) ^ "\nis a type")
     end
   
   | Sigma(x, ty1, ty2) ->
@@ -919,7 +924,7 @@ let rec elaborate global ctx ty ph vars = function
         if m >= n1 && m >= n2 then 
           Ok (Sigma(x, ty1', ty2'), Type m) 
         else 
-          Error ("Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ 
+          Error ("Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
                 "\nof type \n  type (max(" ^ string_of_int n1 ^ ", " ^ string_of_int n2 ^ "))\n has type\n  " ^ string_of_int m)
       | Hole _ -> 
         if n1 > n2 then 
@@ -927,7 +932,7 @@ let rec elaborate global ctx ty ph vars = function
         else 
           Ok (Sigma(x, ty1', ty2'), Type n2)
       | _ ->
-        Error ("Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     
     | Ok (ty1', Type n), Ok (Hole (k,l), _) -> 
@@ -936,12 +941,12 @@ let rec elaborate global ctx ty ph vars = function
         if m >= n then 
           Ok (Sigma(x, ty1', Hole (k,l)), Type m) 
         else 
-          Error ("Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ 
+          Error ("Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
                 "\nof type \n  type " ^ string_of_int n ^ "))\n has type\n  " ^ string_of_int m)
       | Hole _ -> 
         Ok (Sigma(x, ty1', Hole (k,l)), Type n)
       | _ ->
-        Error ("Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (Hole (k,l), _), Ok (ty2', Type n) -> 
       begin match ty with
@@ -949,12 +954,12 @@ let rec elaborate global ctx ty ph vars = function
         if m >= n then 
           Ok (Sigma(x, Hole (k,l), ty2'), Type m) 
         else 
-          Error ("Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ 
+          Error ("Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
                 "\nof type \n  type " ^ string_of_int n ^ "))\n has type\n  " ^ string_of_int m)
       | Hole _ -> 
         Ok (Sigma(x, Hole (k,l), ty2'), Type n)
       | _ ->
-        Error ("Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (Hole (k1,l1), _), Ok (Hole (k2,l2), _) ->
       begin match ty with
@@ -963,11 +968,11 @@ let rec elaborate global ctx ty ph vars = function
       | Hole (k, l) ->
           Ok (Sigma(x, Hole (k1,l1), Hole (k2,l2)), Hole(k, l))
       | _ ->
-        Error ("Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ unparse ty1 ^ ") " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (_, Type _), Error msg -> 
-      Error ("Failed to check that\n  " ^ unparse ty2 ^ "\nis a type\n" ^ msg)
-    | _ -> Error ("Failed to check that\n  " ^ unparse ty1 ^ "\nis a type")
+      Error ("Failed to check that\n  " ^ Pretty.print ty2 ^ "\nis a type\n" ^ msg)
+    | _ -> Error ("Failed to check that\n  " ^ Pretty.print ty1 ^ "\nis a type")
     end
   
   | Sum(ty1, ty2) ->
@@ -981,7 +986,7 @@ let rec elaborate global ctx ty ph vars = function
         if m >= n1 && m >= n2 then 
           Ok (Sum(ty1', ty2'), Type m) 
         else 
-          Error ("Type mismatch when checking that \n  " ^ unparse ty1 ^ "+ " ^ unparse ty2 ^ 
+          Error ("Type mismatch when checking that \n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ 
                 "\nof type \n  type (max(" ^ string_of_int n1 ^ ", " ^ string_of_int n2 ^ "))\n has type\n  " ^ string_of_int m)
       | Hole _ -> 
         if n1 > n2 then 
@@ -989,7 +994,7 @@ let rec elaborate global ctx ty ph vars = function
         else 
           Ok (Sum(ty1', ty2'), Type n2)
       | _ ->
-        Error ("Type mismatch when checking that\n  " ^ unparse ty1 ^ "+ " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (ty1', Type n), Ok (Hole (k,l), _) -> 
       begin match ty with
@@ -997,12 +1002,12 @@ let rec elaborate global ctx ty ph vars = function
         if m >= n then 
           Ok (Sum(ty1', Hole (k,l)), Type m) 
         else 
-          Error ("Type mismatch when checking that \n  " ^ unparse ty1 ^ "+ " ^ unparse ty2 ^ 
+          Error ("Type mismatch when checking that \n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ 
                 "\nof type \n  type " ^ string_of_int n ^ "\nhas type\n  " ^ string_of_int m)
       | Hole _ -> 
         Ok (Sum(ty1', Hole (k,l)), Type n)
       | _ ->
-        Error ("Type mismatch when checking that\n  " ^ unparse ty1 ^ "+ " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (Hole (k,l), _), Ok (ty2', Type n) -> 
       begin match ty with
@@ -1010,12 +1015,12 @@ let rec elaborate global ctx ty ph vars = function
         if m >= n then 
           Ok (Sum(Hole (k,l), ty2'), Type m) 
         else 
-          Error ("Type mismatch when checking that \n  " ^ unparse ty1 ^ "+ " ^ unparse ty2 ^ 
+          Error ("Type mismatch when checking that \n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ 
                 "\nof type \n  type " ^ string_of_int n ^ "\nhas type\n  " ^ string_of_int m)
       | Hole _ -> 
         Ok (Sum(Hole (k,l), ty2'), Type n)
       | _ ->
-        Error ("Type mismatch when checking that\n  " ^ unparse ty1 ^ "+ " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (Hole (k1, l1), _), Ok (Hole (k2, l2), _) ->
       begin match ty with
@@ -1024,42 +1029,42 @@ let rec elaborate global ctx ty ph vars = function
       | Hole (k, l) -> 
           Ok (Sum(Hole (k1, l1), Hole (k2, l2)), Hole(k, l))
       | _ ->
-        Error ("Type mismatch when checking that\n  " ^ unparse ty1 ^ "+ " ^ unparse ty2 ^ "\nhas type\n  " ^ unparse ty)
+        Error ("Type mismatch when checking that\n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (_, Type _), Error msg -> 
-      Error ("Failed to check that\n  " ^ unparse ty2 ^ "\nis type\n" ^ msg)
-    | _ -> Error ("Failed to check that\n  " ^ unparse ty1 ^ "\nis type")
+      Error ("Failed to check that\n  " ^ Pretty.print ty2 ^ "\nis type\n" ^ msg)
+    | _ -> Error ("Failed to check that\n  " ^ Pretty.print ty1 ^ "\nis type")
     end
   
   | Int() ->
     (match ty with
     | Type m -> Ok (Int(), Type m)
     | Hole _ -> Ok (Int(), Type 0) 
-    | _ -> Error ("Type mismatch when checking that\n  I\nhas type\n  " ^ unparse ty))
+    | _ -> Error ("Type mismatch when checking that\n  I\nhas type\n  " ^ Pretty.print ty))
 
   | Nat() ->
     (match ty with
     | Type m -> Ok (Nat(), Type m)
     | Hole _ -> Ok (Nat(), Type 0) 
-    | _ -> Error ("Type mismatch when checking that\n  nat\nhas type\n  " ^ unparse ty))
+    | _ -> Error ("Type mismatch when checking that\n  nat\nhas type\n  " ^ Pretty.print ty))
 
   | Bool() ->
     (match ty with
     | Type m -> Ok (Bool(), Type m)
     | Hole _ -> Ok (Bool(), Type 0) 
-    | _ -> Error ("Type mismatch when checking that\n  bool\nhas type\n  " ^ unparse ty))
+    | _ -> Error ("Type mismatch when checking that\n  bool\nhas type\n  " ^ Pretty.print ty))
 
   | Unit() ->
     (match ty with
     | Type m -> Ok (Unit(), Type m)
     | Hole _ -> Ok (Unit(), Type 0) 
-    | _ -> Error ("Type mismatch when checking that\n  unit\n has type\n  " ^ unparse ty))
+    | _ -> Error ("Type mismatch when checking that\n  unit\n has type\n  " ^ Pretty.print ty))
 
   | Void() ->
     (match ty with
     | Type m -> Ok (Void(), Type m)
     | Hole _ -> Ok (Void(), Type 0) 
-    | _ -> Error ("Type mismatch when checking that\n  void\n has type\n  " ^ unparse ty))
+    | _ -> Error ("Type mismatch when checking that\n  void\n has type\n  " ^ Pretty.print ty))
 
   | Pathd(ty1, e1, e2) ->
     let h1 = Hole.generate (App(ty,Pathd(ty1, e1, e2))) 0 [] in
@@ -1072,7 +1077,7 @@ let rec elaborate global ctx ty ph vars = function
             Ok (Pathd(Hole (n,l), Hole (n1,l1), Hole (n2,l2)), Type m)
           | Hole (m,k) ->
             Ok (Pathd(Hole (n,l), Hole (n1,l1), Hole (n2,l2)), Hole (m,k))
-          | _ -> Error ("Failed to check that\n  " ^ unparse ty ^ "\nis a type")
+          | _ -> Error ("Failed to check that\n  " ^ Pretty.print ty ^ "\nis a type")
           end
       | _ ->
         let elab1 = elaborate global ctx (Hole (n,l)) (ph+1) vars e1 in
@@ -1090,9 +1095,9 @@ let rec elaborate global ctx ty ph vars = function
               Ok (Pathd(eval tye1, e1', e2'), Hole (m,k))
             else 
               Ok (Pathd(Hole (n,l), e1', e2'), Hole (m,k))
-          | _ -> Error ("Failed to check that\n  " ^ unparse ty ^ "\nis a type")
+          | _ -> Error ("Failed to check that\n  " ^ Pretty.print ty ^ "\nis a type")
           end
-        | _ -> Error ("Failed to check that\n  " ^ unparse e1 ^ "\nhas type\n ?0?")
+        | _ -> Error ("Failed to check that\n  " ^ Pretty.print e1 ^ "\nhas type\n ?0?")
         end
       end
     | Abs(x, Hole (n,l)) ->
@@ -1103,7 +1108,7 @@ let rec elaborate global ctx ty ph vars = function
             Ok (Pathd(Abs(x, Hole (n,l)), Hole (n1,l1), Hole (n2,l2)), Type m)
           | Hole (m,k) ->
             Ok (Pathd(Abs(x, Hole (n,l)), Hole (n1,l1), Hole (n2,l2)), Hole (m,k))
-          | _ -> Error ("Failed to check that\n  " ^ unparse ty ^ "\nis a type")
+          | _ -> Error ("Failed to check that\n  " ^ Pretty.print ty ^ "\nis a type")
           end
       | _ ->
         let elab1 = elaborate global ctx (Hole (n,l)) (ph+1) vars e1 in
@@ -1115,10 +1120,10 @@ let rec elaborate global ctx ty ph vars = function
             Ok (Pathd(Abs(x,Hole (n,l)), e1', e2'), Type m)
           | Hole (m,k) ->
             Ok (Pathd(Abs(x,Hole (n,l)), e1', e2'), Hole (m,k))
-          | _ -> Error ("Failed to check that\n  " ^ unparse ty ^ "\nis a type")
+          | _ -> Error ("Failed to check that\n  " ^ Pretty.print ty ^ "\nis a type")
             end
-        | Ok _, Error msg -> Error ("Failed to check that\n  " ^ unparse e2 ^ "\nhas type\n ?0?\n" ^ msg)
-        | Error msg, _ -> Error ("Failed to check that\n  " ^ unparse e1 ^ "\nhas type\n " ^ unparse (Hole (n,l)) ^ "\n" ^ msg)
+        | Ok _, Error msg -> Error ("Failed to check that\n  " ^ Pretty.print e2 ^ "\nhas type\n ?0?\n" ^ msg)
+        | Error msg, _ -> Error ("Failed to check that\n  " ^ Pretty.print e1 ^ "\nhas type\n " ^ Pretty.print (Hole (n,l)) ^ "\n" ^ msg)
         end
       end
     | ty1 ->
@@ -1139,18 +1144,18 @@ let rec elaborate global ctx ty ph vars = function
                 Ok (Pathd(ty1', e1', e2'), Type m) 
               else 
                 Error ("Failed to check that\n  pathd " ^ 
-                        unparse ty1' ^ " " ^  unparse e1' ^ " " ^  unparse e2' ^ 
-                        "\nhas type\n  " ^ unparse ty)
+                        Pretty.print ty1' ^ " " ^  Pretty.print e1' ^ " " ^  Pretty.print e2' ^ 
+                        "\nhas type\n  " ^ Pretty.print ty)
             | Hole _ -> 
               Ok (Pathd(ty1', e1', e2'), Type n)
-            | _ -> Error ("Failed to check that\n  " ^ unparse ty2 ^ "\nis a type")
+            | _ -> Error ("Failed to check that\n  " ^ Pretty.print ty2 ^ "\nis a type")
             end
           | Int() , Hole _ | Hole _, Hole _ -> 
             Ok (Pathd(ty1', e1', e2'), tTyi0)
-          | _ -> Error ("Failed to unify \n  " ^ unparse i ^ "with\n  I ")
+          | _ -> Error ("Failed to unify \n  " ^ Pretty.print i ^ "with\n  I ")
           end
         | Ok (ty1', _), Ok _, Ok _ ->
-          Error ("Type mismatch when checking that\n  " ^ unparse ty1' ^ "\nhas type\n  Π (v? : I) ?0?")
+          Error ("Type mismatch when checking that\n  " ^ Pretty.print ty1' ^ "\nhas type\n  Π (v? : I) ?0?")
         | Error msg, _, _| _, Error msg, _ | _, _, Error msg -> 
           Error msg
         end
@@ -1166,19 +1171,19 @@ let rec elaborate global ctx ty ph vars = function
       then Ok (Type n, Type m) 
       else Error ("Universe level conflict\n  " ^ string_of_int n ^ "\ncannot have type\n  " ^ string_of_int m ^ "\n(This is known as Girard's paradox)")
     | Hole _ -> Ok (Type n, Type (n+1)) 
-    | _ -> Error ("Type mismatch when checking that\n  " ^ string_of_int n ^ "\nhas type\n  " ^ unparse ty))
+    | _ -> Error ("Type mismatch when checking that\n  " ^ string_of_int n ^ "\nhas type\n  " ^ Pretty.print ty))
   
   | Wild() ->
     (*begin match find_ty ty ctx with
     | Ok var -> Ok (Id var, ty)
     | Error _ -> *)
       Error ("Failed to synthesize placeholder for the current goal:\n" ^ 
-      print ctx ^ "-------------------------------------------\n ⊢ " ^ unparse (eval ty))
+      print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty))
     (* end *)
 
   | Hole (n, l) -> 
     Ok (Hole (n, l), ty) (* used for tests *)
-    (*Error ("Failed to synthesize placeholder ?" ^ n ^ "? for type\n  " ^ unparse ty)*)
+    (*Error ("Failed to synthesize placeholder ?" ^ n ^ "? for type\n  " ^ Pretty.print ty)*)
 
 (* Unifies two expressions at type *)
 
@@ -1211,10 +1216,10 @@ and unify global ctx ph vars = function
           Error ((Hole (n1, l1), Hole (n2, l2)), 
                 "Failed to unify the placeholder\n  ?" ^ 
                 n1 ^ "?\nwhose suitable candidates are\n" ^ 
-                (String.concat " " (List.map Ast.unparse l1)) ^
+                (String.concat " " (List.map Pretty.print l1)) ^
                 "\nwith the placeholder\n  ?" ^ 
                 n2 ^ "?\nwhose suitable candidates are\n" ^ 
-                (String.concat " " (List.map Ast.unparse l2))) 
+                (String.concat " " (List.map Pretty.print l2))) 
       end
 
     | e , _, Pathd(_, _, _) ->
@@ -1232,8 +1237,8 @@ and unify global ctx ph vars = function
         else 
           Error ((e , Hole (n, l)),
                   "Failed to unify the placeholder\n  " ^ 
-                  unparse (Ast.Hole (n, l)) ^ "\nwith the suitable candidates\n" ^ 
-                  (String.concat " " (List.map Ast.unparse l)))
+                  Pretty.print (Ast.Hole (n, l)) ^ "\nwith the suitable candidates\n" ^ 
+                  (String.concat " " (List.map Pretty.print l)))
       end
     
     | Pi (x, ty1, ty2), Pi (x', ty1', ty2'), ty -> 
@@ -1261,9 +1266,9 @@ and unify global ctx ph vars = function
         let u2 = unify global (((v1, s1), true) :: ctx) ph (vars+1) (x2, x2', ty) in
         begin match u2 with
         | Ok s2 -> Ok (Sigma (v1, s1, s2))
-        | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ unparse ty2 ^ "\nwith\n  " ^ unparse ty2' ^ "\n" ^ msg)
+        | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ Pretty.print ty2 ^ "\nwith\n  " ^ Pretty.print ty2' ^ "\n" ^ msg)
         end
-      | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ unparse ty1 ^ "\nwith\n  " ^ unparse ty1' ^ "\n" ^ msg)
+      | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ Pretty.print ty1 ^ "\nwith\n  " ^ Pretty.print ty1' ^ "\n" ^ msg)
       end
 
     | Sum (ty1, ty2) , Sum (ty1', ty2'), ty ->
@@ -1325,9 +1330,9 @@ and unify global ctx ph vars = function
               | Error msg, _ | _, Error msg -> Error msg
               end
             | Error msg, _, _, _ | _, Error msg, _, _ | _, _, Error msg, _ | _, _, _, Error msg -> 
-              Error ((Abs (x, e), Abs (x', e')), "Failed endpoint unification of\n  " ^ unparse e ^ 
-                "[" ^ x ^ "/i0]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i0]\nand\n  " ^ unparse e ^ 
-                "[" ^ x ^ "/i1]\nwith\n  " ^ unparse e' ^ "[" ^ x' ^ "/i1]\n" ^ msg)
+              Error ((Abs (x, e), Abs (x', e')), "Failed endpoint unification of\n  " ^ Pretty.print e ^ 
+                "[" ^ x ^ "/i0]\nwith\n  " ^ Pretty.print e' ^ "[" ^ x' ^ "/i0]\nand\n  " ^ Pretty.print e ^ 
+                "[" ^ x ^ "/i1]\nwith\n  " ^ Pretty.print e' ^ "[" ^ x' ^ "/i1]\n" ^ msg)
             end
           | Error msg, _ | _, Error msg -> (* This case is impossible *)
             Error ((Abs (x, e), Abs (x', e')), msg)
@@ -1411,12 +1416,12 @@ and unify global ctx ph vars = function
               match ui0, ui1 with
               | Ok _, Ok _ -> Ok (App (e, i))
               | Error msg, _ -> 
-                Error ((e0, e0'), "Don't know how to unify\n  " ^ unparse e0 ^ "\nwith\n  " ^ unparse e0' ^ "\n" ^ unparse (eval e0') ^ "\n" ^ snd msg ) 
-              | _, Error msg -> Error ((e1, e1'), "Don't know how to unify\n  " ^ unparse e1 ^ "\nwith\n  " ^ unparse e1' ^ "\n" ^ snd msg)
+                Error ((e0, e0'), "Don't know how to unify\n  " ^ Pretty.print e0 ^ "\nwith\n  " ^ Pretty.print e0' ^ "\n" ^ Pretty.print (eval e0') ^ "\n" ^ snd msg ) 
+              | _, Error msg -> Error ((e1, e1'), "Don't know how to unify\n  " ^ Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print e1' ^ "\n" ^ snd msg)
 
             end
           | _ ->
-            Error ((e, e'), "Don't know how to unify\n  " ^ unparse (App (e, i)) ^ "\nwith\n  " ^ unparse e')
+            Error ((e, e'), "Don't know how to unify\n  " ^ Pretty.print (App (e, i)) ^ "\nwith\n  " ^ Pretty.print e')
         end
         
       end
@@ -1499,7 +1504,7 @@ and unify global ctx ph vars = function
           Error ((At (e1, e2), e'), msg)
         end
       else
-      Error ((e, e'), "The terms\n  " ^ unparse (At (e1, e2)) ^ "\nand\n  " ^ unparse e' ^ "\nare not equal")
+      Error ((e, e'), "The terms\n  " ^ Pretty.print (At (e1, e2)) ^ "\nand\n  " ^ Pretty.print e' ^ "\nare not equal")
     *)
 
     | At (e, i), e', ty | e', At (e, i), ty ->
@@ -1553,9 +1558,9 @@ and unify global ctx ph vars = function
                         match ui0, ui1 with
                         | Ok _, Ok _ -> Ok (App (e, i))
                         | Error msg, _ -> 
-                          Error ((e0, e0'), "Don't know how to unify\n  " ^ unparse e0 ^ "\nwith\n  " ^ unparse e0' ^ "\n" ^ unparse (eval e0') ^ "\n" ^ snd msg ) 
+                          Error ((e0, e0'), "Don't know how to unify\n  " ^ Pretty.print e0 ^ "\nwith\n  " ^ Pretty.print e0' ^ "\n" ^ Pretty.print (eval e0') ^ "\n" ^ snd msg ) 
                         | _, Error msg -> 
-                          Error ((e1, e1'), "Don't know how to unify\n  " ^ unparse e1 ^ "\nwith\n  " ^ unparse e1' ^ "\n" ^ snd msg)
+                          Error ((e1, e1'), "Don't know how to unify\n  " ^ Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print e1' ^ "\n" ^ snd msg)
                       end
                     | Error msg, _, _, _ | _, Error msg, _, _ | _, _, Error msg, _ |  _, _, _, Error msg ->
                       Error ((At (e, i), e'), msg)
@@ -1564,7 +1569,7 @@ and unify global ctx ph vars = function
                 | Error msg, _ | _, Error msg -> Error ((At (e, i), e'), msg) (* This case is impossible *)
               end
             | _ ->
-              Error ((e, e'), "Don't know how to unify\n  " ^ unparse (App (e, i)) ^ "\nwith\n  " ^ unparse e')
+              Error ((e, e'), "Don't know how to unify\n  " ^ Pretty.print (App (e, i)) ^ "\nwith\n  " ^ Pretty.print e')
           end
           
         end
@@ -1682,4 +1687,4 @@ and unify global ctx ph vars = function
       if eval e = eval e' then 
         Ok e 
       else 
-        Error ((e, e'), "The terms\n  " ^ unparse e ^ "\nand\n  " ^ unparse e' ^ "\nare not equal")
+        Error ((e, e'), "The terms\n  " ^ Pretty.print e ^ "\nand\n  " ^ Pretty.print e' ^ "\nare not equal")

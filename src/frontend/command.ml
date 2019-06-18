@@ -50,8 +50,7 @@ let rec compile global lopen filename = function
 			begin match compile global lopen filename cmd with
 			| Ok (global', (s, lopen)) -> 
 				Ok (global', 
-						(id ^ " := " ^ Ast.unparse e ^ ": \n" ^
-						String.make (String.length id + 4) ' ' ^ Ast.unparse ty ^ 
+						(id ^ " := \n  " ^ Pretty.print e ^ ": \n  " ^ Pretty.print ty ^ 
 						"\n" ^ s, lopen))
 			| Error s -> Error s
 			end
@@ -66,8 +65,8 @@ let rec compile global lopen filename = function
 			begin match compile global lopen filename cmd with
 			| Ok (global', (s, lopen)) -> 
 				Ok (global', 
-						("infer := " ^ Ast.unparse e ^ ": \n" ^
-						"         " ^ Ast.unparse ty ^ 
+						("infer := " ^ Pretty.print e ^ ": \n" ^
+						"         " ^ Pretty.print ty ^ 
 						"\n" ^ s, lopen))
 			| Error s -> Error s
 			end
