@@ -140,7 +140,7 @@ and par e =
 		| Abs _ | Ast.Pabs _ | Pi _ | Sigma _ | Fst _ | Snd _ 
 		| Inl _ | Inr _ | Succ _ | Abort _ | App _ | Pair _ 
 		| Sum _ | Let _ | At _ | Case _ | Natrec _ | If _ 
-		| Pathd _ | Hfill _ | Coe _ -> 
+		| Pathd _ | Coe _ -> 
 			true
 		| _ -> false
 	in

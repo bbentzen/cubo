@@ -22,6 +22,12 @@ let rec sigma_of_list e = function
   | (id, ty) :: l ->
     Ast.Sigma (id, ty, sigma_of_list e l)
 
+let fill_def i j ty e e1 e2 =
+  let v1 = Substitution.fresh_var (App(e1, e2)) e 2 in
+  Hfill(Abs(v1, Coe (i, j, ty, App(e, Id v1))), 
+  Abs(v1, Coe (Id v1, j, ty, App(e1, Id v1))),
+  Abs(v1, Coe (Id v1, j, ty, App(e2, Id v1))))
+
 %}
 
 %token <string> ID
@@ -29,7 +35,7 @@ let rec sigma_of_list e = function
 %token <string> NUMBER
 %token OPEN DEF PRINT INFER LBRACE RBRACE
 %token TYPE COLON VDASH
-%token I0 I1 INTERVAL COE HCOM HFILL BAR
+%token I0 I1 INTERVAL COE HCOM HFILL FILL COM BAR
 %token ABS APP RARROW LRARROW PI
 %token LPAREN RPAREN COMMA FST SND PROD SIGMA
 %token INL INR CASE SUM
@@ -98,6 +104,12 @@ expr:
   | I1                                                      { I1() }
   | INTERVAL                                                { Int() }
   | COE expr expr expr expr %prec CASE                      { Coe($2,$3,$4,$5) }
+  | COM expr expr expr expr  
+    BAR I0 RARROW expr 
+    BAR I1 RARROW expr                                      { App (fill_def ($2) ($3) ($4) ($5) ($9) ($13), I1()) }
+  | FILL expr expr expr expr  
+    BAR I0 RARROW expr 
+    BAR I1 RARROW expr                                      { fill_def ($2) ($3) ($4) ($5) ($9) ($13) }
   | HCOM expr  
     BAR I0 RARROW expr 
     BAR I1 RARROW expr %prec CASE                           { App(Hfill($2,$6,$10),I1()) }

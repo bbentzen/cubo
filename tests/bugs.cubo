@@ -1,3 +1,23 @@
+/** incorrectly type-checking this hcom **/
+
+def path_coe_works (A : I → I → type 1) {a : Π (i : I) app app A i i0} {b : Π (i : I) app app A i i1} (p : pathd (app A i0) (app a i0) (app b i0)) (j : I)
+⊢ app app A i1 i1 := 
+app 
+hcom (λ i, coe i0 i1 (λ k, app app A k i) (p @ i))
+ | i0 →  λ _, coe i0 i1 (λ i, app app A i i0) (app a i0) 
+ | i1 → λ _, coe i0 i1 (λ i, app app A i i1) (app b i0) i1
+
+
+/** synthesize placeholders in path ?1? ?2? ?3? **/
+
+def path_coe2 (A : I → I → type 1) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (λ i, app app A i0 i) a b) 
+⊢ ??1 :=
+<k> app app 
+hfill (λ j, coe j k (λ i, app app A i0 i) (p @ j))
+ | i0 →  (λ _, coe i0 k (λ i, app app A i0 i) (p @ i0)) 
+ | i1 → (λ _, coe i1 k (λ i, app app A i0 i) (p @ i1))  
+i1 k 
+
 /** iterated pis **/
 
 def dp22m {A : type 1} {B : A → type 1} {w1 w1' w2 w2' : Σ (x : A) app B x} (p : path (Σ (x : A) app B x) w1 w2) (q : path (Σ (x : A) app B x) w1 w1) (r : path (Σ (x : A) app B x) w2 w2)

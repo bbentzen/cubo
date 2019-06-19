@@ -32,7 +32,9 @@ rule token = parse
   | "I"                { INTERVAL }
   | "𝕀"                { INTERVAL }
   | "coe"              { COE }
+  | "com"              { COM }
   | "hcom"             { HCOM }
+  | "fill"             { FILL }
   | "hfill"            { HFILL }
   | "|"                { BAR }
   | "⁻¹"               { SYMM }

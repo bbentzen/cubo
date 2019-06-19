@@ -533,7 +533,10 @@ let rec elaborate global ctx ty ph vars = function
               | Ok st ->
                 Ok (Coe (i', j', eval ety, e'), st)
               | Error (_, msg) -> 
-                Error msg
+                Error ("Failed to unify the terms\n  " ^ Pretty.print tyj ^ "\nand\n  " ^ Pretty.print ty' ^ 
+                "\nwhen checking that the coercion\n  " ^ Pretty.print (Coe(i, j, ety, e)) ^ (* Improve error msg *)
+                "\nhas type\n  " ^ Pretty.print (eval ty) ^
+                "\n" ^ msg)
               end
             | Error msg, _ ->
               Error ("The coercion failed because\n  " ^ Pretty.print e ^ "\ndoes not have type\n  " ^ Pretty.print tyi ^ "\n" ^ msg)
@@ -574,8 +577,26 @@ let rec elaborate global ctx ty ph vars = function
                   
                 end
                 
-              | Error msg, _, _, _ | _, Error msg, _, _ | _, _, Error msg, _ | _, _, _, Error msg ->
-                Error msg
+              | Error msg, _, _, _ ->
+                Error ("Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
+                "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
+                "\nThe i0-face of the lid\n  " ^ Pretty.print (eval (App(e, I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
+                "\n" ^ msg)
+              | _, Error msg, _, _ ->
+                Error ("Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
+                "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
+                "\nThe i1-face of the lid\n  " ^ Pretty.print (eval (App(e, I1()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
+                "\n" ^ msg)
+              | _, _, Error msg, _ ->
+                Error ("Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
+                "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
+                "\nThe i0-face of the i0-tube\n  " ^ Pretty.print (eval (App(e1, I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
+                "\n" ^ msg)
+              | _, _, _, Error msg ->
+                Error ("Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
+                "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
+                "\nThe i0-face of the i1-tube\n  " ^ Pretty.print (eval (App(e2, I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
+                "\n" ^ msg)
             end
 
           end
@@ -668,8 +689,8 @@ let rec elaborate global ctx ty ph vars = function
       end
     | Ok (Pathd (ty1, e1, e2), _) ->
       let elab = elaborate global (((i, Int()), true) :: ctx) (eval (App(ty1,Id i))) ph vars e in
-      let elab1 = elaborate global (((i, Int()), true) :: ctx) (eval (App(ty1,I0()))) ph vars (subst i (I0()) e) in
-      let elab2 = elaborate global (((i, Int()), true) :: ctx) (eval (App(ty1,I1()))) ph vars (subst i (I1()) e) in
+      let elab1 = elaborate global ctx (eval (App(ty1, I0()))) ph vars (eval (subst i (I0()) e)) in
+      let elab2 = elaborate global ctx (eval (App(ty1, I1()))) ph vars (eval (subst i (I1()) e)) in
       begin match elab, elab1, elab2 with
       | Ok (e', _), Ok (ei0, tyi0), Ok (ei1, tyi1) ->
         let u1 = unify global ctx ph vars (eval ei0, eval e1, tyi0) in
@@ -730,7 +751,21 @@ let rec elaborate global ctx ty ph vars = function
                   msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
           end
         end
-      | Error msg, _, _| _, Error msg, _ | _, _, Error msg -> Error msg
+      | Error msg, _, _ ->
+        Error ("Error when checking that the path abstracted term\n  " ^ 
+        Pretty.print (Pabs(i, e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ "\n" ^ msg)
+      | _, Error msg, _->
+        Error ("Error when checking that the path abstracted term\n  " ^ 
+        Pretty.print (Pabs(i, e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
+        "\nThe i0-endpoint\n  " ^ Pretty.print (eval (subst i (I0()) e)) ^ 
+        "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I0()))) ^
+        "\n" ^ msg)
+      | _, _, Error msg -> 
+        Error ("Error when checking that the path abstracted term\n  " ^ 
+        Pretty.print (Pabs(i, e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
+        "\nThe i1-endpoint\n  " ^ Pretty.print (eval (subst i (I1()) e)) ^ 
+        "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I1()))) ^ 
+        "\n" ^ msg)
       end
     | Ok (Hole _, _) ->
       let h1 = Hole.generate ty 0 [] in

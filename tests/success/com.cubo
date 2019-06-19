@@ -6,17 +6,30 @@
 
 /* Heterogeneous composition (of paths) */
  
-def fill {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : pathd (λ j, app A j) a c) (q : path (app A i0) a b) (r : path (app A i1) c d)
-⊢ I → Π (k : I) app A k := 
+def fill_def {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : path (app A i0) a b) (q : pathd (λ j, app A j) a c) (r : pathd (λ j, app A j) b d)
+⊢ I → I → app A i1 := 
 λ i k, app app 
-hfill (λ i, coe i k (λ i, app A i) (p @ i))
- | i0 →  (λ j, coe i0 k (λ i, app A i) (q @ j)) 
- | i1 → (λ j, coe i1 k (λ i, app A i) (r @ j)) 
+hfill (λ i, coe i0 i1 (λ i, app A i) (p @ i))
+ | i0 →  (λ j, coe j i1 (λ i, app A i) (q @ j)) 
+ | i1 → (λ j, coe j i1 (λ i, app A i) (r @ j)) 
 i k 
+  
+def com_def {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : path (app A i0) a b) (q : pathd (λ j, app A j) a c) (r : pathd (λ j, app A j) b d)
+⊢ I → app A i1 := 
+app (app app app fill_def p q r) i1
+  
+def fill_def2 {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : path (app A i0) a b) (q : pathd (λ j, app A j) a c) (r : pathd (λ j, app A j) b d)
+⊢ I → I → app A i1 := 
+fill i0 i1 A (λ i, p @ i)
+ | i0 →  (λ j, q @ j) 
+ | i1 → (λ j, r @ j) 
  
-def com {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : pathd (λ j, app A j) a c) (q : path (app A i0) a b) (r : path (app A i1) c d)
-⊢ Π (k : I) app A k := 
-app (app app app fill p q r) i1
+def com_def2 {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : path (app A i0) a b) (q : pathd (λ j, app A j) a c) (r : pathd (λ j, app A j) b d)
+⊢ I → app A i1 := 
+com i0 i1 A (λ i, p @ i)
+ | i0 →  (λ j, q @ j) 
+ | i1 → (λ j, r @ j) 
+ 
  
 /* Coercion structure */
  
@@ -31,23 +44,38 @@ def product_coe (A : I → type 1) (B : Π (i : I) app A i → type 1) (w : Σ (
   (coe i0 i1 (λ i, Σ (x : app A i) app app B i x) w)
   (coe i0 i1 (λ i, app A i) fst w, coe i0 i1 (λ i, app app B i (coe i0 i (λ i, app A i) fst w)) snd w) :=
 <_> coe i0 i1 (λ i, Σ (x : app A i) app app B i x) w
+  
+def path_com {A : I → type 1} {a : app A i0} {b : app A i1} (p : pathd A a b) (k : I)
+⊢ pathd A a b := 
+<k> app 
+hcom (λ i, coe i k A (p @ i))
+ | i0 →  (λ _, coe i0 k A (p @ i0)) 
+ | i1 → (λ _, coe i1 k A (p @ i1)) 
+k 
  
-def path_com {A : I → type 1} {a : app A i0} {b : app A i1} (p : pathd (λ i, app A i) a b) (k : I)
-⊢ app A k := 
-app app 
-hfill (λ i, coe i k (λ i, app A i) (p @ i))
- | i0 →  (λ _, coe i0 k (λ i, app A i) (p @ i0)) 
- | i1 → (λ _, coe i1 k (λ i, app A i) (p @ i1)) 
-i1 k 
-
-def path_coe (A : I → I → type 1) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (λ i, app app A i0 i) a b) 
-⊢ pathd (λ i, app app A i1 i) 
+def path_coe (A : I → I → type 1) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (app A i0) a b) 
+⊢ pathd (app A i1) 
   coe i0 i1 (λ i, app app A i i0) a 
   coe i0 i1 (λ i, app app A i i1) b :=
 coe i0 i1 
- (λ j, pathd (λ i, app app A j i) 
+ (λ j, pathd (app A j) 
  (coe i0 j (λ i, app app A i i0) a) 
  (coe i0 j (λ i, app app A i i1) b) 
 ) p
+ 
+def path_coe_com (A : I → type 1) {a b : app A i0} (p : path (app A i0) a b)
+⊢ Π (k : I) app A i1 := 
+λ k, app 
+com i0 i1 (λ i, app A i) (λ i, (p @ i))
+ | i0 →  λ _, a 
+ | i1 → λ _, b k
+ 
+def path_coe_beta (A : I → I → type 1) (a : app app A i0 i0) (b : app app A i0 i1) (p : pathd (app A i0) a b) 
+⊢ pathd (app A i0) a b :=
+<k> app 
+hcom (λ j, coe j k (λ i, app app A i0 i) (p @ j))
+ | i0 →  (λ _, coe i0 k (λ i, app app A i0 i) (p @ i0)) 
+ | i1 → (λ _, coe i1 k (λ i, app app A i0 i) (p @ i1))  
+k 
  
 
