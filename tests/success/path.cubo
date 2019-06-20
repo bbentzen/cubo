@@ -41,11 +41,11 @@ k
  
 /** Path induction **/
 
-def coe_path {A : type 1} (C : A → type 1) {a b : A} (p : path A a b) (c : app C a)
+def path_subst {A : type 1} (C : A → type 1) {a b : A} (p : path A a b) (c : app C a)
 ⊢ app C b :=
 coe i0 i1 (λ i, app C (p @ i)) c
  
-def coe_path' {A : type 1} {C : A → type 1} {a b : A} (p : path A a b) (c : app C b)
+def path_subst' {A : type 1} {C : A → type 1} {a b : A} (p : path A a b) (c : app C b)
 ⊢ app C a :=
 coe i1 i0 (λ i, app C (p @ i)) c
  

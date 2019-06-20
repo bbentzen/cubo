@@ -559,22 +559,28 @@ let rec elaborate global ctx ty ph vars = function
             let elabi0 = elaborate global ctx jty ph vars (Abs("v?", eval (App(e, I0())))) in
             let elabi1 = elaborate global ctx jty ph vars (Abs("v?", eval (App(e, I1())))) in
             let elab1i0 = elaborate global ctx jty ph vars (Abs("v?", eval (App(e1, I0())))) in
-            let elab2i1 = elaborate global ctx jty ph vars (Abs("v?", eval (App(e2, I0())))) in
+            let elab2i0 = elaborate global ctx jty ph vars (Abs("v?", eval (App(e2, I0())))) in
             begin
               
-              match elabi0, elabi1, elab1i0, elab2i1 with
+              match elabi0, elabi1, elab1i0, elab2i0 with
               | Ok (ei0, _), Ok (ei1, _), Ok (e1i0, _), Ok (e2i0, _) ->
-                begin    
-                  let u1 = unify global ctx ph vars (eval ei0, e1i0, jty) in
-                  let u2 = unify global ctx ph vars (eval ei1, e2i0, jty) in
-                  begin 
-                    match u1, u2 with
-                    | Ok _, Ok _ ->
-                      Ok (Hfill(e, e1, e2), ty)
-                    | Error (_, msg), _ | _, Error (_, msg) -> 
-                      Error msg
-                  end
-                  
+                begin
+                  let elab1i1 = elaborate global ctx jty ph vars (Abs("v?", eval (App(e1, I1())))) in
+                  let elab2i1 = elaborate global ctx jty ph vars (Abs("v?", eval (App(e2, I1())))) in
+                  match elab1i1, elab2i1 with
+                  | Ok _, Ok _ ->
+
+                      let u1 = unify global ctx ph vars (eval ei0, e1i0, jty) in
+                      let u2 = unify global ctx ph vars (eval ei1, e2i0, jty) in
+                      begin 
+                        match u1, u2 with
+                        | Ok _, Ok _ ->
+                          Ok (Hfill(e, e1, e2), ty)
+                        | Error (_, msg), _ | _, Error (_, msg) -> 
+                          Error msg
+                      end
+                      
+                  | Error msg, _ | _, Error msg -> Error msg                  
                 end
                 
               | Error msg, _, _, _ ->
@@ -639,9 +645,9 @@ let rec elaborate global ctx ty ph vars = function
             end
           | Error msg -> Error msg
         end
-      | e ->
+      | ty ->
         Error ("The homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
-        "\nhas type\n  " ^ Pretty.print e ^ "\nbut is expected to have type\n  I → I → ?0?")
+        "\nis expected to have type\n  I → I → ?0?\nand not\n  " ^ Pretty.print ty)
       end
   
   | Pabs (i, e) ->

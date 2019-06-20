@@ -106,12 +106,13 @@ let rec presubst x t hole_flag = function
 	| Ast.Type n -> Ast.Type n
 	| Ast.Hole (n, l) ->
 		if hole_flag then
-		(let rec helper = function
-		| [] -> []
-		| e :: l' ->
-			presubst x t hole_flag e :: helper l' in
-			Ast.Hole (n, helper l))
-		else Ast.Hole (n, l)
+			let rec helper = function
+			| [] -> []
+			| e :: l' ->
+				presubst x t hole_flag e :: helper l' in
+				Ast.Hole (n, helper l)
+		else
+			Ast.Hole (n, l)
 	| Ast.Wild() -> Ast.Wild()
 
 let rec free_var x = function
@@ -205,12 +206,13 @@ let rec alphasubst x t flag hole_flag = function
 	| Ast.Type n -> Ast.Type n
 	| Ast.Hole (n, l) ->
 		if hole_flag then
-		let rec helper = function
-		| [] -> []
-		| e :: l' ->
-			alphasubst x t flag hole_flag e :: helper l' in
-			Ast.Hole (n, helper l)
-		else Ast.Hole (n, l)
+			let rec helper = function
+			| [] -> []
+			| e :: l' ->
+				alphasubst x t flag hole_flag e :: helper l' in
+				Ast.Hole (n, helper l)
+		else 
+			Ast.Hole (n, l)
 	| Ast.Wild n -> Ast.Wild n
 
 let hsubst x t e hole_flag = presubst x t hole_flag (alphasubst x t false hole_flag e) 
@@ -472,7 +474,8 @@ let rec termsubst e t hole_flag = function
 					| e :: l' ->
 						termsubst e t hole_flag ex :: helper l' in
 				Ast.Hole (n, helper l)
-			else Ast.Hole (n, l)
+			else 
+				Ast.Hole (n, l)
 		| e -> e
 
 let fullsubst e1 t e2 = 

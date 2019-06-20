@@ -22,19 +22,13 @@ let rec has_reduction = function
 		let c x = Ast.Coe (i, x, Ast.Abs(k, ty1), Ast.Fst e) in
 		Ast.Pair(c j, Ast.Coe (i, j, Ast.Abs(k, subst x (c (Id k)) ty2), Snd e)), true
 
-		(*
-		
-		| Ast.Coe (i, j, Ast.Abs(k, Pathd(ty, e1, e2)), e) ->	
-		let v1 = fresh_var (Pathd(ty, e1, e2)) e 2 in
-		let com = 
-			Ast.Hfill (Coe (i, j, (Abs(k, ty)), At(e, i)), 
-			Abs("v?", Coe (i, j, (Abs(k, ty)), At(e, Id v1)) ),
-			Abs("v?", Coe (i, j, (Abs(k, ty)), At(e, Id v1)))) in
-		Ast.Pabs(v1, App(App(com, I1()), Id v1)), true
-		
-		| Ast.Coe (_, _, Ast.Abs(k, Pathd(_, e1, e2)), e) ->	
-		App(App(App(Id "com", e), Pabs("v?", subst k (I0()) e1)), Pabs("v?", subst k (I1()) e2)), true
-			*)
+	| Ast.Coe (i, j, Ast.Abs(k, Pathd(ty, e1, e2)), e) ->	
+		let v1 = Substitution.fresh_var (Ast.App(e1, e2)) e 2 in
+		Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
+		Ast.Abs(v1, Ast.Coe (i, j, Abs(k, App(ty, Id v1)), Ast.At(e, Ast.Id v1))), 
+  	Ast.Abs(k, Ast.Coe (Ast.Id k, j, Abs(k, App(ty, I0())), e1)),
+		Ast.Abs(k, Ast.Coe (Ast.Id k, j, Abs(k, App(ty, I1())), e2))), 
+		I1()), Id v1)), true
 
 	| Ast.Coe (i, j, e1, e2) ->
 		let coe' = 
@@ -79,7 +73,7 @@ let rec has_reduction = function
 	| Ast.App (e1, e2) -> 
 		begin 
 			match e1 with
-			| Ast.Abs (x , e) -> (subst x e2 (fst (has_reduction e)), true)
+			| Ast.Abs (x , e) -> subst x e2 (fst (has_reduction e)), true
 			| _ -> 
 				Ast.App (fst (has_reduction e1), fst (has_reduction e2)), 
 				snd (has_reduction e1) || snd (has_reduction e2)

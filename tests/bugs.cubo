@@ -1,12 +1,3 @@
-/** incorrectly type-checking this hcom **/
-
-def path_coe_works (A : I → I → type 1) {a : Π (i : I) app app A i i0} {b : Π (i : I) app app A i i1} (p : pathd (app A i0) (app a i0) (app b i0)) (j : I)
-⊢ app app A i1 i1 := 
-app 
-hcom (λ i, coe i0 i1 (λ k, app app A k i) (p @ i))
- | i0 →  λ _, coe i0 i1 (λ i, app app A i i0) (app a i0) 
- | i1 → λ _, coe i0 i1 (λ i, app app A i i1) (app b i0) i1
-
 
 /** synthesize placeholders in path ?1? ?2? ?3? **/
 
