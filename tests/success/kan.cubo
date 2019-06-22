@@ -4,7 +4,7 @@
  * Author: Bruno Bentzen
  */
 
-/* Heterogeneous composition (of paths) */
+/* Heterogeneous composition for paths */
  
 def fill_def {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : path (app A i0) a b) (q : pathd (λ j, app A j) a c) (r : pathd (λ j, app A j) b d)
 ⊢ I → I → app A i1 := 

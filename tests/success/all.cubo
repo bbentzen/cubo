@@ -5,9 +5,9 @@
  */
  
 open ./bool.cubo 
-open ./com.cubo 
 open ./connection.cubo 
 open ./function.cubo 
+open ./kan.cubo 
 open ./nat.cubo 
 open ./path.cubo 
 open ./product.cubo 
