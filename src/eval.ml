@@ -26,9 +26,9 @@ let rec has_reduction = function
 		if Substitution.has_var k ty = false then
 			let v1 = Substitution.fresh_var (Ast.App(e1, e2)) e 2 in
 			Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
-			Ast.Abs(v1, Ast.At(e, Ast.Id v1)), 
-			Ast.Abs(k, subst k i e1),
-			Ast.Abs(k, subst k i e2)),
+			Ast.Abs(v1, Ast.At(Ast.Coe (i, j, Ast.Abs(k, Pathd(Abs(v, ty), e1, e2)), e), Ast.Id v1)), 
+			Ast.Abs(k, subst k j e1),
+			Ast.Abs(k, subst k j e2)),
 			I1()), Id v1)), true
 		else
 			let v1 = Substitution.fresh_var (Ast.App(e1, e2)) e 2 in

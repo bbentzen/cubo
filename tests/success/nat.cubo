@@ -34,18 +34,9 @@ def pred_succ {n : nat}
 ⊢ path nat (app pred (succ n)) n :=
 <_> n
  
- /**
 def succ_pred {n : nat} (w : Σ (k : nat) path nat (succ k) n)
 ⊢ path nat (succ (app pred n)) n :=
-coe i0 i1 (λ i, path nat (succ (app pred (snd w @ i))) (snd w @ i)) (<_> succ (fst w)) **/
- 
-def succ_pred2 {n : nat} (w : Σ (k : nat) path nat (succ k) n)
-⊢ path nat (succ (app pred n)) n := 
-<v2> app 
-hcom (λ v3, coe v3 v2 (λ _, nat) (coe i0 i1 (λ _, nat) ((<_> succ (fst w)) @ v3 ) ))
-    | i0 → λ _, coe i0 v2 (λ _, nat) (succ (natrec (snd w @ i0) 0 (λ k _, k) ) ) 
-    | i1 → λ _, coe i1 v2 (λ _, nat) snd w @ i0 
-v2 
+coe i0 i1 (λ i, path nat (succ (app pred (snd w @ i))) (snd w @ i)) (<_> succ (fst w)) 
  
 def nat_neq {n : nat}
 ⊢ ¬ path nat 0 (succ n) :=
