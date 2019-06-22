@@ -576,8 +576,14 @@ let rec elaborate global ctx ty ph vars = function
                         match u1, u2 with
                         | Ok _, Ok _ ->
                           Ok (Hfill(e, e1, e2), ty)
-                        | Error (_, msg), _ | _, Error (_, msg) -> 
-                          Error msg
+                        | Error (_, msg), _ ->
+                          Error ("Error when unifying the terms\n  " ^ 
+                          Pretty.print (eval ei0) ^ "\nand\n  " ^ Pretty.print (eval e1i0) ^
+                          "\n" ^ msg)
+                        | _, Error (_, msg) -> 
+                        Error ("Error when unifying the terms\n  " ^ 
+                        Pretty.print (eval ei1) ^ "\nand\n  " ^ Pretty.print (eval e2i0) ^
+                        "\n" ^ msg)
                       end
                       
                   | Error msg, _ | _, Error msg -> Error msg                  
@@ -759,16 +765,16 @@ let rec elaborate global ctx ty ph vars = function
         end
       | Error msg, _, _ ->
         Error ("Error when checking that the path abstracted term\n  " ^ 
-        Pretty.print (Pabs(i, e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ "\n" ^ msg)
+        Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ "\n" ^ msg)
       | _, Error msg, _->
         Error ("Error when checking that the path abstracted term\n  " ^ 
-        Pretty.print (Pabs(i, e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
+        Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
         "\nThe i0-endpoint\n  " ^ Pretty.print (eval (subst i (I0()) e)) ^ 
         "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I0()))) ^
         "\n" ^ msg)
       | _, _, Error msg -> 
         Error ("Error when checking that the path abstracted term\n  " ^ 
-        Pretty.print (Pabs(i, e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
+        Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
         "\nThe i1-endpoint\n  " ^ Pretty.print (eval (subst i (I1()) e)) ^ 
         "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I1()))) ^ 
         "\n" ^ msg)

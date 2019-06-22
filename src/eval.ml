@@ -9,7 +9,7 @@
 
 open Substitution
 
-(* Returns a value and a flag determined whether there was a reduction *)
+(* Returns a value and a flag determining whether there was a reduction *)
 
 let rec has_reduction = function
 
@@ -22,12 +22,30 @@ let rec has_reduction = function
 		let c x = Ast.Coe (i, x, Ast.Abs(k, ty1), Ast.Fst e) in
 		Ast.Pair(c j, Ast.Coe (i, j, Ast.Abs(k, subst x (c (Id k)) ty2), Snd e)), true
 
+	| Ast.Coe (i, j, Ast.Abs(k, Pathd(Abs(v, ty), e1, e2)), e) ->	(* Non-dependent paths *)
+		if Substitution.has_var k ty = false then
+			let v1 = Substitution.fresh_var (Ast.App(e1, e2)) e 2 in
+			Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
+			Ast.Abs(v1, Ast.At(e, Ast.Id v1)), 
+			Ast.Abs(k, subst k i e1),
+			Ast.Abs(k, subst k i e2)),
+			I1()), Id v1)), true
+		else
+			let v1 = Substitution.fresh_var (Ast.App(e1, e2)) e 2 in
+			let v2 = Substitution.fresh_var (Ast.App(e1, e2)) e 3 in
+			Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
+			Ast.Abs(v2, Coe(Id v2, Id v1,  Abs(k, subst v (Id k) (subst k j ty)), Ast.Coe (i, j, Abs(k, subst v (Id v2) ty), Ast.At(e, Ast.Id v2)))), 
+			Ast.Abs(k, Coe(I0(), Id v1,  Abs(k, subst v (Id k) (subst k j ty)), subst k j e1)),
+			Ast.Abs(k, Coe(I1(), Id v1,  Abs(k, subst v (Id k) (subst k j ty)), subst k j e2))),
+			I1()), Id v1)), true
+	
 	| Ast.Coe (i, j, Ast.Abs(k, Pathd(ty, e1, e2)), e) ->	
 		let v1 = Substitution.fresh_var (Ast.App(e1, e2)) e 2 in
+		let v2 = Substitution.fresh_var (Ast.App(e1, e2)) e 3 in
 		Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
-		Ast.Abs(v1, Ast.Coe (i, j, Abs(k, App(ty, Id v1)), Ast.At(e, Ast.Id v1))), 
-  	Ast.Abs(k, Ast.Coe (Ast.Id k, j, Abs(k, App(ty, I0())), e1)),
-		Ast.Abs(k, Ast.Coe (Ast.Id k, j, Abs(k, App(ty, I1())), e2))), 
+		Ast.Abs(v2, Coe(Id v2, Id v1,  Abs(k, App(subst k j ty, Id k)), Ast.Coe (i, j, Abs(k, App(ty, Id v2)), Ast.At(e, Ast.Id v2)))), 
+  	Ast.Abs(k, Coe(I0(), Id v1,  Abs(k, App(subst k j ty, Id k)), subst k j e1)),
+		Ast.Abs(k, Coe(I1(), Id v1,  Abs(k, App(subst k j ty, Id k)), subst k j e2))),
 		I1()), Id v1)), true
 
 	| Ast.Coe (i, j, e1, e2) ->
