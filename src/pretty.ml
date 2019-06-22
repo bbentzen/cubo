@@ -16,9 +16,9 @@ let rec print = function
 		String.concat "" ["coe "; par i; par j; par e1; par e2]
 	
   | Hfill (e, e1, e2) -> 
-    String.concat "" ["\n  hfill "; print e; 
-    "\n    | i0 → "; par e1; 
-		"\n    | i1 → "; par e2]
+    String.concat "" ["\n  hfill "; par e; 
+    "\n    | i0 → "; print e1; 
+		"\n    | i1 → "; print e2]
 		
 	| Abs (y, e) ->  
 		let rec iter = function
@@ -103,7 +103,13 @@ let rec print = function
 				"path " ^ par e ^ par e1 ^ par e2
 		end
 
-	| App (e1, e2) -> par e1 ^ par e2
+	| App (e1, e2) -> (*par e1 ^ par e2*)
+			let rec iter = function
+			| App (e3, e4) -> iter e3 ^ par e4
+			| e -> par e
+		in
+		iter e1 ^ par e2		
+
 	| Pair (e1, e2) -> "(" ^ par e1 ^ ", " ^ par e2 ^ ") "
 	| Fst e -> "fst " ^ par e
 	| Snd e -> "snd " ^ par e
