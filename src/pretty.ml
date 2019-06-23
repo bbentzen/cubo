@@ -110,6 +110,18 @@ let rec print = function
 		in
 		iter e1 ^ par e2		
 
+	| Type l -> 
+		begin
+			let rec helper = function
+			| Num n -> string_of_int n
+			| Next n -> helper n ^ "+ 1"
+			| Var l -> l
+			| Max (n, Num m) | Max (Num m, n) -> helper n ^ " + " ^ string_of_int m
+			| Max (n, m) -> "max(" ^ helper n ^ "," ^ helper m ^ ")"
+		in
+		"type " ^ helper l ^ " "
+		end
+
 	| Pair (e1, e2) -> "(" ^ par e1 ^ ", " ^ par e2 ^ ") "
 	| Fst e -> "fst " ^ par e
 	| Snd e -> "snd " ^ par e
@@ -122,8 +134,6 @@ let rec print = function
 	| Abort e -> String.concat "" ["abort "; par e]
 	| Pabs (y, e) -> String.concat "" ["<"; y; "> "; print e]
 	| At (e1, e2) -> String.concat "" [par e1; "@ "; par e2]
-
-	| Type n -> "type " ^ string_of_int n ^ " "
 	| Hole (n, _) -> "?" ^ n ^ "? "
 	| Id y -> y ^ " "
 	| I0() -> "i0 "

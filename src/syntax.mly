@@ -153,7 +153,7 @@ expr:
   | expr TRANS expr                                         { App(App(Id "path_trans", $1), $3) }
   | PATHD expr expr expr %prec ABORT                        { Pathd($2,$3,$4) }
   | PATH expr expr expr %prec ABORT                         { Pathd(Abs("v?",$2),$3,$4) }
-  | TYPE ZERO                                               { Type(0) }
-  | TYPE NUMBER                                             { Type(int_of_string $2) }
+  | TYPE ZERO                                               { Type(Num 0) }
+  | TYPE NUMBER                                             { Type(Num (int_of_string $2)) }
   | PLACEHOLDER NUMBER                                      { Hole($2, []) }
   | WILDCARD                                                { Wild() }

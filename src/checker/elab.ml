@@ -356,7 +356,7 @@ let rec elaborate global ctx ty ph vars = function
             let elab2 = elaborate global ctx tys ph (vars+1) e2 in (* call elab with ty0' *)
             begin match elab2 with
             | Ok (e2', Ast.Pi(_, nat, Ast.Pi(_, _, _))) ->
-              let u = unify global ctx ph vars (Nat(), nat, Type 0) in
+              let u = unify global ctx ph vars (Nat(), nat, Type (Num 0)) in
               begin match u with
               | Ok _ ->
                 Ok (Natrec(e', e1', e2'), ty')
@@ -906,13 +906,13 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (ty1', Type n1), Ok (ty2', Type n2) -> 
       begin match ty with
       | Type m -> 
-        if m >= n1 && m >= n2 then 
+        if Universe.leq (n1, m) && Universe.leq (n2, m) then 
           Ok (Pi(x, ty1', ty2'), Type m) 
         else 
           Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
-                "\nof type \n  type (max(" ^ string_of_int n1 ^ ", " ^ string_of_int n2 ^ "))\n has type\n  " ^ string_of_int m)
+                "\nof type \n  " ^ Pretty.print (eval (Type (Max (n1, n2)))) ^ "\n has type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
-        if n1 > n2 then 
+        if Universe.leq (n2, n1) then 
           Ok (Pi(x, ty1', ty2'), Type n1)
         else 
           Ok (Pi(x, ty1', ty2'), Type n2)
@@ -922,11 +922,11 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (ty1', Type n), Ok (Hole (k,l), _) -> 
       begin match ty with
       | Type m -> 
-        if m >= n then 
+        if Universe.leq (n, m) then 
           Ok (Pi(x, ty1', Hole (k,l)), Type m) 
         else 
           Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
-                "\nof type \n  type " ^ string_of_int n ^ "))\n has type\n  " ^ string_of_int m)
+                "\nof type \n  " ^ Pretty.print (Type n) ^ "\n has type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
         Ok (Pi(x, ty1', Hole (k,l)), Type n)
       | _ ->
@@ -935,11 +935,11 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (Hole (k,l), _), Ok (ty2', Type n) -> 
       begin match ty with
       | Type m -> 
-        if m >= n then 
+        if Universe.leq (n, m) then 
           Ok (Pi(x, Hole (k,l), ty2'), Type m) 
         else 
           Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
-                "\nof type \n  type " ^ string_of_int n ^ "))\n has type\n  " ^ string_of_int m)
+                "\nof type \n  " ^ Pretty.print (Type n) ^ "\n has type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
         Ok (Pi(x, Hole (k,l), ty2'), Type n)
       | _ ->
@@ -968,13 +968,13 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (ty1', Type n1), Ok (ty2', Type n2) -> 
       begin match ty with
       | Type m -> 
-        if m >= n1 && m >= n2 then 
+        if Universe.leq (n1, m) && Universe.leq (n2, m) then 
           Ok (Sigma(x, ty1', ty2'), Type m) 
         else 
           Error ("Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
-                "\nof type \n  type (max(" ^ string_of_int n1 ^ ", " ^ string_of_int n2 ^ "))\n has type\n  " ^ string_of_int m)
+                "\nof type \n  " ^ Pretty.print (eval (Type (Max(n1, n2)))) ^ "\n has type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
-        if n1 > n2 then 
+        if Universe.leq (n2, n1) then 
           Ok (Sigma(x, ty1', ty2'), Type n1)
         else 
           Ok (Sigma(x, ty1', ty2'), Type n2)
@@ -985,11 +985,11 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (ty1', Type n), Ok (Hole (k,l), _) -> 
       begin match ty with
       | Type m -> 
-        if m >= n then 
+        if Universe.leq (n, m) then 
           Ok (Sigma(x, ty1', Hole (k,l)), Type m) 
         else 
           Error ("Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
-                "\nof type \n  type " ^ string_of_int n ^ "))\n has type\n  " ^ string_of_int m)
+                "\nof type \n  " ^ Pretty.print (Type n) ^ "\n has type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
         Ok (Sigma(x, ty1', Hole (k,l)), Type n)
       | _ ->
@@ -998,11 +998,11 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (Hole (k,l), _), Ok (ty2', Type n) -> 
       begin match ty with
       | Type m -> 
-        if m >= n then 
+        if Universe.leq (n, m) then 
           Ok (Sigma(x, Hole (k,l), ty2'), Type m) 
         else 
           Error ("Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
-                "\nof type \n  type " ^ string_of_int n ^ "))\n has type\n  " ^ string_of_int m)
+                "\nof type \n  type " ^ Pretty.print (Type n) ^ "))\n has type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
         Ok (Sigma(x, Hole (k,l), ty2'), Type n)
       | _ ->
@@ -1030,13 +1030,13 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (ty1', Type n1), Ok (ty2', Type n2) -> 
       begin match ty with
       | Type m -> 
-        if m >= n1 && m >= n2 then 
+        if Universe.leq (n1, m) && Universe.leq (n2, m) then 
           Ok (Sum(ty1', ty2'), Type m) 
         else 
           Error ("Type mismatch when checking that \n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ 
-                "\nof type \n  type (max(" ^ string_of_int n1 ^ ", " ^ string_of_int n2 ^ "))\n has type\n  " ^ string_of_int m)
+                "\nof type \n  " ^ Pretty.print (eval (Type (Max(n1, n2)))) ^ "\n has type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
-        if n1 > n2 then 
+        if Universe.leq (n2, n1) then 
           Ok (Sum(ty1', ty2'), Type n1)
         else 
           Ok (Sum(ty1', ty2'), Type n2)
@@ -1046,11 +1046,11 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (ty1', Type n), Ok (Hole (k,l), _) -> 
       begin match ty with
       | Type m -> 
-        if m >= n then 
+        if Universe.leq (n, m) then 
           Ok (Sum(ty1', Hole (k,l)), Type m) 
         else 
           Error ("Type mismatch when checking that \n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ 
-                "\nof type \n  type " ^ string_of_int n ^ "\nhas type\n  " ^ string_of_int m)
+                "\nof type \n  " ^ Pretty.print (Type n) ^ "\nhas type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
         Ok (Sum(ty1', Hole (k,l)), Type n)
       | _ ->
@@ -1059,11 +1059,11 @@ let rec elaborate global ctx ty ph vars = function
     | Ok (Hole (k,l), _), Ok (ty2', Type n) -> 
       begin match ty with
       | Type m -> 
-        if m >= n then 
+        if Universe.leq (n, m) then 
           Ok (Sum(Hole (k,l), ty2'), Type m) 
         else 
           Error ("Type mismatch when checking that \n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ 
-                "\nof type \n  type " ^ string_of_int n ^ "\nhas type\n  " ^ string_of_int m)
+                "\nof type \n  " ^ Pretty.print (Type n) ^ "\nhas type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
         Ok (Sum(Hole (k,l), ty2'), Type n)
       | _ ->
@@ -1086,31 +1086,31 @@ let rec elaborate global ctx ty ph vars = function
   | Int() ->
     (match ty with
     | Type m -> Ok (Int(), Type m)
-    | Hole _ -> Ok (Int(), Type 0) 
+    | Hole _ -> Ok (Int(), Type (Num 0)) 
     | _ -> Error ("Type mismatch when checking that\n  I\nhas type\n  " ^ Pretty.print ty))
 
   | Nat() ->
     (match ty with
     | Type m -> Ok (Nat(), Type m)
-    | Hole _ -> Ok (Nat(), Type 0) 
+    | Hole _ -> Ok (Nat(), Type (Num 0)) 
     | _ -> Error ("Type mismatch when checking that\n  nat\nhas type\n  " ^ Pretty.print ty))
 
   | Bool() ->
     (match ty with
     | Type m -> Ok (Bool(), Type m)
-    | Hole _ -> Ok (Bool(), Type 0) 
+    | Hole _ -> Ok (Bool(), Type (Num 0)) 
     | _ -> Error ("Type mismatch when checking that\n  bool\nhas type\n  " ^ Pretty.print ty))
 
   | Unit() ->
     (match ty with
     | Type m -> Ok (Unit(), Type m)
-    | Hole _ -> Ok (Unit(), Type 0) 
+    | Hole _ -> Ok (Unit(), Type (Num 0)) 
     | _ -> Error ("Type mismatch when checking that\n  unit\n has type\n  " ^ Pretty.print ty))
 
   | Void() ->
     (match ty with
     | Type m -> Ok (Void(), Type m)
-    | Hole _ -> Ok (Void(), Type 0) 
+    | Hole _ -> Ok (Void(), Type (Num 0)) 
     | _ -> Error ("Type mismatch when checking that\n  void\n has type\n  " ^ Pretty.print ty))
 
   | Pathd(ty1, e1, e2) ->
@@ -1214,11 +1214,12 @@ let rec elaborate global ctx ty ph vars = function
   | Type n ->
     (match ty with
     | Type m -> 
-      if m > n 
-      then Ok (Type n, Type m) 
-      else Error ("Universe level conflict\n  " ^ string_of_int n ^ "\ncannot have type\n  " ^ string_of_int m ^ "\n(This is known as Girard's paradox)")
-    | Hole _ -> Ok (Type n, Type (n+1)) 
-    | _ -> Error ("Type mismatch when checking that\n  " ^ string_of_int n ^ "\nhas type\n  " ^ Pretty.print ty))
+      if Universe.leq (n, m) then 
+        Ok (Type n, Type m) 
+      else 
+        Error ("Universe inconsistency:\n  " ^ Pretty.print (Type n) ^ "\ncannot have type\n  " ^ Pretty.print (Type m) ^ "\n(This is known as Girard's paradox)")
+    | Hole _ -> Ok (Type n, Type (Next n))
+    | _ -> Error ("Type mismatch when checking that\n  " ^ Pretty.print (Type n) ^ "\nhas type\n  " ^ Pretty.print ty))
   
   | Wild() ->
     (*begin match find_ty ty ctx with

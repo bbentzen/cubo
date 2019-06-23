@@ -4,6 +4,12 @@
  * Desc: The abstract syntax of terms and types
  **)
 
+type lvl = 
+  | Num of int
+  | Next of lvl
+  | Var of string
+  | Max of lvl * lvl
+
 type expr = 
   | Id of string
   | Int of unit
@@ -38,7 +44,7 @@ type expr =
   | Pabs of string * expr
   | At of expr * expr
   | Pathd of expr * expr * expr
-  | Type of int
+  | Type of lvl
   | Hole of string * (expr list)
   | Wild of unit
 

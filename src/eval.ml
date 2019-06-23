@@ -208,6 +208,9 @@ let rec has_reduction = function
 		Ast.Pathd (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
 		snd (has_reduction e)|| snd (has_reduction e1) || snd (has_reduction e2)
 
+	| Ast.Type l ->
+		Ast.Type (Universe.eval l), false
+		
 	| e -> (e , false)
 
 (* Eager prereduction: does not reduce ε-redexes *)
