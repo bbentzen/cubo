@@ -6,8 +6,8 @@
 
 type level = 
   | Num of int
-  | Next of level
   | Var of string
+  | Suc of level
   | Max of level * level
 
 type expr = 

@@ -7,27 +7,55 @@
 
 open Ast
 
+(* Returns true when a universe level is less-than-or-equal to another, also returns false if they are incomparable *)
+
 let rec leq = function
-  | Num n, Num m -> n <= m
-  | Var n, Var m -> n = m
-  | Num 0, Var _ | Var _, Num 0 -> true
-  | Num _, Var _ | Var _, Num _ -> false
-  | Max (n, n'), Max (m, m') -> (leq (n, m) && leq (n', m')) || (leq (n', m) && leq (n, m'))
-  | Num n, Max (Num m, Num m') | Max (Num m, Num m'), Num n -> n <= m + m'
-  | n, Max (m, m') | Max (m, m'), n -> leq (n, m) || leq (n, m')
-  | n, Next m | Next m, n -> leq (n, m)
+  | Num 0, _ -> 
+    true
+
+  | Num n, Num m -> 
+    n <= m
+
+  | Var n, Var m -> 
+    n = m
+
+  | Max (n, n'), Max (m, m') -> 
+    leq (Max (n, n'), m) || leq (Max (n, n'), m')
+
+  | Max (n, n'), m ->
+    leq (n, m) && leq (n', m)
+
+  | n, Max (m, m') ->
+    leq (n, m) || leq (n, m')
+
+  | Suc n, Suc m -> 
+    leq (n, m)
+  
+  | Num n, Suc m -> 
+    leq (Num (n-1), m)
+
+  | n, Suc m -> 
+    leq (n, m)
+
+  | Suc _, _ | Num _, Var _ | Var _, Num _ -> 
+    false
 
 let rec reduce = function
-  | Next n -> Next (fst (reduce n)), snd (reduce n)
-  | Max (Next n, m) | Max (m, Next n) -> Next (Max (n, m)), true
-  | Max (Num n, Num m) ->
-    if n <= m then
-      (Ast.Num m), true
-    else
-      (Ast.Num n), true
+  | Suc n -> 
+    Suc (fst (reduce n)), snd (reduce n)
+
+  | Max (Suc n, m) | Max (m, Suc n) -> 
+    Suc (fst (reduce (Max (n, m)))), true
+
   | Max (n, m) ->
-    Max (fst (reduce n), fst (reduce m)),
-    snd (reduce n) || snd (reduce m)
+    if leq(n, m) then
+      m, true
+    else if leq(m, n) then
+      n, true
+    else
+      Max (fst (reduce n), fst (reduce m)),
+      snd (reduce n) || snd (reduce m)
+    
   | l -> l, false
 
 let rec eval e =
@@ -45,7 +73,7 @@ let rec decl lvl = function
     Ok ()
   else
     Error ("No declaration found for the universe level '" ^ n ^ "'")
-| Next n ->
+| Suc n ->
   begin
     match decl lvl n with
     | Ok _ -> Ok ()

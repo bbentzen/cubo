@@ -910,7 +910,7 @@ let rec elaborate global ctx lvl ty ph vars = function
           Ok (Pi(x, ty1', ty2'), Type m) 
         else 
           Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
-                "\nof type \n  " ^ Pretty.print (eval (Type (Max (n1, n2)))) ^ "\n has type\n  " ^ Pretty.print (Type m))
+                "\nof type \n  " ^ Pretty.print (eval (Type (Max (n1, n2)))) ^ "\nhas type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
         Ok (Pi(x, ty1', ty2'), Type (Universe.eval (Max(n1, n2))))
       | _ ->
@@ -924,7 +924,7 @@ let rec elaborate global ctx lvl ty ph vars = function
           Ok (Pi(x, ty1', Hole (k,l)), Type m) 
         else 
           Error ("Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
-                "\nof type \n  " ^ Pretty.print (Type n) ^ "\n has type\n  " ^ Pretty.print (Type m))
+                "\nof type \n  " ^ Pretty.print (Type n) ^ "\nhas type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
         Ok (Pi(x, ty1', Hole (k,l)), Type n) (* TODO: hole might have live in a higher universe *)
       | _ ->
@@ -1218,7 +1218,7 @@ let rec elaborate global ctx lvl ty ph vars = function
               Error ("Universe inconsistency: the universe level of\n  " ^ Pretty.print (Type n) ^ 
               "\nmust be inferior to the universe level of\n  " ^ Pretty.print (Type m) ^ 
               "\nFailed to prove that" ^ Pretty.print_level n ^ "≤" ^ Pretty.print_level m)
-          | Hole _ -> Ok (Type n, Type (Next n))
+          | Hole _ -> Ok (Type n, Type (Suc n))
           | _ -> 
             Error ("Type mismatch when checking that\n  " ^ Pretty.print (Type n) ^ 
             "\nhas type\n  " ^ Pretty.print ty)

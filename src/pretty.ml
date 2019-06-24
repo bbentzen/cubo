@@ -169,7 +169,7 @@ else
 
 and print_level = function
 	| Num n -> string_of_int n
-	| Next n -> print_level n ^ "+ 1"
+	| Suc n -> print_level n ^ "+ 1"
 	| Var l -> l
 	| Max (n, Num m) | Max (Num m, n) -> print_level n ^ " + " ^ string_of_int m
 	| Max (n, m) -> "max(" ^ print_level n ^ "," ^ print_level m ^ ")"

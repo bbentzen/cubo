@@ -102,7 +102,7 @@ blocks:
 level:
   | ID                                                     { Var ($1) }
   | NUMBER                                                 { Num (int_of_string ($1)) }
-  | NEXT level                                             { Next ($2) }
+  | NEXT level                                             { Suc ($2) }
   | MAX level level                                        { Max ($2, $3) }
   | LPAREN level RPAREN                                    { $2 }
 
