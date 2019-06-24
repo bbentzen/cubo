@@ -11,15 +11,15 @@ open Eval
 open File
 open Context
 
-let rec compile global lopen filename = function
+let rec compile global lopen filename lvl = function
 	| Ast.Thm (cmd, Prf (id, l, ty, e)) ->
 
 		let ctx = Local.create_ctx l in
 		begin
 			match Global.unfold_all global 0 ty with
 			| Ok ty'' ->
-				let cctx = Ctx.check global ctx in
-				let cty = Type.check global ctx (reduce ty'') in
+				let cctx = Ctx.check global ctx lvl in
+				let cty = Type.check global ctx lvl (reduce ty'') in
 				begin match cctx, cty with
 				| Ok l, Ok (ty', _) -> 
 					let ctx' = List.rev l in
@@ -29,10 +29,10 @@ let rec compile global lopen filename = function
 							Error ("Naming conflict with the identifier '" ^ id ^ 
 										"'\nName already exists in the environment (try 'print " ^ id ^ "' for more information)")
 						else
-							let elab = Elab.elaborate global ctx' (eval ty') 0 0 (reduce e') in
+							let elab = Elab.elaborate global ctx' lvl (eval ty') 0 0 (reduce e') in
 							begin match elab with 
 							| Ok elab ->
-								compile (Global.add_to_global_env global id ctx' elab) lopen filename cmd
+								compile (Global.add_to_global_env global id ctx' elab) lopen filename lvl cmd
 							| Error msg -> 
 								Error ("The following error was found at '" ^ id ^ "'\n" ^ msg)
 							end
@@ -47,7 +47,7 @@ let rec compile global lopen filename = function
 	| Ast.Print (cmd, id) -> 
 		begin match Global.check_def_id id global with
 		| Ok (e, ty) ->
-			begin match compile global lopen filename cmd with
+			begin match compile global lopen filename lvl cmd with
 			| Ok (global', (s, lopen)) -> 
 				Ok (global', 
 						(id ^ " := \n  " ^ Pretty.print e ^ ": \n  " ^ Pretty.print ty ^ 
@@ -59,10 +59,10 @@ let rec compile global lopen filename = function
 	
 	| Ast.Infer (cmd, e) ->
 		let h1 = Hole.generate e 0 [] in
-		let elab = Elab.elaborate global [] h1 0 0 e in 
+		let elab = Elab.elaborate global [] lvl h1 0 0 e in 
 		begin match elab with
 		| Ok (e, ty) ->
-			begin match compile global lopen filename cmd with
+			begin match compile global lopen filename lvl cmd with
 			| Ok (global', (s, lopen)) -> 
 				Ok (global', 
 						("infer := " ^ Pretty.print e ^ ": \n" ^
@@ -77,17 +77,20 @@ let rec compile global lopen filename = function
 		let cd = File.parent filename in
 		let path' = File.read_dir cd s in
 		if List.mem path' lopen then
-			compile global lopen filename cmd
+			compile global lopen filename lvl cmd
 		else
 			begin 
-				match checkfile global lopen path' with
+				match checkfile global lopen path' lvl with
 				| Ok (global', (_, lopen')) -> 
-					compile global' (path' :: lopen') filename cmd
+					compile global' (path' :: lopen') filename lvl cmd
 				| Error s -> 
 					Error ("Failed to open the file '" ^ path' ^ "'\n" ^ s)
 			end
 	
+	| Ast.Level (cmd, lvl') ->
+		compile global lopen filename (lvl @ lvl') cmd
+
 	| Ast.Eof() -> Ok (global, ("", lopen))
 
-and checkfile global lopen filename =
-	compile global lopen filename (parse_file filename)
+and checkfile global lopen filename lvl =
+	compile global lopen filename lvl (parse_file filename)

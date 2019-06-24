@@ -37,4 +37,28 @@ let rec eval e =
       eval (e')
     else 
       e'
+
+let rec decl lvl = function
+| Num _ -> Ok ()
+| Var n -> 
+  if List.mem n lvl then 
+    Ok ()
+  else
+    Error ("No declaration found for the universe level '" ^ n ^ "'")
+| Next n ->
+  begin
+    match decl lvl n with
+    | Ok _ -> Ok ()
+    | Error msg ->
+      Error ("Invalid universe level:\n  " ^ Pretty.print_level n ^ "\n" ^ msg)
+  end
+| Max (n, m) ->
+  begin
+    match decl lvl n, decl lvl m with
+    | Ok _, Ok _ -> Ok ()
+    | Error msg, _ ->
+      Error ("Invalid universe level:\n  " ^ Pretty.print_level n ^ "\n" ^ msg)
+    | _, Error msg ->
+      Error ("Invalid universe level:\n  " ^ Pretty.print_level m ^ "\n" ^ msg)
+  end
   

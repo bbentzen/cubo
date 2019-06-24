@@ -8,16 +8,20 @@
 open Basis
 open Ast
 
-let check global ctx ty =
+let check global ctx lvl ty =
   match ty with
   | Hole _ -> Ok (Hole ("0",[]), ty)
   | _ ->
-    let s = ("Failed to prove that \n  " ^ Pretty.print (Eval.eval ty) ^ "\nis a type") in
-    match Elab.elaborate global ctx (Hole ("0",[])) 1 0 (Eval.reduce ty) with
-    | Ok elab -> 
-      begin match snd elab with
-      | Type _ | Hole _ -> (* Hole _ has been added for tests*)
-        Ok elab
-      | _ -> Error s
+    let elab = Elab.elaborate global ctx lvl (Hole ("0",[])) 1 0 (Eval.reduce ty) in
+    match elab with
+    | Ok (ty', tTy) ->
+      begin
+        match tTy with
+        | Type _ ->
+          Ok (ty', tTy)
+        | Hole _ -> (* Hole _ has been added for tests*)
+          Ok (ty', tTy)
+        | _ -> 
+          Error ("Failed to prove that \n  " ^ Pretty.print (Eval.eval ty) ^ "\nis a type")
       end
-    | Error msg -> Error (s ^ "\n " ^ msg)
+    | Error msg -> Error msg

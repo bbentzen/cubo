@@ -9,7 +9,7 @@ open Command
 
 let () =
   let filename = "tests/test.cubo" in
-  match checkfile [] [] filename with 
+  match checkfile [] [] filename [] with 
   | Ok (env, (s, _)) ->
     let n = String.length s in
     let s' = 

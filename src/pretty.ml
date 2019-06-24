@@ -111,16 +111,7 @@ let rec print = function
 		iter e1 ^ par e2		
 
 	| Type l -> 
-		begin
-			let rec helper = function
-			| Num n -> string_of_int n
-			| Next n -> helper n ^ "+ 1"
-			| Var l -> l
-			| Max (n, Num m) | Max (Num m, n) -> helper n ^ " + " ^ string_of_int m
-			| Max (n, m) -> "max(" ^ helper n ^ "," ^ helper m ^ ")"
-		in
-		"type " ^ helper l ^ " "
-		end
+		"type " ^ print_level l ^ " "
 
 	| Pair (e1, e2) -> "(" ^ par e1 ^ ", " ^ par e2 ^ ") "
 	| Fst e -> "fst " ^ par e
@@ -175,3 +166,10 @@ if helper e then
 	"(" ^ print e ^ ") "
 else
 	print e
+
+and print_level = function
+	| Num n -> string_of_int n
+	| Next n -> print_level n ^ "+ 1"
+	| Var l -> l
+	| Max (n, Num m) | Max (Num m, n) -> print_level n ^ " + " ^ string_of_int m
+	| Max (n, m) -> "max(" ^ print_level n ^ "," ^ print_level m ^ ")"

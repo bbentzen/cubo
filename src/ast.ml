@@ -4,11 +4,11 @@
  * Desc: The abstract syntax of terms and types
  **)
 
-type lvl = 
+type level = 
   | Num of int
-  | Next of lvl
+  | Next of level
   | Var of string
-  | Max of lvl * lvl
+  | Max of level * level
 
 type expr = 
   | Id of string
@@ -44,7 +44,7 @@ type expr =
   | Pabs of string * expr
   | At of expr * expr
   | Pathd of expr * expr * expr
-  | Type of lvl
+  | Type of level
   | Hole of string * (expr list)
   | Wild of unit
 
@@ -56,8 +56,5 @@ type command =
     | Print of command * string
     | Infer of command * expr
     | Open of command * string
+    | Level of command * string list
     | Eof of unit
-
-type binstr = 
-  | Print of expr
-  | Assign of string * expr

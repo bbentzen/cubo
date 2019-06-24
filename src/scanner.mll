@@ -84,12 +84,15 @@ rule token = parse
   | "??"               { PLACEHOLDER }
   | ":="               { COLONEQ }
   | "type"             { TYPE }
+  | "max"              { MAX }
+  | "next"             { NEXT }
   | ":"                { COLON }
   | "|-"               { VDASH }
   | "⊢"                { VDASH }
   | "{"                { LBRACE }
   | "}"                { RBRACE }
   | "open"             { OPEN }
+  | "universe"         { UNIVERSE }
   | "definition"       { DEF }
   | "def"              { DEF }
   | "lemma"            { DEF }
@@ -114,4 +117,8 @@ and comment = parse
 (* | "--"               { comment_line lexbuf } *)
 and comment_line = parse
   | end_of_line        { token lexbuf }
-  | _                  { comment_line lexbuf } *)
+  | _                  { comment_line lexbuf } 
+  
+allow ℓ for universe levels
+
+*)

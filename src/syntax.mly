@@ -33,8 +33,8 @@ let fill_def i j ty e e1 e2 =
 %token <string> ID
 %token <string> FILENAME
 %token <string> NUMBER
-%token OPEN DEF PRINT INFER LBRACE RBRACE
-%token TYPE COLON VDASH
+%token OPEN UNIVERSE DEF PRINT INFER LBRACE RBRACE
+%token TYPE MAX NEXT COLON VDASH
 %token I0 I1 INTERVAL COE HCOM HFILL FILL COM BAR
 %token ABS APP RARROW LRARROW PI
 %token LPAREN RPAREN COMMA FST SND PROD SIGMA
@@ -62,6 +62,7 @@ let fill_def i j ty e e1 e2 =
 %type <Ast.command> command
 %type <Ast.proof> decl
 %type <((string list * Ast.expr) * bool) list> ctx
+%type <Ast.level> level
 %type <Ast.expr> expr
 %type <string list> ids 
 %type <((string * expr) list) * expr> blocks
@@ -71,6 +72,7 @@ let fill_def i j ty e e1 e2 =
 command:  
   | decl command                                            {Thm($2, $1)}
   | OPEN FILENAME command                                   {Open($3, $2)}
+  | UNIVERSE ids command                                    {Level($3, $2)}
   | PRINT ID command                                        {Print($3, $2)}
   | INFER expr command                                      {Infer($3, $2)}
   | EOF                                                     {Eof()}
@@ -96,6 +98,13 @@ vars:
 blocks:
   | expr                                                   { ([], $1) }
   | LPAREN ID COLON expr RPAREN blocks                     { (($2, $4) :: fst $6, snd $6) }
+
+level:
+  | ID                                                     { Var ($1) }
+  | NUMBER                                                 { Num (int_of_string ($1)) }
+  | NEXT level                                             { Next ($2) }
+  | MAX level level                                        { Max ($2, $3) }
+  | LPAREN level RPAREN                                    { $2 }
 
 expr: 
   | ID                                                      { Id($1) }
@@ -154,6 +163,6 @@ expr:
   | PATHD expr expr expr %prec ABORT                        { Pathd($2,$3,$4) }
   | PATH expr expr expr %prec ABORT                         { Pathd(Abs("v?",$2),$3,$4) }
   | TYPE ZERO                                               { Type(Num 0) }
-  | TYPE NUMBER                                             { Type(Num (int_of_string $2)) }
+  | TYPE level                                              { Type ($2) }
   | PLACEHOLDER NUMBER                                      { Hole($2, []) }
   | WILDCARD                                                { Wild() }
