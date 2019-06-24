@@ -243,6 +243,6 @@ let rec unfold_all global vars = function
 		begin match u, u1, u2 with
 			| Ok e', Ok e1', Ok e2' -> Ok (Ast.Hfill (e', e1', e2'))
 			| Error msg, _, _ | _, Error msg , _ | _, _, Error msg -> Error msg
-		end
-
+		end 
+	
 	| e -> Ok e 

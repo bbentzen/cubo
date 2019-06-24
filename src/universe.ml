@@ -89,4 +89,11 @@ let rec decl lvl = function
     | _, Error msg ->
       Error ("Invalid universe level:\n  " ^ Pretty.print_level m ^ "\n" ^ msg)
   end
-  
+
+(* Renames universe variables into hole names *)
+
+let rec to_hole = function
+  | Num l -> Num l 
+  | Var n -> Var ("?" ^ n)
+  | Suc l -> Suc (to_hole l)
+  | Max (l1, l2) -> Max (to_hole l1, to_hole l2)

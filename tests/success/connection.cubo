@@ -6,9 +6,11 @@
  
 import ./function.cubo
  
+universe l 
+
 /* Connections for paths */
  
-def meet {A : type 1} {a b : A} (p : path A a b) 
+def meet {A : type l} {a b : A} (p : path A a b) 
 ⊢ pathd (λ i, path A a (p @ i)) (<_> a) p  := 
 <j> <i> app app 
 hfill (λ _, a) 
@@ -29,7 +31,7 @@ j i
                 p @ i
 */
  
-def join {A : type 1} {a b : A} (p : path A a b) 
+def join {A : type l} {a b : A} (p : path A a b) 
 ⊢ pathd (λ i, path A (p @ i) b) p (<_> b)  := 
 <j> <i> app app 
 hfill (λ i, p @ i) 
@@ -50,7 +52,7 @@ j i
                  b
 */
  
-def both {A : type 1} {a b c : A} (p : path A a b) (q : path A b c) 
+def both {A : type l} {a b c : A} (p : path A a b) (q : path A b c) 
 ⊢ pathd (λ i, path A (p @ i) (q @ i)) p q  := 
 <j> <i> app app 
 hfill (λ i, p @ i) 

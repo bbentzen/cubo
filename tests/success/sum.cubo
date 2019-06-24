@@ -6,124 +6,126 @@
  
 import ./function.cubo 
 
+universe l 
+
 /* Sum type */
  
-def de_morgan_prod_1 {A B : type 1}
+def de_morgan_prod_1 {A B : type l}
 ⊢ (A × B) → ¬ (¬A + ¬B) :=
 λ w v, case v (λ f, app f (fst w)) (λ g, app g (snd w))
  
-def de_morgan_prod_2 {A B : type 1}
+def de_morgan_prod_2 {A B : type l}
 ⊢  (¬ A × ¬ B) → ¬ (A + B) :=
 λ w v, case v (λ x, app (fst w) x) (λ y, app (snd w) y)
  
-def prod_elim_sum {A B C : type 1}
+def prod_elim_sum {A B C : type l}
 ⊢  (A × B) → ((A → C) + (B → C)) → C :=
 λ w v, case v (λ f, app f (fst w)) (λ g, app g (snd w))
  
-def weak_1 {A B : type 1}
+def weak_1 {A B : type l}
 ⊢ A → A + B :=
 λ x, inl x
  
-def weak_2 {A B : type 1}
+def weak_2 {A B : type l}
 ⊢ B → A + B :=
 λ y, inr y
  
-def sum_swap {A B : type 1} 
+def sum_swap {A B : type l} 
 ⊢ (A + B) → (B + A) :=
 λ v, case v (λ x, inr x) (λ y, inl y)
  
-def sum_assoc {A B C : type 1} 
+def sum_assoc {A B C : type l} 
 ⊢ (A + B + C) ↔ ((A + B) + C) :=
 (λ v, case v (λ x, inl (inl x)) (λ v', case v' (λ y, inl (inr y)) (λ z, inr z)),
  λ v, case v (λ v', case v' (λ x, inl x) (λ y, inr (inl y))) (λ z, inr (inr z)))
  
-def sum_distrib_1 {A B C : type 1} 
+def sum_distrib_1 {A B C : type l} 
 ⊢ ((A + B) → C) → ((A → C) + (B → C)) :=
 λ f, inl (λ x, app f (inl x))
  
-def sum_distrib_2 {A B C : type 1} 
+def sum_distrib_2 {A B C : type l} 
 ⊢ ((A + B) → C) → ((A → C) + (B → C)) :=
 λ f, inr (λ y, app f (inr y))
  
-def disj_syll_1 {A B C : type 1} 
+def disj_syll_1 {A B C : type l} 
 ⊢ (A + B) → (¬A) -> B  :=
 λ v f, case v (λ x, abort (app f x)) (λ y, y)
  
-def disj_syll_2 {A B : type 1}
+def disj_syll_2 {A B : type l}
 ⊢ (A + B) → (¬B) → A  :=
 λ v g, case v (λ x, x) (λ y, abort (app g y))
  
-def not_not_lem {A : type 1}
+def not_not_lem {A : type l}
 ⊢ ¬¬ (A + ¬A) :=
 λ f, app f (inr (λ x, app f (inl x)))
  
-def lem_implies_dne {A : type 1} (v : A + ¬A)
+def lem_implies_dne {A : type l} (v : A + ¬A)
 ⊢ ¬¬A → A :=
 λ f, case v id (λ nx, abort (app f nx))
  
-def dne_implies_lem {A : type 1} (dne : ¬¬(A + ¬A) → (A + ¬A))
+def dne_implies_lem {A : type l} (dne : ¬¬(A + ¬A) → (A + ¬A))
 ⊢ A + ¬A :=
 app dne (λ f, app f (inr (λ x, app f (inl x))))
  
-def sum_up_1 {A B C : type 1}
+def sum_up_1 {A B C : type l}
 ⊢ (A → C) → (B → C) → ((A + B) → C) :=
 λ f g v, case v f g
  
-def sum_up_2 {A B C : type 1}
+def sum_up_2 {A B C : type l}
 ⊢ ((A + B) → C) → (A → C) :=
 λ f x, app f (inl x)
  
-def sum_up_3 {A B C : type 1}
+def sum_up_3 {A B C : type l}
 ⊢ ((A + B) → C) → (B → C) :=
 λ f y, app f (inr y) 
  
-def sum_to_fun {A B : type 1}
+def sum_to_fun {A B : type l}
 ⊢ (A + B) → (¬ A → B) :=
 λ v, case v (λ x, (λ f, abort (app f x))) (λ y f, y)
  
-def sum_neg_to_fun {A B : type 1}
+def sum_neg_to_fun {A B : type l}
 ⊢ (¬ A + B) → (A → B) :=
 λ v x, case v (λ nx, abort (app nx x)) (λ y, y)
  
-def de_morgan_sum_1 {A B : type 1}
+def de_morgan_sum_1 {A B : type l}
 ⊢ (A + B) → ¬ (¬ A × ¬ B) :=
 λ v w, case v (λ x, app (fst w) x) (λ y, app (snd w) y)
  
-def de_morgan_sum_2 {A B : type 1}
+def de_morgan_sum_2 {A B : type l}
 ⊢ ¬(A + B) → (¬A × ¬B) :=
 λ f, (λ x, app f (inl x) , λ y, app f (inr y))
  
-def de_morgan_sum_3 {A B : type 1}
+def de_morgan_sum_3 {A B : type l}
 ⊢ (¬ A + ¬ B) → (¬ (A × B)) :=
 λ v w, case v (λ f, app f (fst w)) (λ g, app g (snd w)) 
  
-def sum_elim {A B C : type 1}
+def sum_elim {A B C : type l}
 ⊢ (A + B) → ((A → C) × (B → C)) → C :=
 λ v f, case v (λ x, app (fst f) x) (λ y, app (snd f) y)
 
 /* Sum equations */
 
-def sum_eq_inl {A B : type 1} {a a' : A}
+def sum_eq_inl {A B : type l} {a a' : A}
 ⊢ path (A + B) inl a inl a' → path A a a' :=
 λ p, <i> case (p @ i) id (λ _, a)
 
-def sum_eq_inr {A B : type 1} {b b' : B}
+def sum_eq_inr {A B : type l} {b b' : B}
 ⊢ path (A + B) inr b inr b' → path B b b' :=
 λ p, <i> case (p @ i) (λ _, b) id
  
-def sum_neq {A B : type 1} {a : A} {b : B}
+def sum_neq {A B : type l} {a : A} {b : B}
 ⊢ ¬ path (A + B) (inl a) (inr b) :=
 λ p, coe i0 i1 (λ i, case (p @ i) (λ _, unit) (λ _, void)) ()
 
-def sum_neq' {A B : type 1} {a : A} {b : B}
+def sum_neq' {A B : type l} {a : A} {b : B}
 ⊢ ¬ path (A + B) (inr b) (inl a) :=
 λ p, coe i1 i0 (λ i, case (p @ i) (λ _, unit) (λ _, void)) ()
 
-def sum_code (A B : type 1) (v v' : A + B)
-⊢ type 1 :=
+def sum_code (A B : type l) (v v' : A + B)
+⊢ type l :=
 case v (λ x, case v' (λ x', path (A + B) (inl x) (inl x')) (λ _, void)) (λ y, case v' (λ _, void) (λ y', path (A + B) (inr y) (inr y')))
  
-def sum_eq {A B : type 1} (v v' : A + B)
+def sum_eq {A B : type l} (v v' : A + B)
 ⊢ path (A + B) v v' ↔ app app app app sum_code A B v v' :=
 case v 
   (λ y, case v' 

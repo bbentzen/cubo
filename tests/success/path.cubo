@@ -7,23 +7,25 @@
 import ./connection.cubo 
 import ./function.cubo 
 
+universe l 
+
 /* Path introduction and elimination */
 
-def pathd_abs {A : I → type 1} (p : Π (i : I) app A i)
+def pathd_abs {A : I → type l} (p : Π (i : I) app A i)
 ⊢ pathd A (app p i0) (app p i1) :=
 <i> app p i
  
-def pathd_app {A : I → type 1} (a : app A i0) (b : app A i1) (p : pathd A a b)
+def pathd_app {A : I → type l} (a : app A i0) (b : app A i1) (p : pathd A a b)
 ⊢ Π (i : I) app A i :=
 λ i, p @ i
  
 /* Relefixity, symmetry and transitivity */
  
-def path_rfl {A : type 1} {a : A} 
+def path_rfl {A : type l} {a : A} 
 ⊢ path A a a :=
 <_> a
  
-def path_symm {A : type 1} {a b : A} (p : path A a b)
+def path_symm {A : type l} {a b : A} (p : path A a b)
 ⊢ path A b a := 
 <k> app 
 hcom (λ i, a)
@@ -31,7 +33,7 @@ hcom (λ i, a)
  | i1 → λ _, a 
 k 
  
-def path_trans {A : type 1} {a b c : A} (p : path A a b) (q : path A b c)
+def path_trans {A : type l} {a b c : A} (p : path A a b) (q : path A b c)
 ⊢ path A a c := 
 <k> app 
 hcom (λ i, p @ i) 
@@ -41,29 +43,29 @@ k
  
 /** Path induction **/
 
-def path_subst {A : type 1} (C : A → type 1) {a b : A} (p : path A a b) (c : app C a)
+def path_subst {A : type l} (C : A → type l) {a b : A} (p : path A a b) (c : app C a)
 ⊢ app C b :=
 coe i0 i1 (λ i, app C (p @ i)) c
  
-def path_subst' {A : type 1} {C : A → type 1} {a b : A} (p : path A a b) (c : app C b)
+def path_subst' {A : type l} {C : A → type l} {a b : A} (p : path A a b) (c : app C b)
 ⊢ app C a :=
 coe i1 i0 (λ i, app C (p @ i)) c
  
-def pathrec {A : type 1} {a : A} (C : Π (x : A) (path A a x → type 1)) {b : A} (p : path A a b) (c : app app C a (<_> a)) 
+def pathrec {A : type l} {a : A} (C : Π (x : A) (path A a x → type l)) {b : A} (p : path A a b) (c : app app C a (<_> a)) 
 ⊢ app app C b p := 
 coe i0 i1 (λ i, app app C (p @ i) (app meet p @ i)) c 
  
 /** Regularity **/
  
-def coe_boundary {C : I → type 1} (i : I) (c : app C i) 
+def coe_boundary {C : I → type l} (i : I) (c : app C i) 
 ⊢ path (app C i) (coe i i C c) c :=
 <_> c
  
-def coe_regularity {A : type 1} (i j : I) (a : A) 
+def coe_regularity {A : type l} (i j : I) (a : A) 
 ⊢ path A (coe i j (λ _, A) a) a :=
 <_> a
  
-def hcom_regularity {A : type 1} {a b : A} (p : path A a b)
+def hcom_regularity {A : type l} {a b : A} (p : path A a b)
 ⊢ path (path A a b) 
   p 
   (<k> app 
@@ -75,49 +77,49 @@ def hcom_regularity {A : type 1} {a b : A} (p : path A a b)
  
 /** Proof irrevelance **/
 
-def irrel_uip {A : type 1} {a b : A} (p q : path A a b)
+def irrel_uip {A : type l} {a b : A} (p q : path A a b)
 ⊢ path (path A a b) p q :=
 <_> p
  
-def irrel_line {A : type 1} {a b : A} (p q : path A a b)
+def irrel_line {A : type l} {a b : A} (p q : path A a b)
 ⊢ path (Π (x : I) A) (λ i, p @ i) (λ j, q @ j) :=
 <_> (λ i, p @ i)
  
-def irrel_k {A : type 1} {a : A} (p : path A a a)
+def irrel_k {A : type l} {a : A} (p : path A a a)
 ⊢ path (path A a a) p (<_> a) :=
 <_> p
  
-def irrel_example {A : type 1} {a b : A} {B : path A a b → (Π (x : I) A) → type 1} (p q : path A a b) 
+def irrel_example {A : type l} {a b : A} {B : path A a b → (Π (x : I) A) → type l} (p q : path A a b) 
 ⊢ app app B p (λ i, p @ i) →  app app B q (λ j, q @ j) :=
 id
  
-def irrel_example2 {A : type 1} (i j : I) {a b : A} (p q : I → path A a b)
+def irrel_example2 {A : type l} (i j : I) {a b : A} (p q : I → path A a b)
 ⊢ path (path A a b) (app p i) (app q j) :=
 <_> app p i
  
 /** Strict groupoid structure **/
  
-def path_trans_lc {A : type 1} {a b : A} (p : path A a b) 
+def path_trans_lc {A : type l} {a b : A} (p : path A a b) 
 ⊢ path (path A a a) (p · p⁻¹) (<_> a) := 
 <_> <_> a
  
-def path_trans_rc {A : type 1} {a b : A} (p : path A a b) 
+def path_trans_rc {A : type l} {a b : A} (p : path A a b) 
 ⊢ path (path A b b) (p⁻¹ · p) (<_> b) := 
 <_> <_> b
  
-def path_trans_lu {A : type 1} {a b : A} (p : path A a b) 
+def path_trans_lu {A : type l} {a b : A} (p : path A a b) 
 ⊢ path (path A a b) p ((<_> a) · p) := 
 <_> p
  
-def path_trans_ru {A : type 1} {a b : A} (p : path A a b) 
+def path_trans_ru {A : type l} {a b : A} (p : path A a b) 
 ⊢ path (path A a b) p (p · <_> b) := 
 <_> p
  
-def path_symm_inv {A : type 1} {a b : A} (p : path A a b)
+def path_symm_inv {A : type l} {a b : A} (p : path A a b)
 ⊢ path (path A a b) p (p ⁻¹⁻¹) := 
 <_> p
     
-def path_trans_assoc {A : type 1} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d)
+def path_trans_assoc {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d)
 ⊢ path (path A a d) (p · q · r) ((p · q) · r) := 
 <_> p · q · r
  
