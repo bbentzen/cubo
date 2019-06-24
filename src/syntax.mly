@@ -33,7 +33,7 @@ let fill_def i j ty e e1 e2 =
 %token <string> ID
 %token <string> FILENAME
 %token <string> NUMBER
-%token OPEN UNIVERSE DEF PRINT INFER LBRACE RBRACE
+%token IMPORT UNIVERSE DEF PRINT INFER LBRACE RBRACE
 %token TYPE MAX NEXT COLON VDASH
 %token I0 I1 INTERVAL COE HCOM HFILL FILL COM BAR
 %token ABS APP RARROW LRARROW PI
@@ -71,7 +71,7 @@ let fill_def i j ty e e1 e2 =
 
 command:  
   | decl command                                            {Thm($2, $1)}
-  | OPEN FILENAME command                                   {Open($3, $2)}
+  | IMPORT FILENAME command                                 {Import($3, $2)}
   | UNIVERSE ids command                                    {Level($3, $2)}
   | PRINT ID command                                        {Print($3, $2)}
   | INFER expr command                                      {Infer($3, $2)}

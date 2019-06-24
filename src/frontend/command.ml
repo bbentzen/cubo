@@ -73,7 +73,7 @@ let rec compile global lopen filename lvl = function
 		| Error s -> Ok (global, ("Error: " ^ s, lopen))
 		end
 	
-	| Ast.Open (cmd, s) ->
+	| Ast.Import (cmd, s) ->
 		let cd = File.parent filename in
 		let path' = File.read_dir cd s in
 		if List.mem path' lopen then

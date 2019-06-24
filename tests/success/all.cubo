@@ -4,13 +4,13 @@
  * Author: Bruno Bentzen
  */
  
-open ./bool.cubo 
-open ./connection.cubo 
-open ./function.cubo 
-open ./kan.cubo 
-open ./nat.cubo 
-open ./path.cubo 
-open ./product.cubo 
-open ./sum.cubo 
-open ./unit.cubo 
-open ./universe.cubo 
+import ./bool.cubo 
+import ./connection.cubo 
+import ./function.cubo 
+import ./kan.cubo 
+import ./nat.cubo 
+import ./path.cubo 
+import ./product.cubo 
+import ./sum.cubo 
+import ./unit.cubo 
+import ./universe.cubo 

@@ -4,8 +4,8 @@
  * Author: Bruno Bentzen
  */
  
-open ./connection.cubo 
-open ./function.cubo 
+import ./connection.cubo 
+import ./function.cubo 
 
 /* Path introduction and elimination */
 

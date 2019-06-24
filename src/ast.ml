@@ -52,9 +52,9 @@ type proof =
   | Prf of string * (((string list * expr) * bool) list) * expr * expr
 
 type command = 
+    | Import of command * string
     | Thm of command * proof
     | Print of command * string
     | Infer of command * expr
-    | Open of command * string
     | Level of command * string list
     | Eof of unit

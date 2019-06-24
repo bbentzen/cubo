@@ -91,7 +91,7 @@ rule token = parse
   | "⊢"                { VDASH }
   | "{"                { LBRACE }
   | "}"                { RBRACE }
-  | "open"             { OPEN }
+  | "import"             { IMPORT }
   | "universe"         { UNIVERSE }
   | "definition"       { DEF }
   | "def"              { DEF }
