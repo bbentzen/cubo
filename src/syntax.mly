@@ -157,7 +157,7 @@ expr:
   | LANGLE ID RANGLE expr %prec PI                          { Pabs($2,$4) }
   | LANGLE WILDCARD RANGLE expr %prec PI                    { Pabs("v?",$4) }
   | expr AT expr                                            { At($1,$3) }
-  | REFL                                                    { Pabs("v?", Wild()) }
+  | REFL                                                    { Pabs("v?", Wild 0) }
   | expr SYMM                                               { App(Id "path_symm", $1) }
   | expr TRANS expr                                         { App(App(Id "path_trans", $1), $3) }
   | PATHD expr expr expr %prec ABORT                        { Pathd($2,$3,$4) }
@@ -165,4 +165,4 @@ expr:
   | TYPE ZERO                                               { Type(Num 0) }
   | TYPE level                                              { Type ($2) }
   | PLACEHOLDER NUMBER                                      { Hole($2, []) }
-  | WILDCARD                                                { Wild() }
+  | WILDCARD                                                { Wild 0 }

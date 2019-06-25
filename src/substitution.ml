@@ -113,7 +113,7 @@ let rec presubst x t hole_flag = function
 				Ast.Hole (n, helper l)
 		else
 			Ast.Hole (n, l)
-	| Ast.Wild() -> Ast.Wild()
+	| Ast.Wild n -> Ast.Wild n
 
 let rec free_var x = function
 	| Ast.Id y -> 

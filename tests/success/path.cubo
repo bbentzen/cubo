@@ -19,7 +19,7 @@ def pathd_app {A : I → type l} (a : app A i0) (b : app A i1) (p : pathd A a b)
 ⊢ Π (i : I) app A i :=
 λ i, p @ i
  
-/* Relefixity, symmetry and transitivity */
+/* Reflexivity, symmetry and transitivity */
  
 def path_rfl {A : type l} {a : A} 
 ⊢ path A a a :=

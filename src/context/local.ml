@@ -23,9 +23,10 @@ let rec is_declared x ctx =
 	match (List.rev ctx) with
 	| [] -> false
 	| ((y, _), _) :: ctx' -> 
-		if x = y
-		then true
-		else is_declared x ctx'
+		if x = y then
+			true
+		else
+			is_declared x ctx'
 
 let rec var_type x ctx =
 	match (List.rev ctx) with
@@ -42,9 +43,10 @@ let rec check_var_ty x ty ctx =
   match (List.rev ctx) with
   | [] -> false 
   | ((y, ty'), _) :: ctx' -> 
-    if x = y && ty' = ty
-    then true
-    else check_var_ty x ty ctx'
+    if x = y && ty' = ty then 
+			true
+		else
+			check_var_ty x ty ctx'
 
 (* Finds a variable of a given type in the context when it exists *)
 
@@ -52,20 +54,8 @@ let rec find_ty ty ctx =
   match (List.rev ctx) with
   | [] -> Error "" 
   | ((y, ty'), _) :: ctx' -> 
-    if ty' = ty
-    then Ok y
-    else find_ty ty ctx'
-		
-(*
-let ctx_of_string s =
-	match (File.parse_string s) with
-	| Thm (_, Prf (_, l, _, _)) -> create_ctx l
-	| Print _ -> []
-	| Eof () -> []
-				
-let checkctx filename = 
-	check_ctx [] (ctx_of_string (File.concat_string_list (File.read_file filename)))
+    if ty' = ty then 
+			Ok y
+		else 
+			find_ty ty ctx'
 
-let ctxfile filename = 
-	(ctx_of_string (File.concat_string_list (File.read_file filename)))
-*)

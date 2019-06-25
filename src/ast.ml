@@ -46,7 +46,7 @@ type expr =
   | Pathd of expr * expr * expr
   | Type of level
   | Hole of string * (expr list)
-  | Wild of unit
+  | Wild of int
 
 type proof = 
   | Prf of string * (((string list * expr) * bool) list) * expr * expr
