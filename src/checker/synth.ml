@@ -115,5 +115,4 @@ let rec wild global ctx lvl sl e ty =
         | (_, id, vty) :: l -> 
 					wild global ctx lvl ([], remove_var_ty id vty (snd sl)) (rw e l) ty
       end
-
   end

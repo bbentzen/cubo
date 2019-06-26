@@ -52,10 +52,14 @@ let rec check_var_ty x ty ctx =
 
 let rec find_ty ty ctx =
   match (List.rev ctx) with
-  | [] -> Error "" 
+	| [] -> Error () 
   | ((y, ty'), _) :: ctx' -> 
     if ty' = ty then 
 			Ok y
 		else 
 			find_ty ty ctx'
 
+let uniq ctx =
+	let helper = Hashtbl.create (List.length ctx) in
+	List.iter (fun x -> Hashtbl.replace helper x ()) ctx;
+	Hashtbl.fold (fun x () xs -> x :: xs) helper []

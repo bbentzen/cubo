@@ -91,7 +91,11 @@ let rec has_reduction = function
 	| Ast.App (e1, e2) -> 
 		begin 
 			match e1 with
-			| Ast.Abs (x , e) -> subst x e2 (fst (has_reduction e)), true
+			| Ast.Abs (x , e) ->
+				if Placeholder.has_underscore e then
+					Ast.App (e1, e2), false
+				else
+					subst x e2 (fst (has_reduction e)), true
 			| _ -> 
 				Ast.App (fst (has_reduction e1), fst (has_reduction e2)), 
 				snd (has_reduction e1) || snd (has_reduction e2)
@@ -186,7 +190,11 @@ let rec has_reduction = function
 	| Ast.At (e1, e2) -> 
 		begin
 			match e1 with
-			| Ast.Pabs (x , e) -> (subst x e2 (fst (has_reduction e)), true)
+			| Ast.Pabs (x , e) ->
+				if Placeholder.has_underscore e then
+					Ast.At (e1, e2), false
+				else
+					(subst x e2 (fst (has_reduction e)), true)
 			| _ -> 
 				Ast.At (fst (has_reduction e1), fst (has_reduction e2)), 
 				snd (has_reduction e1) || snd (has_reduction e2)

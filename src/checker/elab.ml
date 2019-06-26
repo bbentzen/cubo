@@ -22,19 +22,6 @@ let goal_msg ctx e ty =
   "when checking that\n  " ^ Pretty.print e ^ "\nhas the expected type\n" ^ print ctx ^ 
   "-------------------------------------------\n ⊢ " ^ Pretty.print ty
 
-let default = "", Hole("0",[])
-
-let cons' a l =
-  if List.mem a l then
-    l
-  else 
-    a :: l
-
-let uniq lst =
-  let unique_set = Hashtbl.create (List.length lst) in
-  List.iter (fun x -> Hashtbl.replace unique_set x ()) lst;
-  Hashtbl.fold (fun x () xs -> x :: xs) unique_set []
-
 (* Checks whether the type of a given expression is the given type *)
 
 let rec elaborate global ctx lvl sl ty ph vars = function
@@ -42,14 +29,14 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     begin match var_type x ctx with
     | Ok ty' ->
       let c = check_var_ty x ty ctx in
-      let h = Hole.is ty in
-      let h' = Hole.is ty' in
+      let h = Placeholder.is ty in
+      let h' = Placeholder.is ty' in
       let d = is_declared x ctx in
       begin match c, h, h', d with
       | true , _, _ , _ | _ , _, true , _ ->  Ok (Id x, ty, fst sl)
       | _ , true, _ , _ ->  Ok (Id x, ty', fst sl)
       | false , false, false , true ->
-        let h1 = Hole.generate ty ph [] in
+        let h1 = Placeholder.generate ty ph [] in
         begin match elaborate global ctx lvl sl h1 ph vars ty' with
         | Ok (_, tTy', sa) ->
           let u = unify global ctx lvl sl ph vars (eval ty', eval ty, tTy') true in
@@ -65,7 +52,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       | false , false, false , false -> 
         begin match Global.unfold x global with
         | Ok (body, ty') ->
-          let h1 = Hole.generate ty ph [] in
+          let h1 = Placeholder.generate ty ph [] in
           begin match elaborate global ctx lvl sl h1 ph vars ty' with
           | Ok (_, tTy', sa) ->
             let u = unify global ctx lvl sl ph vars (eval ty', eval ty, tTy') true in
@@ -108,7 +95,11 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     | Pi (y, ty1, ty2) ->
       if has_var x ty then
         let v1 = fresh_var e ty vars in
-        let elab = elaborate global (((v1, ty1), true) :: ctx) lvl sl (subst y (Ast.Id v1) ty2) ph vars e in
+        let elab = 
+          elaborate global (((v1, ty1), true) :: ctx) lvl 
+          (fst sl, ((v1, ty1), true) :: snd sl) (* TODO: improve identation *)
+          (subst y (Ast.Id v1) ty2) ph vars e 
+        in
         begin match elab with
         | Ok (e', ty2', sa) -> 
           Ok (Abs (v1, e'), Pi (y, ty1, ty2'), sa)
@@ -116,7 +107,10 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           Error msg
         end
       else
-        let elab = elaborate global (((x, ty1), true) :: ctx) lvl sl (subst y (Ast.Id x) ty2) ph vars e in
+        let elab = 
+          elaborate global (((x, ty1), true) :: ctx) lvl 
+          (fst sl, ((x, ty1), true) :: snd sl) (* TODO: improve identation *)
+          (subst y (Ast.Id x) ty2) ph vars e in
         begin match elab with
         | Ok (e', ty2', sa) -> 
           Ok (Abs (x, e'), Pi (y, ty1, ty2'), sa)
@@ -124,21 +118,21 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           Error msg
         end
     | Hole _ -> 
-      let h1 = Hole.generate ty ph [] in
-      let h2 = Hole.generate ty (ph+1) [] in
+      let h1 = Placeholder.generate ty ph [] in
+      let h2 = Placeholder.generate ty (ph+1) [] in
       elaborate global ctx lvl sl (Pi(x, h1, h2)) (ph+2) vars (Abs (x, e))
     | _ -> 
       Error (fst sl, "The term\n  λ " ^ x ^ ", " ^ Pretty.print e ^ 
       "\nhas type\n  " ^ Pretty.print ty ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
     end
-  
+
   | App (e1, e2) ->
-    let h1 = Hole.generate ty ph [] in
+    let h1 = Placeholder.generate ty ph [] in
     let v1 = fresh_var (App(e1, e2)) ty vars in
     let elab2 = elaborate global ctx lvl sl h1 (ph+1) (vars+1) e2 in
     begin match elab2 with
     | Ok (e2', ty2', sa2) ->
-      let h2 = Hole.generate ty (ph+1) [Id v1; e2; e2'] in
+      let h2 = Placeholder.generate ty (ph+1) [Id v1; e2; e2'] in
       let helper ty1' =
         let elab1 = elaborate global ctx lvl sl ty1' (ph+1) (vars+1) e1 in
         begin match elab1 with
@@ -146,10 +140,10 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           Ok (App (e1', e2'), subst x e2 ty', uniq (sa2 @ sa1)) 
         | Ok _ -> 
           Error (sa2, "The term\n  " ^ Pretty.print e1 ^ 
-                  "\nis expected to have type\n " ^ Pretty.print ty1') 
+            "\nis expected to have type\n " ^ Pretty.print ty1') 
         | Error (sa, msg) -> 
           Error (sa, "The term\n  " ^ Pretty.print e1 ^ 
-                "\nis expected to have type\n  " ^ Pretty.print ty1' ^ "\n" ^ msg)
+            "\nis expected to have type\n  " ^ Pretty.print ty1' ^ "\n" ^ msg)
         end
       in
       if e2 = e2' then
@@ -161,7 +155,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         helper ty1'
     | Error msg -> Error msg
     end
-  
+    
   | Pair (e1, e2) -> 
     begin match ty with
     | Sigma(y, ty1, ty2) ->
@@ -182,8 +176,8 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       end
     | Hole _ -> 
       let v1 = fresh_var (App (e1, e2)) ty vars in
-      let h1 = Hole.generate ty 0 [] in
-      let h2 = Hole.generate ty 1 [] in
+      let h1 = Placeholder.generate ty 0 [] in
+      let h2 = Placeholder.generate ty 1 [] in
       elaborate global ctx lvl sl (Sigma(v1, h1, h2)) (ph+2) (vars+1) (Pair (e1, e2))
     | _ ->
       Error (fst sl, "Type mismatch when checking that the term (" ^ 
@@ -191,7 +185,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     end
     
   | Ast.Fst e ->
-    let h1 = Hole.generate ty 0 [] in
+    let h1 = Placeholder.generate ty 0 [] in
     let elab = elaborate global ctx lvl sl h1 (ph+1) (vars+1) e in
     begin match elab with
     | Ok (e', Sigma(_, ty', _), sa) ->
@@ -215,7 +209,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     end
 
   | Snd e ->
-    let h1 = Hole.generate ty 0 [] in
+    let h1 = Placeholder.generate ty 0 [] in
     let elab = elaborate global ctx lvl sl h1 (ph+1) (vars+1) e in
     begin match elab with
     | Ok (e', Sigma(x, _, ty2), sa) ->
@@ -250,8 +244,8 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         Error msg
       end
     | Hole _ ->
-      let h1 = Hole.generate ty 0 [] in
-      let h2 = Hole.generate ty 1 [] in
+      let h1 = Placeholder.generate ty 0 [] in
+      let h2 = Placeholder.generate ty 1 [] in
       elaborate global ctx lvl sl (Sum(h1, h2)) (ph+2) vars (Inl e)
     | _ ->
       Error (fst sl, "Type mismatch when checking that the term inl " ^ Pretty.print e ^ " of type ?0? + ?1? has type " ^ Pretty.print ty)
@@ -267,16 +261,16 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       | Error msg -> Error msg
       end
     | Hole _ ->
-      let h1 = Hole.generate ty 0 [] in
-      let h2 = Hole.generate ty 1 [] in
+      let h1 = Placeholder.generate ty 0 [] in
+      let h2 = Placeholder.generate ty 1 [] in
       elaborate global ctx lvl sl (Sum(h1, h2)) (ph+2) vars (Inr e)
     | _ -> 
       Error (fst sl, "Type mismatch when checking that the term inr " ^ Pretty.print e ^ " of type ?0? + ?1? has type " ^ Pretty.print ty)
     end
   
   | Case (e, e1, e2) ->
-    let h1 = Hole.generate ty 0 [] in
-    let h2 = Hole.generate ty 1 [] in
+    let h1 = Placeholder.generate ty 0 [] in
+    let h2 = Placeholder.generate ty 1 [] in
     let elab = elaborate global ctx lvl sl (Sum (h1, h2)) (ph+2) vars e in
     begin match elab with
     | Ok (e', Sum (ty1, ty2), sa) ->
@@ -378,7 +372,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           let elab1 = elaborate global ctx lvl sl (Hole (n, l)) ph (vars+1) e1 in
           begin match elab1 with
           | Ok (e1', ty0, sa1) ->
-            let h1 = Hole.generate (App(ty,ty0)) ph [] in
+            let h1 = Placeholder.generate (App(ty,ty0)) ph [] in
             let ty' = hfullsubst (Zero()) h1 ty0 in
             let tys = Pi(v1, h1, Ast.Pi(v2, ty', ty')) in
             let elab2 = elaborate global ctx lvl sl tys ph (vars+1) e2 in (* call elab with ty0' *)
@@ -445,7 +439,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     | Ok (e', _, sa), Ok (e1', ty1', sa1), Ok (e2', ty2', sa2) ->
       begin match ty with
       | Hole _ ->
-        let h1 = Hole.generate ty 0 [] in
+        let h1 = Placeholder.generate ty 0 [] in
         let tyt = hfullsubst (Ast.True()) h1 ty1' in
         let tyf = hfullsubst (Ast.False()) h1 ty2' in
         begin
@@ -515,7 +509,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         let elab2 = elaborate global ctx lvl sl (Hole (n, l)) ph vars e2 in
         begin match elab2 with
         | Ok (e2', ty2, sa2) ->
-          let h1 = Hole.generate ty 0 [e1; e1'; Ast.Star()] in
+          let h1 = Placeholder.generate ty 0 [e1; e1'; Ast.Star()] in
           let ty' = hfullsubst (Ast.Star()) h1 ty2 in
           Ok (Let (e1', e2'), ty', uniq (sa1 @ sa2))
         | Error msg ->
@@ -543,7 +537,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
   
   | Ast.Coe(i, j, ety, e) ->
     begin
-      let h0 = Hole.generate ty 0 [] in
+      let h0 = Placeholder.generate ty 0 [] in
       let elabi = elaborate global ctx lvl sl (Int()) ph vars i in
       let elabj = elaborate global ctx lvl sl (Int()) ph vars j in
       let elabti = elaborate global ctx lvl sl h0 ph vars (eval (App(ety, i))) in
@@ -646,7 +640,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
             "\nbut is expected to have type\n  I → I → ?0?")
       
       | Hole (_, _) | Pi(_, _, Hole (_, _)) -> 
-        let h0 = Hole.generate ty 0 [] in
+        let h0 = Placeholder.generate ty 0 [] in
         let elabi0 = elaborate global ctx lvl sl h0 ph vars (eval (Ast.App(e, Ast.I0()))) in
         begin
           match elabi0 with
@@ -685,14 +679,15 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       end
   
   | Pabs (i, e) ->
-    let h0 = Hole.generate ty 0 [] in
+    let h0 = Placeholder.generate ty 0 [] in
     let elabt = elaborate global ctx lvl sl h0 ph vars (eval ty) in
     begin match elabt with
     | Ok (Pathd (Hole (n, l), e1, e2), _, _) ->
-      let h0 = Hole.generate ty 0 [] in
-      let elab = elaborate global (((i, Int()), true) :: ctx) lvl sl (Hole (n, l)) ph vars e in
-      let elab1 = elaborate global (((i, Int()), true) :: ctx) lvl sl h0 ph vars (subst i (I0()) e) in
-      let elab2 = elaborate global (((i, Int()), true) :: ctx) lvl sl h0 ph vars (subst i (I1()) e) in
+      let h0 = Placeholder.generate ty 0 [] in
+      let sl' = (fst sl, ((i, Int()), true) :: snd sl) in
+      let elab = elaborate global (((i, Int()), true) :: ctx) lvl sl' (Hole (n, l)) ph vars e in
+      let elab1 = elaborate global (((i, Int()), true) :: ctx) lvl sl' h0 ph vars (subst i (I0()) e) in
+      let elab2 = elaborate global (((i, Int()), true) :: ctx) lvl sl' h0 ph vars (subst i (I1()) e) in
       begin match elab, elab1, elab2 with
       | Ok (e', _, sa), Ok (ei0, tyi0, sa1), Ok (ei1, tyi1, sa2) ->
         let u1 = unify global ctx lvl sl ph vars (eval ei0, eval e1, tyi0) false in
@@ -728,9 +723,13 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       | Error msg, _, _| _, Error msg, _ | _, _, Error msg -> Error msg
       end
     | Ok (Pathd (ty1, e1, e2), _, _) ->
-      let elab = elaborate global (((i, Int()), true) :: ctx) lvl sl (eval (App(ty1,Id i))) ph vars e in
       let elab1 = elaborate global ctx lvl sl (eval (App(ty1, I0()))) ph vars (eval (subst i (I0()) e)) in
       let elab2 = elaborate global ctx lvl sl (eval (App(ty1, I1()))) ph vars (eval (subst i (I1()) e)) in
+      let elab = 
+        elaborate global (((i, Int()), true) :: ctx) lvl 
+        (fst sl, ((i, Int()), true) :: snd sl) 
+        (eval (App(ty1,Id i))) ph vars e 
+      in
       begin match elab, elab1, elab2 with
       | Ok (e', _, saa), Ok (ei0, tyi0, sa1), Ok (ei1, tyi1, sa2) ->
         let u1 = unify global ctx lvl sl ph vars (eval ei0, eval e1, tyi0) false in
@@ -741,7 +740,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         | Error ((s,s'), msg) , Ok _ ->
           begin match s, s' with
           | At(s',I0()), s | s, At(s',I0()) ->
-            let h1 = Hole.generate ty 0 [] in
+            let h1 = Placeholder.generate ty 0 [] in
             let elab0 = elaborate global ctx lvl sl h1 ph vars s' in
             begin match elab0 with
             | Ok (_, Pathd(sty, sa, _), _) ->
@@ -767,7 +766,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         | _ , Error ((s,s'), msg) ->
           begin match s, s' with
           | At(s',I1()), s | s, At(s',I1()) ->
-            let h1 = Hole.generate ty 0 [] in
+            let h1 = Placeholder.generate ty 0 [] in
             let elab0 = elaborate global ctx lvl sl h1 ph vars s' in
             begin match elab0 with
             | Ok (_, Pathd(sty,_,sb), _) ->
@@ -808,7 +807,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         "\n" ^ msg)
       end
     | Ok (Hole _, _, _) ->
-      let h1 = Hole.generate ty 0 [] in
+      let h1 = Placeholder.generate ty 0 [] in
       let ei0 = subst i (I0()) e in
       let ei1 = subst i (I1()) e in
       begin 
@@ -842,9 +841,9 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     end
   
   | At (e1, e2) ->
-    let h1 = Hole.generate ty 0 [] in
-    let h2 = Hole.generate ty 1 [] in
-    let h3 = Hole.generate ty 2 [] in
+    let h1 = Placeholder.generate ty 0 [] in
+    let h2 = Placeholder.generate ty 1 [] in
+    let h3 = Placeholder.generate ty 2 [] in
     let elab1 = elaborate global ctx lvl sl (Pathd(h1, h2, h3)) (ph+3) vars e1 in
     let elab2 = elaborate global ctx lvl sl (Int()) ph vars e2 in
     begin match elab1, elab2 with
@@ -938,9 +937,12 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     end
 
   | Pi(x, ty1, ty2) ->
-    let h1 = Hole.generate ty 0 [] in
+    let h1 = Placeholder.generate ty 0 [] in
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
-    let elab2 = elaborate global (((x, ty1), true) :: ctx) lvl sl h1 (ph+1) vars ty2 in
+    let elab2 = 
+      elaborate global (((x, ty1), true) :: ctx) lvl 
+      (fst sl, ((x, ty1), true) :: snd sl) h1 (ph+1) vars ty2 
+    in
     begin match elab1, elab2 with
     | Ok (ty1', Type n1, sa1), Ok (ty2', Type n2, sa2) -> 
       begin match ty with
@@ -1002,9 +1004,12 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     end
   
   | Sigma(x, ty1, ty2) ->
-    let h1 = Hole.generate ty 0 [] in
+    let h1 = Placeholder.generate ty 0 [] in
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
-    let elab2 = elaborate global (((x, ty1), true) :: ctx) lvl sl h1 (ph+1) vars ty2 in
+    let elab2 = 
+      elaborate global (((x, ty1), true) :: ctx) lvl 
+      (fst sl, ((x, ty1), true) :: snd sl) h1 (ph+1) vars ty2 
+    in
     begin match elab1, elab2 with
     | Ok (ty1', Type n1, sa1), Ok (ty2', Type n2, sa2) -> 
       begin match ty with
@@ -1062,7 +1067,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     end
   
   | Sum(ty1, ty2) ->
-    let h1 = Hole.generate ty 0 [] in
+    let h1 = Placeholder.generate ty 0 [] in
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
     let elab2 = elaborate global ctx lvl sl h1 (ph+1) vars ty2 in
     begin match elab1, elab2 with
@@ -1176,7 +1181,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     end
 
   | Pathd(ty1, e1, e2) ->
-    let h1 = Hole.generate (App(ty,Pathd(ty1, e1, e2))) 0 [] in
+    let h1 = Placeholder.generate (App(ty,Pathd(ty1, e1, e2))) 0 [] in
     begin match ty1 with
     | Hole (n,l) ->
       begin match e1, e2 with 
@@ -1309,8 +1314,8 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     Ok (Hole (n, l), ty, fst sl)
 
   | Wild n ->
-    begin 
-      match find_ty ty (snd sl) with
+    begin
+      match find global (snd sl) ty lvl sl ph vars with
       | Ok var ->
         if List.mem ((var, ty), true) (snd sl) || List.mem ((var, ty), false) (snd sl) then
           Ok (Id var, ty, fst sl)
@@ -1318,7 +1323,35 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           Ok (Id var, ty, (n, var, ty) :: fst sl)
       | Error _ -> 
         Error (fst sl, "Failed to synthesize placeholder for the current goal:\n" ^ 
-          print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty))
+          print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty)
+          ^ "\n" ^ print (snd sl)
+          )
+    end
+
+(* Finds a variable of a given type (up to unification) in the context *)
+
+and find global ctx ty lvl sl ph vars =
+  match Local.find_ty ty ctx with
+  | Ok id -> Ok id
+  | Error _ ->
+    begin
+      match ctx with
+      | [] -> Error () 
+      | ((id, ty'), _) :: ctx' ->
+        let h1 = Placeholder.generate ty' ph [] in
+        let elab = elaborate global ctx lvl sl h1 ph vars ty' in
+        match elab with
+        | Ok (_, tTy, _) ->
+          let u = unify global ctx lvl sl ph vars (ty', ty, tTy) true in
+          begin
+            match u with
+            | Ok _ ->
+              Ok id
+            | Error _ ->
+              Error ()
+          end
+        | Error _ ->
+          find global ctx' ty lvl sl ph vars
     end
 
 (* Unifies two expressions at type *)
@@ -1428,12 +1461,12 @@ and unify global ctx lvl sl ph vars x lift =
           (* If not unifiable, we give it the benefit of the doubt *)
 
         | Ok s, _, Ok s2 -> 
-          let h1 = Hole.generate (App(s, s2)) ph [] in
-          let h2 = Hole.generate (App(s, s2)) (ph+1) [] in
+          let h1 = Placeholder.generate (App(s, s2)) ph [] in
+          let h2 = Placeholder.generate (App(s, s2)) (ph+1) [] in
           Ok (Pathd (s, At(h1, h2), s2))
         | Ok s, Ok s1, _ ->
-          let h1 = Hole.generate (App(s, s1)) ph [] in
-          let h2 = Hole.generate (App(s, s1)) (ph+1) [] in
+          let h1 = Placeholder.generate (App(s, s1)) ph [] in
+          let h2 = Placeholder.generate (App(s, s1)) (ph+1) [] in
           Ok (Pathd (s, s1, At(h1, h2)))
         | Error msg, _, _ | _ , Error msg, _ -> 
           Error (fst msg, "Don't know how to unify the pathd types due to the following errors:\n " ^ snd msg)
@@ -1442,14 +1475,14 @@ and unify global ctx lvl sl ph vars x lift =
       | Abs (x, e), Abs (x', e'), Pi(y, ty1 , ty2) ->
         if e = e' then
           Ok (Abs (x, e))
-        else if Hole.is e' then
+        else if Placeholder.is e' then
           Ok (Abs (x, e))
-        else if Hole.is e then
+        else if Placeholder.is e then
           Ok (Abs (x, e'))
         else 
           begin match eval ty1 with
           | Int() | Hole(_,_) ->
-            let h1 = Hole.generate ty2 ph [] in
+            let h1 = Placeholder.generate ty2 ph [] in
             let elabt0 = elaborate global ctx lvl sl h1 ph vars (subst y (I0()) ty2) in
             let elabt1 = elaborate global ctx lvl sl h1 ph vars (subst y (I1()) ty2) in
             begin match elabt0, elabt1 with
@@ -1484,7 +1517,7 @@ and unify global ctx lvl sl ph vars x lift =
           end
 
       | App (e1, e2), App (e1', e2'), ty ->
-        let h1 = Hole.generate ty ph [] in
+        let h1 = Placeholder.generate ty ph [] in
         let elab2 = elaborate global ctx lvl sl h1 ph vars e2 in
         begin 
           match elab2 with
@@ -1538,7 +1571,7 @@ and unify global ctx lvl sl ph vars x lift =
       
       | App (e, i), e', _ | e', App (e, i), _ ->
         begin
-          let h1 = Hole.generate ty ph [] in
+          let h1 = Placeholder.generate ty ph [] in
           let elab2 = elaborate global ctx lvl sl h1 ph vars i in
           begin 
             match elab2, i with
@@ -1574,7 +1607,7 @@ and unify global ctx lvl sl ph vars x lift =
       | Coe (i, j, e1, e2) , Coe (i', j', e1', e2'), ty ->
         let ui = unify global ctx lvl sl ph vars (i, i', Int()) lift in
         let uj = unify global ctx lvl sl ph vars (j, j', Int()) lift in
-        let h0 = Hole.generate ty ph [] in
+        let h0 = Placeholder.generate ty ph [] in
         let elab = elaborate global ctx lvl sl h0 ph vars e1 in
         begin
           match elab with
@@ -1591,7 +1624,7 @@ and unify global ctx lvl sl ph vars x lift =
         end
       
       | Hfill (e, e1, e2) , Hfill (e', e1', e2'), ty ->
-        let h0 = Hole.generate ty ph [] in
+        let h0 = Placeholder.generate ty ph [] in
         let elab = elaborate global ctx lvl sl h0 ph vars e in
         begin
           match elab with
@@ -1613,8 +1646,8 @@ and unify global ctx lvl sl ph vars x lift =
       
       | At (e1, e2), At (e1', e2'), ty ->
         let u2 = unify global ctx lvl sl ph vars (e2, e2', Int()) lift in
-        let h1 = Hole.generate ty ph [] in
-        let h2 = Hole.generate ty (ph+2) [] in
+        let h1 = Placeholder.generate ty ph [] in
+        let h2 = Placeholder.generate ty (ph+2) [] in
         let i = fresh_var (App(e1, e1')) ty vars in
         let elab1 = elaborate global ctx lvl sl (Pathd (Pi(i, Int(), fullsubst e2 (Id i) ty), h1, h2)) ph vars e1 in
         begin match elab1 with
@@ -1651,7 +1684,7 @@ and unify global ctx lvl sl ph vars x lift =
         (* if i is a variable, we elaborate and unify e @ ε with e' [ε/i] : ty [ε/i] *)
 
           begin
-            let h1 = Hole.generate ty ph [] in
+            let h1 = Placeholder.generate ty ph [] in
             
             begin 
               match i with
@@ -1706,7 +1739,7 @@ and unify global ctx lvl sl ph vars x lift =
 
       | Fst e, Fst e', ty ->
         let v1 = fresh_var e e' vars in
-        let h1 = Hole.generate ty ph [] in
+        let h1 = Placeholder.generate ty ph [] in
         let elab = elaborate global ctx lvl sl (Sigma(v1, ty, h1)) ph vars e in
         begin match elab with
         | Ok (_, ety, _) ->
@@ -1722,7 +1755,7 @@ and unify global ctx lvl sl ph vars x lift =
 
       | Snd e, Snd e', ty ->
         let v1 = fresh_var e e' vars in
-        let h1 = Hole.generate ty ph [] in
+        let h1 = Placeholder.generate ty ph [] in
         let elab = elaborate global ctx lvl sl (Sigma(v1, h1, fullsubst (Fst e) (Id v1) ty)) ph vars e in
         begin match elab with
         | Ok (_, ety, _) ->
@@ -1764,8 +1797,8 @@ and unify global ctx lvl sl ph vars x lift =
         end
 
       | Case (e, e1, e2), Case (e', e1', e2'), ty ->
-        let h1 = Hole.generate ty ph [] in
-        let h2 = Hole.generate ty (ph+1) [] in
+        let h1 = Placeholder.generate ty ph [] in
+        let h2 = Placeholder.generate ty (ph+1) [] in
         let elab = elaborate global ctx lvl sl (Sum(h1, h2)) ph vars e in
         begin match elab with
         | Ok (_, Sum(ty1, ty2), _) ->

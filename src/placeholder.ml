@@ -48,3 +48,22 @@ let rec candidates = function (* TODO: remove duplicates *)
 let is = function
 | Ast.Hole _ -> true
 | _ -> false
+
+(* Determines whether an expression has underscores *)
+
+let rec has_underscore = function
+	| Ast.Wild _ -> 
+		true
+	| Ast.Abs (_, e) | Ast.Pabs (_, e) -> 
+		has_underscore e 
+	| Ast.Pi (_, e1, e2) | Ast.Sigma (_, e1, e2) -> 
+		has_underscore e1 || has_underscore e2
+	| Ast.Fst e | Ast.Snd e | Ast.Inl e | Ast.Inr e | Ast.Succ e | Ast.Abort e -> 
+		has_underscore e
+	| Ast.App (e1, e2) | Ast.Pair (e1, e2) | Ast.Sum (e1, e2) | Ast.Let (e1, e2) | Ast.At(e1, e2) -> 
+		has_underscore e1 || has_underscore e2
+	| Ast.Case (e, e1, e2) | Ast.Natrec (e, e1, e2) | Ast.If (e, e1, e2) | Ast.Pathd (e, e1, e2) | Ast.Hfill (e, e1, e2) -> 
+		has_underscore e || has_underscore e1 || has_underscore e2
+	| Ast.Coe (i, j, e1, e2) -> 
+		has_underscore i || has_underscore j || has_underscore e1 || has_underscore e2
+	| _ -> false

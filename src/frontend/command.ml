@@ -66,7 +66,7 @@ let rec compile global lopen filename lvl = function
 		end
 	
 	| Ast.Infer (cmd, e) ->
-		let h1 = Hole.generate e 0 [] in
+		let h1 = Placeholder.generate e 0 [] in
 		let elab = Elab.elaborate global [] lvl ([], []) h1 0 0 e in 
 		begin 
 			match elab with
