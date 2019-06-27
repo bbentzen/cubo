@@ -103,7 +103,7 @@ let rec print = function
 				"path " ^ par e ^ par e1 ^ par e2
 		end
 
-	| App (e1, e2) -> (*par e1 ^ par e2*)
+	| App (e1, e2) ->
 			let rec iter = function
 			| App (e3, e4) -> iter e3 ^ par e4
 			| e -> par e
@@ -140,7 +140,7 @@ let rec print = function
 	| Void() -> "void "
 	| Inl e -> "inl " ^ par e
 	| Inr e -> "inr " ^ par e
-  | Wild _ -> "_ "
+  | Wild _ -> "?0? "
 
 and par e = 
 	let helper = function

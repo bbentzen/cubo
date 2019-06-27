@@ -96,6 +96,36 @@ let rec remove_var_ty var ty = function
 		else
 			((var', ty'), b) :: remove_var_ty var ty ctx'
 
+			(*
+let wild global ctx lvl sl e ty = 
+	let elab = Elab.elaborate global ctx lvl sl (Eval.eval ty) 0 0 (Eval.reduce e) in
+	match elab with
+    | Ok (e', ty', _) -> 
+			Ok (e', ty')
+		| Error (_, msg) -> 
+			Error msg
+	
+  begin 
+    match elab with
+    | Ok (e', ty', _) -> 
+      Ok (e', ty')
+		| Error (sa, msg) ->
+			let rec rw x = function
+				| [] -> x
+				| (n, id, _) :: l ->
+					Substitution.fullsubst (Wild n) (Id id) (rw x l)
+			in
+      begin
+        match sa with
+        | [] -> 
+          Error msg
+        | (_, id, vty) :: l -> 
+					wild global ctx lvl ([], remove_var_ty id vty (snd sl)) (rw e l) ty
+			end
+		
+	end*)
+
+
 let rec wild global ctx lvl sl e ty = 
   let elab = Elab.elaborate global ctx lvl sl (Eval.eval ty) 0 0 (Eval.reduce e) in
   begin 

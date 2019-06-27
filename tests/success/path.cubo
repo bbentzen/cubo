@@ -87,7 +87,7 @@ def irrel_line {A : type l} {a b : A} (p q : path A a b)
  
 def irrel_k {A : type l} {a : A} (p : path A a a)
 ⊢ path (path A a a) p (<_> a) :=
-<_> p
+<_> _
  
 def irrel_example {A : type l} {a b : A} {B : path A a b → (Π (x : I) A) → type l} (p q : path A a b) 
 ⊢ app app B p (λ i, p @ i) →  app app B q (λ j, q @ j) :=
