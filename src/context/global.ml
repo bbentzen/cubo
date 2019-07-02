@@ -244,5 +244,5 @@ let rec unfold_all global vars = function
 			| Ok e', Ok e1', Ok e2' -> Ok (Ast.Hfill (e', e1', e2'))
 			| Error msg, _, _ | _, Error msg , _ | _, _, Error msg -> Error msg
 		end 
-	
+
 	| e -> Ok e 

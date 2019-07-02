@@ -227,12 +227,12 @@ let rec termsubst e t hole_flag = function
 		else match e with
 		| Ast.Id e -> if ex = Ast.Id e then t else Ast.Id e
 		| Ast.Abs (y, e1) ->
-			let var = fresh_var t t 0 in
-			if not (free_var y e1)
-			then if ex = e1
-				then Ast.Abs (y, hsubst y (Ast.Id var) t hole_flag) 
-				else Ast.Abs (y, termsubst e1 t hole_flag ex)
-			else Ast.Abs (y, e1)
+			let var = fresh_var t e1 0 in
+			if not (free_var y t) then
+				Ast.Abs (y, termsubst e1 t hole_flag ex)
+			else
+				Ast.Abs (var, termsubst (hsubst y (Ast.Id var) e1 hole_flag) t hole_flag ex) 
+			
 		| Ast.App (e1, e2) -> 
 			if ex = e1 
 			then if ex = e2 
@@ -476,6 +476,11 @@ let rec termsubst e t hole_flag = function
 				Ast.Hole (n, helper l)
 			else 
 				Ast.Hole (n, l)
+		(*| Ast.Wild n ->
+				if ex = Ast.Wild n then 
+					t
+				else 
+					Ast.Wild n*)
 		| e -> e
 
 let fullsubst e1 t e2 = 

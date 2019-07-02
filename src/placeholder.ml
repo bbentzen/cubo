@@ -43,11 +43,28 @@ let rec candidates = function (* TODO: remove duplicates *)
 		candidates e @ candidates e1 @ candidates e2
 	| _ -> []
 
-(* Checks whether an expression is a placeholder or not *)
+(* Determines whether an expression is or has a placeholder/underscore *)
 
 let is = function
-| Ast.Hole _ -> true
-| _ -> false
+	| Ast.Hole _ -> true
+	| _ -> false
+
+let rec has_placeholder = function
+	| Ast.Hole _ -> 
+		true
+	| Ast.Abs (_, e) | Ast.Pabs (_, e) -> 
+		has_placeholder e 
+	| Ast.Pi (_, e1, e2) | Ast.Sigma (_, e1, e2) -> 
+		has_placeholder e1 || has_placeholder e2
+	| Ast.Fst e | Ast.Snd e | Ast.Inl e | Ast.Inr e | Ast.Succ e | Ast.Abort e -> 
+		has_placeholder e
+	| Ast.App (e1, e2) | Ast.Pair (e1, e2) | Ast.Sum (e1, e2) | Ast.Let (e1, e2) | Ast.At(e1, e2) -> 
+		has_placeholder e1 || has_placeholder e2
+	| Ast.Case (e, e1, e2) | Ast.Natrec (e, e1, e2) | Ast.If (e, e1, e2) | Ast.Pathd (e, e1, e2) | Ast.Hfill (e, e1, e2) -> 
+		has_placeholder e || has_placeholder e1 || has_placeholder e2
+	| Ast.Coe (i, j, e1, e2) -> 
+		has_placeholder i || has_placeholder j || has_placeholder e1 || has_placeholder e2
+	| _ -> false
 
 (* Determines whether an expression has underscores *)
 

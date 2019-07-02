@@ -140,7 +140,7 @@ let rec print = function
 	| Void() -> "void "
 	| Inl e -> "inl " ^ par e
 	| Inr e -> "inr " ^ par e
-  | Wild _ -> "?0? "
+  | Wild n -> "?0" ^ string_of_int n ^ "? "
 
 and par e = 
 	let helper = function

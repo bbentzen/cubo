@@ -88,61 +88,71 @@ let convert e =
 
 (* Synthesizes wildcards *)
 
-let rec remove_var_ty var ty = function
-  | [] -> [] 
-  | ((var', ty'), b) :: ctx' -> 
-		if var = var' && ty' = ty then
+	let rec printlist ctx =
+		match (List.rev ctx) with
+		| [] -> "" 
+		| (n, id, ty) :: ctx' -> 
+			string_of_int n ^ ", " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ printlist ctx'
+
+(* Synthesizes wildcards *)
+
+let rec remove_var var = function
+	| [] -> [] 
+	| ((var', ty'), b) :: ctx' -> 
+		if var = var' then
 			ctx'
 		else
-			((var', ty'), b) :: remove_var_ty var ty ctx'
+			((var', ty'), b) :: remove_var var ctx'
 
-			(*
-let wild global ctx lvl sl e ty = 
-	let elab = Elab.elaborate global ctx lvl sl (Eval.eval ty) 0 0 (Eval.reduce e) in
-	match elab with
-    | Ok (e', ty', _) -> 
-			Ok (e', ty')
-		| Error (_, msg) -> 
-			Error msg
-	
-  begin 
-    match elab with
-    | Ok (e', ty', _) -> 
-      Ok (e', ty')
-		| Error (sa, msg) ->
-			let rec rw x = function
-				| [] -> x
-				| (n, id, _) :: l ->
-					Substitution.fullsubst (Wild n) (Id id) (rw x l)
-			in
-      begin
-        match sa with
-        | [] -> 
-          Error msg
-        | (_, id, vty) :: l -> 
-					wild global ctx lvl ([], remove_var_ty id vty (snd sl)) (rw e l) ty
-			end
-		
-	end*)
+let rec remove n var = function
+	| [] -> [] 
+	| (m, ctx) :: l -> 
+		if n = m then
+			(m, remove_var var ctx) :: l
+		else
+		(m, ctx) :: remove n var l
 
+(* Iteration and placeholder synthesis *)
 
 let rec wild global ctx lvl sl e ty = 
-  let elab = Elab.elaborate global ctx lvl sl (Eval.eval ty) 0 0 (Eval.reduce e) in
+  let elab = Elab.elaborate global ctx lvl sl (Eval.eval ty) 0 0 (Eval.reduce e) in (* (Eval.reduce e) *)
   begin 
     match elab with
-    | Ok (e', ty', _) -> 
-      Ok (e', ty')
+		| Ok (e', ty', sa) -> (* 	TODO: improve performance *)
+			let relab = Elab.elaborate global ctx lvl sl ty' 0 0 e' in
+			begin
+				match relab with
+				| Ok _ -> Ok (e', ty')
+				| Error (_, msg) -> 
+					witer sa msg global ctx lvl sl e ty
+			end
+		
 		| Error (sa, msg) ->
-			let rec rw x = function
-				| [] -> x
-				| (n, id, _) :: l ->
-					Substitution.fullsubst (Wild n) (Id id) (rw x l)
-			in
-      begin
-        match sa with
-        | [] -> 
-          Error msg
-        | (_, id, vty) :: l -> 
-					wild global ctx lvl ([], remove_var_ty id vty (snd sl)) (rw e l) ty
-      end
-  end
+			witer sa msg global ctx lvl sl e ty
+	end
+
+and witer sa msg global ctx lvl sl e ty =
+	match sa with
+	| [] ->
+		Error msg
+		
+	| (n, id, _) :: _ -> (* l *)
+		let e' = Substitution.fullsubst (Wild n) (Id id) e in
+		let w = wild global ctx lvl sl e' ty in
+		match w with
+		| Ok (e', ty') -> 
+			Ok (e', ty')
+		| Error msg ->
+			begin
+				match Elab.find_index n (snd sl) with
+				| Ok ll ->
+					if remove_var id ll = ll then
+						Error ("Can't find variable '" ^ id ^ 
+							"' in list of candidates\n" ^ Elab.print ll ^ 
+							"(You should not see this message, please report)\n" ^ msg)
+					else
+						wild global ctx lvl ([], remove n id (snd sl)) e ty
+
+				| Error _ ->
+					wild global ctx lvl ([], (n, remove_var id ctx) :: (snd sl)) e ty
+			end

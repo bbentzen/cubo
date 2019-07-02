@@ -16,7 +16,13 @@ let rec print ctx =
 	match (List.rev ctx) with
 	| [] -> "" 
 	| ((id, ty), _) :: ctx' -> 
-		" " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ print ctx'
+    " " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ print ctx'
+
+let rec printsl = function
+  | [] -> "" 
+  | (n, ctx) :: l -> 
+    "wildcard " ^ string_of_int n ^ ":\n" ^ print ctx ^ 
+    printsl l
 
 let goal_msg ctx e ty =
   "when checking that\n  " ^ Pretty.print e ^ "\nhas the expected type\n" ^ print ctx ^ 
@@ -97,25 +103,25 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         let v1 = fresh_var e ty vars in
         let elab = 
           elaborate global (((v1, ty1), true) :: ctx) lvl 
-          (fst sl, ((v1, ty1), true) :: snd sl) (* TODO: improve identation *)
+          (fst sl, append_all ((v1, ty1), true) (snd sl)) (* TODO: improve identation *)
           (subst y (Ast.Id v1) ty2) ph vars e 
         in
         begin match elab with
-        | Ok (e', ty2', sa) -> 
-          Ok (Abs (v1, e'), Pi (y, ty1, ty2'), sa)
-        | Error msg -> 
-          Error msg
+        | Ok (e', ty2', sa) ->
+          Ok (Abs (v1, e'), Pi (v1, ty1, ty2'), sa)
+        | Error (sa, msg) -> 
+          Error (sa, msg)
         end
       else
         let elab = 
           elaborate global (((x, ty1), true) :: ctx) lvl 
-          (fst sl, ((x, ty1), true) :: snd sl) (* TODO: improve identation *)
+          (fst sl, append_all ((x, ty1), true) (snd sl)) (* TODO: improve identation *)
           (subst y (Ast.Id x) ty2) ph vars e in
         begin match elab with
         | Ok (e', ty2', sa) -> 
-          Ok (Abs (x, e'), Pi (y, ty1, ty2'), sa)
-        | Error msg -> 
-          Error msg
+          Ok (Abs (x, e'), Pi (x, ty1, ty2'), sa)
+        | Error (sa, msg) -> 
+          Error (sa, msg)
         end
     | Hole _ -> 
       let h1 = Placeholder.generate ty ph [] in
@@ -129,20 +135,20 @@ let rec elaborate global ctx lvl sl ty ph vars = function
   | App (e1, e2) ->
     let h1 = Placeholder.generate ty ph [] in
     let v1 = fresh_var (App(e1, e2)) ty vars in
-    let elab2 = elaborate global ctx lvl sl h1 (ph+1) (vars+1) e2 in
+    let elab2 = elaborate global ctx lvl sl h1 (ph+1) (vars+2) e2 in (* variable renaming, vars+2 *)
     begin match elab2 with
     | Ok (e2', ty2', sa2) ->
       let h2 = Placeholder.generate ty (ph+1) [Id v1; e2; e2'] in
       let helper ty1' =
-        let elab1 = elaborate global ctx lvl sl ty1' (ph+1) (vars+1) e1 in
+        let elab1 = elaborate global ctx lvl sl ty1' (ph+1) (vars+2) e1 in (* variable renaming, vars+2 *)
         begin match elab1 with
         | Ok (e1', Pi(x, _, ty'), sa1) ->
           Ok (App (e1', e2'), subst x e2 ty', uniq (sa2 @ sa1)) 
-        | Ok _ -> 
-          Error (sa2, "The term\n  " ^ Pretty.print e1 ^ 
+        | Ok (e1', _, _) -> 
+          Error (sa2, "The term\n  " ^ Pretty.print e1' ^ 
             "\nis expected to have type\n " ^ Pretty.print ty1') 
         | Error (sa, msg) -> 
-          Error (sa, "The term\n  " ^ Pretty.print e1 ^ 
+          Error (uniq (sa2 @ sa), "The term\n  " ^ Pretty.print e1 ^ 
             "\nis expected to have type\n  " ^ Pretty.print ty1' ^ "\n" ^ msg)
         end
       in
@@ -153,7 +159,8 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         let subs x = hfullsubst e2' h2 (fullsubst e2 h2 x) in
         let ty1' = Pi(v1, subs ty2', subs ty) in
         helper ty1'
-    | Error msg -> Error msg
+    | Error msg -> 
+      Error msg
     end
     
   | Pair (e1, e2) -> 
@@ -574,14 +581,14 @@ let rec elaborate global ctx lvl sl ty ph vars = function
   | Ast.Hfill(e, e1, e2) ->
     begin
       match ty with
-      | Ast.Pi(_, int, Pi(j, int', ty')) ->
+      | Ast.Pi(i, int, Pi(j, int', ty')) ->
         if eval int = Int() && eval int = eval int' then
           begin
             let elab = elaborate global ctx lvl sl (Pi(j, Int(), ty')) ph vars e in
             let elab1 = elaborate global ctx lvl sl (Pi(j, Int(), ty')) ph vars e1 in
             let elab2 = elaborate global ctx lvl sl (Pi(j, Int(), ty')) ph vars e2 in
             match elab, elab1, elab2 with
-            | Ok (e', _, _), Ok (e1', _, _), Ok (e2', _, _) ->
+            | Ok (e', ety, sa), Ok (e1', e1ty, sa1), Ok (e2', e2ty, sa2) ->
               begin
                 let jty = Pi(j, Int(), ty') in
                 let elabi0 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e', I0())))) in
@@ -590,7 +597,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                 let elab2i0 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e2', I0())))) in
                 begin
                   match elabi0, elabi1, elab1i0, elab2i0 with
-                  | Ok (ei0, _, sa), Ok (ei1, _, _), Ok (e1i0, _, sa1), Ok (e2i0, _, sa2) ->
+                  | Ok (ei0, _, _), Ok (ei1, _, _), Ok (e1i0, _, _), Ok (e2i0, _, _) ->
                     begin
                       let elab1i1 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e1, I1())))) in
                       let elab2i1 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e2, I1())))) in
@@ -599,48 +606,65 @@ let rec elaborate global ctx lvl sl ty ph vars = function
 
                           let u1 = unify global ctx lvl sl ph vars (eval ei0, e1i0, jty) false in
                           let u2 = unify global ctx lvl sl ph vars (eval ei1, e2i0, jty) false in
-                          begin 
+                          begin
                             match u1, u2 with
                             | Ok _, Ok _ ->
-                              Ok (Hfill(e', e1', e2'), ty, uniq (sa @ sa1 @ sa2))
+                              let return x = Ok (Hfill(e', e1', e2'), x, uniq (sa @ sa1 @ sa2)) in
+                              if not (Placeholder.has_placeholder ty) then
+                                return ty
+                              else if not (Placeholder.has_placeholder ety) then
+                                return (Pi (i, Int(), ety))
+                              else if not (Placeholder.has_placeholder e1ty) then
+                                return (Pi (i, Int(), e1ty))
+                              else if not (Placeholder.has_placeholder e2ty) then
+                                return (Pi (i, Int(), e2ty))
+                              else
+                                return ty
                             | Error (_, msg), _ ->
-                              Error (uniq (sa @ sa1 @ sa2), "Error when unifying the terms\n  " ^ 
+                              Error (uniq (sa @ sa1 @ sa2), 
+                                "Error when unifying the terms\n  " ^ 
                                 Pretty.print (eval ei0) ^ "\nand\n  " ^ Pretty.print (eval e1i0) ^
                                 "\n" ^ msg)
                             | _, Error (_, msg) -> 
-                            Error (uniq (sa @ sa1 @ sa2), "Error when unifying the terms\n  " ^ 
-                              Pretty.print (eval ei1) ^ "\nand\n  " ^ Pretty.print (eval e2i0) ^
-                              "\n" ^ msg)
+                              Error (uniq (sa @ sa1 @ sa2), 
+                                "Error when unifying the terms\n  " ^ 
+                                Pretty.print (eval ei1) ^ "\nand\n  " ^ Pretty.print (eval e2i0) ^
+                                "\n" ^ msg)
                           end
                           
-                      | Error msg, _ | _, Error msg -> Error msg                  
+                      | Error (sa', msg), _ | _, Error (sa', msg) -> 
+                        Error (uniq (sa' @ sa @ sa1 @ sa2), msg)
                     end
                     
-                  | Error (sa, msg), _, _, _ ->
-                    Error (sa, "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
+                  | Error (sa', msg), _, _, _ ->
+                    Error (uniq (sa' @ sa @ sa1 @ sa2), 
+                    "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
                     "\nThe i0-face of the lid\n  " ^ Pretty.print (eval (App(e', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
-                  | _, Error (sa, msg), _, _ ->
-                    Error (sa, "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
+                  | _, Error (sa', msg), _, _ ->
+                    Error (uniq (sa' @ sa @ sa1 @ sa2), 
+                    "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
                     "\nThe i1-face of the lid\n  " ^ Pretty.print (eval (App(e', I1()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
-                  | _, _, Error (sa, msg), _ ->
-                    Error (sa, "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
+                  | _, _, Error (sa', msg), _ ->
+                    Error (uniq (sa' @ sa @ sa1 @ sa2), 
+                    "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
                     "\nThe i0-face of the i0-tube\n  " ^ Pretty.print (eval (App(e1', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
-                  | _, _, _, Error (sa, msg) ->
-                    Error (sa, "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
+                  | _, _, _, Error (sa', msg) ->
+                    Error (uniq (sa' @ sa @ sa1 @ sa2), 
+                    "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
                     "\nThe i0-face of the i1-tube\n  " ^ Pretty.print (eval (App(e2', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
                 end
 
               end
-          | Error msg, _, _ | _, Error msg, _ | _, _, Error msg -> 
-            Error msg
+          | Error (sa, msg), _, _ | _, Error (sa, msg), _ | _, _, Error (sa, msg) -> 
+            Error (sa, msg)
           end
         else
           Error (fst sl, "The homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
@@ -701,127 +725,140 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     begin match elabt with
     | Ok (Pathd (Hole (n, l), e1, e2), _, _) ->
       let h0 = Placeholder.generate ty 0 [] in
-      let sl' = (fst sl, ((i, Int()), true) :: snd sl) in
+      let sl' = (fst sl, append_all ((i, Int()), true) (snd sl)) in
       let elab = elaborate global (((i, Int()), true) :: ctx) lvl sl' (Hole (n, l)) ph vars e in
-      let elab1 = elaborate global (((i, Int()), true) :: ctx) lvl sl' h0 ph vars (subst i (I0()) e) in
-      let elab2 = elaborate global (((i, Int()), true) :: ctx) lvl sl' h0 ph vars (subst i (I1()) e) in
-      begin match elab, elab1, elab2 with
-      | Ok (e', _, sa), Ok (ei0, tyi0, sa1), Ok (ei1, tyi1, sa2) ->
-        let u1 = unify global ctx lvl sl ph vars (eval ei0, eval e1, tyi0) false in
-        let u2 = unify global ctx lvl sl ph vars (eval ei1, eval e2, tyi1) false in
-        begin match u1, u2 with
-        | Ok ui0, Ok ui1 ->
-          let v1 = fresh_var (App(tyi0, tyi1)) ty vars in
-          let ty' = fullsubst (I0()) (Id v1) tyi0 in
-          let ty'' = fullsubst (I1()) (Id v1) tyi1 in
-          let elabTy = elaborate global ctx lvl sl h0 ph vars ty in
 
-          begin match elabTy with
-          | Ok (_, tTy, _) ->
-            let u = unify global ctx lvl sl ph vars (ty', ty'', tTy) false in
-            begin match u with
-            | Ok st ->
-              Ok (Pabs (i, e'), Pathd (Abs(v1,st), ui0, ui1), uniq (sa @ sa1 @ sa2))
-            | Error (_, msg) -> Error (uniq (sa @ sa1 @ sa2), msg)
+      begin match elab with
+      | Ok (e', _, sa) ->
+        let elab1 = elaborate global (((i, Int()), true) :: ctx) lvl sl' h0 ph vars (subst i (I0()) e') in
+        let elab2 = elaborate global (((i, Int()), true) :: ctx) lvl sl' h0 ph vars (subst i (I1()) e') in
+        begin match elab1, elab2 with
+        | Ok (ei0, tyi0, _), Ok (ei1, tyi1, _) ->
+        
+          let u1 = unify global ctx lvl sl ph vars (eval ei0, eval e1, tyi0) false in
+          let u2 = unify global ctx lvl sl ph vars (eval ei1, eval e2, tyi1) false in
+          begin match u1, u2 with
+          | Ok ui0, Ok ui1 ->
+            let v1 = fresh_var (App(tyi0, tyi1)) ty vars in
+            let ty' = fullsubst (I0()) (Id v1) tyi0 in
+            let ty'' = fullsubst (I1()) (Id v1) tyi1 in
+            let elabTy = elaborate global ctx lvl sl h0 ph vars ty in
+
+            begin match elabTy with
+            | Ok (_, tTy, _) ->
+              let u = unify global ctx lvl sl ph vars (ty', ty'', tTy) false in
+              begin match u with
+              | Ok st ->
+                Ok (Pabs (i, e'), Pathd (Abs(v1,st), ui0, ui1), sa)
+              | Error (_, msg) -> Error (sa, msg)
+              end
+
+            | Error (sa', msg) -> (* This case is impossible *)
+              Error (uniq (sa @ sa'), msg)
             end
-
-          | Error msg -> (* This case is impossible *)
-            Error msg
+          | _ , Ok _ ->
+            Error (sa, "Failed to unify\n  " ^
+                    Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
+                    goal_msg ctx (Pabs (i, e')) ty) 
+          | _ ->
+            Error (sa, "Failed to unify\n  " ^ 
+                    Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
+                    goal_msg ctx (Pabs (i, e')) ty)
           end
-        | _ , Ok _ ->
-          Error (uniq (sa @ sa1 @ sa2), "Failed to unify\n  " ^
-                  Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
-                  goal_msg ctx (Pabs (i, e')) ty) 
-        | _ ->
-          Error (uniq (sa @ sa1 @ sa2), "Failed to unify\n  " ^ 
-                  Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
-                  goal_msg ctx (Pabs (i, e')) ty)
+        | Error (_, msg), _| _, Error (_, msg) -> 
+          Error (sa, msg)
         end
-      | Error msg, _, _| _, Error msg, _ | _, _, Error msg -> Error msg
+      | Error (sa, msg) -> 
+        Error (sa, msg)
       end
     | Ok (Pathd (ty1, e1, e2), _, _) ->
-      let elab1 = elaborate global ctx lvl sl (eval (App(ty1, I0()))) ph vars (eval (subst i (I0()) e)) in
-      let elab2 = elaborate global ctx lvl sl (eval (App(ty1, I1()))) ph vars (eval (subst i (I1()) e)) in
       let elab = 
         elaborate global (((i, Int()), true) :: ctx) lvl 
-        (fst sl, ((i, Int()), true) :: snd sl) 
-        (eval (App(ty1,Id i))) ph vars e 
+        (fst sl, append_all ((i, Int()), true) (snd sl)) 
+        (eval (App(ty1, Id i))) ph vars e
       in
-      begin match elab, elab1, elab2 with
-      | Ok (e', _, saa), Ok (ei0, tyi0, sa1), Ok (ei1, tyi1, sa2) ->
-        let u1 = unify global ctx lvl sl ph vars (eval ei0, eval e1, tyi0) false in
-        let u2 = unify global ctx lvl sl ph vars (eval ei1, eval e2, tyi1) false in
-        begin match u1, u2 with
-        | Ok ui0, Ok ui1 -> 
-          Ok (Pabs (i, e'), Pathd (ty1, ui0, ui1), uniq (saa @ sa1 @ sa2))
-        | Error ((s,s'), msg) , Ok _ ->
-          begin match s, s' with
-          | At(s',I0()), s | s, At(s',I0()) ->
-            let h1 = Placeholder.generate ty 0 [] in
-            let elab0 = elaborate global ctx lvl sl h1 ph vars s' in
-            begin match elab0 with
-            | Ok (_, Pathd(sty, sa, _), _) ->
-              let u = unify global ctx lvl sl ph vars (s, sa, eval (App(sty, I0()))) false in
-              begin match u with
-              | Ok _ -> 
-                Ok (Pabs (i, e'), Pathd (ty1, ei0, ei1), uniq (saa @ sa1 @ sa2))
-              | Error (_, msg) ->
-                Error (uniq (saa @ sa1 @ sa2), "Failed to unify\n  " ^ 
-                Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
-                msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
+      begin match elab with
+      | Ok (e', _, saa) ->
+        let elab1 = elaborate global ctx lvl sl (eval (App(ty1, I0()))) ph vars (eval (subst i (I0()) e')) in
+        let elab2 = elaborate global ctx lvl sl (eval (App(ty1, I1()))) ph vars (eval (subst i (I1()) e')) in
+        begin match elab1, elab2 with
+        | Ok (ei0, tyi0, _), Ok (ei1, tyi1, _) ->
+          let u1 = unify global ctx lvl sl ph vars (eval ei0, eval e1, tyi0) false in
+          let u2 = unify global ctx lvl sl ph vars (eval ei1, eval e2, tyi1) false in
+          begin match u1, u2 with
+          | Ok ui0, Ok ui1 -> 
+            Ok (Pabs (i, e'), Pathd (ty1, ui0, ui1), saa)
+          | Error ((s,s'), msg) , Ok _ ->
+            begin match s, s' with
+            | At(s',I0()), s | s, At(s',I0()) ->
+              let h1 = Placeholder.generate ty 0 [] in
+              let elab0 = elaborate global ctx lvl sl h1 ph vars s' in
+              begin match elab0 with
+              | Ok (_, Pathd(sty, sa, _), _) ->
+                let u = unify global ctx lvl sl ph vars (s, sa, eval (App(sty, I0()))) false in
+                begin match u with
+                | Ok _ ->
+                  Ok (Pabs (i, e'), Pathd (ty1, ei0, ei1), saa)
+                | Error (_, msg) ->
+                  Error (saa, "Failed to unify\n  " ^ 
+                  Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e' ^ "[i0/" ^ i ^ "]" ^ "\n" ^
+                  msg ^ "\n" ^ goal_msg ctx (Pabs (i, e')) ty )
+                end
+              | _ -> 
+                Error (saa, "Failed to unify\n  " ^ 
+                        Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e' ^ "[i0/" ^ i ^ "]" ^ "\n" ^
+                        msg ^ "\n" ^ goal_msg ctx (Pabs (i, e')) ty)
               end
-            | _ -> 
-              Error (uniq (saa @ sa1 @ sa2), "Failed to unify\n  " ^ 
-                      Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
-                      msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty)
+            | _ ->
+              Error (saa, "Failed to unify\n  " ^ 
+                    Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e' ^ "[i0/" ^ i ^ "]" ^ "\n" ^
+                    msg ^ "\n" ^ goal_msg ctx (Pabs (i, e')) ty)
             end
-          | _ ->
-            Error (uniq (saa @ sa1 @ sa2), "Failed to unify\n  " ^ 
-                  Pretty.print e1 ^ "\nwith\n  " ^ Pretty.print ei0 ^ "≡ " ^ Pretty.print e ^ "[i0/" ^ i ^ "]" ^ "\n" ^
-                  msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty)
-          end
-        | _ , Error ((s,s'), msg) ->
-          begin match s, s' with
-          | At(s',I1()), s | s, At(s',I1()) ->
-            let h1 = Placeholder.generate ty 0 [] in
-            let elab0 = elaborate global ctx lvl sl h1 ph vars s' in
-            begin match elab0 with
-            | Ok (_, Pathd(sty,_,sb), _) ->
-              let u = unify global ctx lvl sl ph vars (s, sb, eval (App(sty, I1()))) false in
-              begin match u with
-              | Ok _ -> Ok (Pabs (i, e'), Pathd (ty1, ei0, ei1), uniq (saa @ sa1 @ sa2))
-              | Error (_, msg) ->
-                Error (uniq (saa @ sa1 @ sa2), "Failed to unify\n  " ^ 
-                Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
-                msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
-              end
+          | _ , Error ((s,s'), msg) ->
+            begin match s, s' with
+            | At(s',I1()), s | s, At(s',I1()) ->
+              let h1 = Placeholder.generate ty 0 [] in
+              let elab0 = elaborate global ctx lvl sl h1 ph vars s' in
+              begin match elab0 with
+              | Ok (_, Pathd(sty,_,sb), _) ->
+                let u = unify global ctx lvl sl ph vars (s, sb, eval (App(sty, I1()))) false in
+                begin match u with
+                | Ok _ -> 
+                  Ok (Pabs (i, e'), Pathd (ty1, ei0, ei1), saa)
+                | Error (_, msg) ->
+                  Error (saa, "Failed to unify\n  " ^ 
+                    Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e' ^ "[i1/" ^ i ^ "]" ^ "\n" ^
+                    msg ^ "\n" ^ goal_msg ctx (Pabs (i, e')) ty )
+                end
 
-            | _ -> 
-              Error (uniq (saa @ sa1 @ sa2), "Failed to unify\n  " ^ 
-                      Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
-                      msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
+              | _ -> 
+                Error (saa, "Failed to unify\n  " ^ 
+                        Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e' ^ "[i1/" ^ i ^ "]" ^ "\n" ^
+                        msg ^ "\n" ^ goal_msg ctx (Pabs (i, e')) ty )
+              end
+            | _ ->
+              Error (saa, "Failed to unify\n  " ^
+                    Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e' ^ "[i1/" ^ i ^ "]" ^ "\n" ^
+                    msg ^ "\n" ^ goal_msg ctx (Pabs (i, e')) ty )
             end
-          | _ ->
-            Error (uniq (saa @ sa1 @ sa2), "Failed to unify\n  " ^
-                  Pretty.print e2 ^ "\nwith\n  " ^ Pretty.print ei1 ^ "≡ " ^ Pretty.print e ^ "[i1/" ^ i ^ "]" ^ "\n" ^
-                  msg ^ "\n" ^ goal_msg ctx (Pabs (i, e)) ty )
           end
+
+        | Error (_, msg), _ ->
+          Error (saa, "Error when checking that the path abstracted term\n  " ^ 
+            Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
+            "\nThe i0-endpoint\n  " ^ Pretty.print (eval (subst i (I0()) e')) ^ 
+            "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I0()))) ^
+            "\n" ^ msg)
+        | _, Error (_, msg) -> 
+          Error (saa, "Error when checking that the path abstracted term\n  " ^ 
+            Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
+            "\nThe i1-endpoint\n  " ^ Pretty.print (eval (subst i (I1()) e')) ^ 
+            "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I1()))) ^ 
+            "\n" ^ msg)
         end
-      | Error (saa, msg), _, _ ->
-        Error (saa, "Error when checking that the path abstracted term\n  " ^ 
-        Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ "\n" ^ msg)
-      | _, Error (saa, msg), _->
-        Error (saa, "Error when checking that the path abstracted term\n  " ^ 
-        Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
-        "\nThe i0-endpoint\n  " ^ Pretty.print (eval (subst i (I0()) e)) ^ 
-        "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I0()))) ^
-        "\n" ^ msg)
-      | _, _, Error (saa, msg) -> 
-        Error (saa, "Error when checking that the path abstracted term\n  " ^ 
-        Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
-        "\nThe i1-endpoint\n  " ^ Pretty.print (eval (subst i (I1()) e)) ^ 
-        "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I1()))) ^ 
-        "\n" ^ msg)
+      | Error (sa, msg) -> 
+        Error (sa, "Error when checking that the path abstracted term\n  " ^ 
+          Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ "\n" ^ msg)
       end
     | Ok (Hole _, _, _) ->
       let h1 = Placeholder.generate ty 0 [] in
@@ -958,7 +995,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
     let elab2 = 
       elaborate global (((x, ty1), true) :: ctx) lvl 
-      (fst sl, ((x, ty1), true) :: snd sl) h1 (ph+1) vars ty2 
+      (fst sl, append_all ((x, ty1), true) (snd sl)) h1 (ph+1) vars ty2 
     in
     begin match elab1, elab2 with
     | Ok (ty1', Type n1, sa1), Ok (ty2', Type n2, sa2) -> 
@@ -1025,7 +1062,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
     let elab2 = 
       elaborate global (((x, ty1), true) :: ctx) lvl 
-      (fst sl, ((x, ty1), true) :: snd sl) h1 (ph+1) vars ty2 
+      (fst sl, append_all ((x, ty1), true) (snd sl)) h1 (ph+1) vars ty2 
     in
     begin match elab1, elab2 with
     | Ok (ty1', Type n1, sa1), Ok (ty2', Type n2, sa2) -> 
@@ -1332,24 +1369,32 @@ let rec elaborate global ctx lvl sl ty ph vars = function
 
   | Wild n ->
     begin
-      match find global ctx (snd sl) ty lvl sl ph vars with
-      | Ok var ->
-        if List.mem ((var, ty), true) (snd sl) || List.mem ((var, ty), false) (snd sl) then
-          Ok (Id var, ty, fst sl)
+      let helper x =
+      match find global ctx x ty lvl sl ph vars with
+      | Ok (e', ty') ->
+        if List.mem (n, e', ty') (fst sl) then
+          Ok (Id e', ty, fst sl)
         else
-          Ok (Id var, ty, (n, var, ty) :: fst sl)
+          Ok (Id e', ty, (n, e', ty') :: fst sl)
       | Error _ -> 
-        Error (fst sl, "Failed to synthesize placeholder for the current goal:\n" ^ 
+        Error ([], "Failed to synthesize placeholder for ?0" ^ string_of_int n ^ "? in the current goal:\n" ^ 
           print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty)
-          ^ "\n" ^ print (snd sl) ^ "\n"
+
+           ^ "\n" ^ printsl (snd sl) ^ "\n"  (* TODO: remove this *)
           )
+      in
+      match find_index n (snd sl) with
+      | Ok l ->
+        helper l
+      | Error _ ->
+        helper ctx
     end
 
 (* Finds a variable of a given type (up to unification) in a list *)
 
 and find global ctx l ty lvl sl ph vars =
   match Local.find_ty ty l with
-  | Ok id -> Ok id
+  | Ok id -> Ok (id, ty)
   | Error _ ->
     begin
       let h1 = Placeholder.generate ty ph [] in
@@ -1363,8 +1408,8 @@ and find global ctx l ty lvl sl ph vars =
               let u = unify global ctx lvl sl ph vars (ty, ty', tTy) true in
               begin
                 match u with
-                | Ok _ ->
-                  Ok id
+                | Ok uty ->
+                  Ok (id, uty)
                 | Error _ ->
                   find global ctx l' ty lvl sl ph vars
               end
@@ -1372,6 +1417,20 @@ and find global ctx l ty lvl sl ph vars =
         | Error (_, msg) ->
           Error msg
     end
+
+and append_all x = function
+  | [] -> []
+  | (n, ctxs) :: l ->
+    (n, x :: ctxs) ::
+      append_all x l
+
+and find_index n = function
+  | [] -> Error "Can't find match"
+  | (m, sctx) :: l ->
+    if m = n then
+      Ok sctx
+    else
+      find_index n l
 
 (* Unifies two expressions at type *)
 

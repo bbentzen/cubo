@@ -30,13 +30,13 @@ let rec compile global lopen filename lvl = function
 									Error ("Naming conflict with the identifier '" ^ id ^ 
 										"'\nName already exists in the environment (try 'print " ^ id ^ "' for more information)")
 								else
-									(* let elab = Elab.elaborate global ctx' lvl ([], ctx') (eval ty') 0 0 (reduce e') in *)
-									let elab = Synth.wild global ctx' lvl ([], ctx') e' ty' in
+									(* let elab = Elab.elaborate global ctx' lvl ([], []) (eval ty') 0 0 (reduce e') in *)
+									let elab = Synth.wild global ctx' lvl ([], []) e' ty' in
 									begin 
 										match elab with 
 										| Ok (e1, ty1) ->
 											compile (Global.add_to_global_env global id ctx' (e1, ty1)) lopen filename lvl cmd
-										| Error (msg) -> 
+										| Error msg -> 
 											Error ("The following error was found at '" ^ id ^ "'\n" ^ msg)
 									end
 								| Error msg -> 
@@ -56,8 +56,8 @@ let rec compile global lopen filename lvl = function
 				begin 
 					match compile global lopen filename lvl cmd with
 					| Ok (global', (s, lopen)) -> 
-						Ok (global', (id ^ " := \n  " ^ Pretty.print e ^ ": \n  " ^ 
-							Pretty.print ty ^ "\n" ^ s, lopen))
+						Ok (global', (id ^ " := \n  " ^ Pretty.print (Eval.eval e) ^ ": \n  " ^ 
+							Pretty.print (Eval.eval ty) ^ "\n" ^ s, lopen))
 					| Error msg -> 
 						Error msg
 				end
