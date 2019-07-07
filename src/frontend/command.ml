@@ -31,7 +31,8 @@ let rec compile global lopen filename lvl = function
 										"'\nName already exists in the environment (try 'print " ^ id ^ "' for more information)")
 								else
 									(* let elab = Elab.elaborate global ctx' lvl ([], []) (eval ty') 0 0 (reduce e') in *)
-									let elab = Synth.wild global ctx' lvl ([], []) e' ty' in
+									(* let elab = Check.wild global ctx' lvl ([], []) e' ty' in *)
+									let elab = Check.init global ctx' lvl e' ty' in
 									begin 
 										match elab with 
 										| Ok (e1, ty1) ->
@@ -56,8 +57,10 @@ let rec compile global lopen filename lvl = function
 				begin 
 					match compile global lopen filename lvl cmd with
 					| Ok (global', (s, lopen)) -> 
-						Ok (global', (id ^ " := \n  " ^ Pretty.print (Eval.eval e) ^ ": \n  " ^ 
+						Ok (global', (id ^ " := \n  " ^ Pretty.print (e) ^ ": \n  " ^ 
 							Pretty.print (Eval.eval ty) ^ "\n" ^ s, lopen))
+						(* Ok (global', (id ^ " := \n  " ^ Pretty.print (Eval.eval e) ^ ": \n  " ^ 
+							Pretty.print (Eval.eval ty) ^ "\n" ^ s, lopen)) *)
 					| Error msg -> 
 						Error msg
 				end

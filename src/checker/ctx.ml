@@ -25,3 +25,15 @@ let check global ctx lvl =
     | _ , Error msg -> Error msg
   in
   helper (List.rev ctx)
+
+let rec or_all = function
+	| [] -> false
+	| (_, b) :: ctx -> 
+    b || (or_all ctx)
+
+let rec count_true = function
+  | [] -> 0
+  | (_, false) :: ctx -> 
+    count_true ctx
+  | (_, true) :: ctx ->
+    count_true ctx +1

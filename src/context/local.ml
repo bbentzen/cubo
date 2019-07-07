@@ -59,7 +59,11 @@ let rec find_ty ty ctx =
 		else 
 			find_ty ty ctx'
 
-let uniq ctx =
-	let helper = Hashtbl.create (List.length ctx) in
-	List.iter (fun x -> Hashtbl.replace helper x ()) ctx;
-	Hashtbl.fold (fun x () xs -> x :: xs) helper []
+let rec find_true ty ctx =
+	match (List.rev ctx) with
+	| [] -> Error () 
+	| ((y, ty'), b) :: ctx' -> 
+		if ty' = ty && b then 
+			Ok y
+		else 
+			find_true ty ctx'

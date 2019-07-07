@@ -1,8 +1,8 @@
 (**
  * (c) Copyright 2019 Bruno Bentzen. All rights reserved.
  * Released under Apache 2.0 license as described in the file LICENSE.
- * Desc: Synthesizes placeholders for expressions and universe levels,
-         Based on an exhaustive search using the context 
+ * Desc: Basic operations for synthesis of placeholders for expressions and universe levels,
+          
  **)
 
 open Basis
@@ -88,11 +88,11 @@ let convert e =
 
 (* Synthesizes wildcards *)
 
-	let rec printlist ctx =
-		match (List.rev ctx) with
-		| [] -> "" 
-		| (n, id, ty) :: ctx' -> 
-			string_of_int n ^ ", " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ printlist ctx'
+let rec printlist ctx =
+	match (List.rev ctx) with
+	| [] -> "" 
+	| (n, id, ty) :: ctx' -> 
+		string_of_int n ^ ", " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ printlist ctx'
 
 (* Synthesizes wildcards *)
 
@@ -110,49 +110,134 @@ let rec remove n var = function
 		if n = m then
 			(m, remove_var var ctx) :: l
 		else
-		(m, ctx) :: remove n var l
+			(m, ctx) :: remove n var l
 
-(* Iteration and placeholder synthesis *)
+(* snd sl operations *)
 
-let rec wild global ctx lvl sl e ty = 
-  let elab = Elab.elaborate global ctx lvl sl (Eval.eval ty) 0 0 (Eval.reduce e) in (* (Eval.reduce e) *)
-  begin 
-    match elab with
-		| Ok (e', ty', sa) -> (* 	TODO: improve performance *)
-			let relab = Elab.elaborate global ctx lvl sl ty' 0 0 e' in
-			begin
-				match relab with
-				| Ok _ -> Ok (e', ty')
-				| Error (_, msg) -> 
-					witer sa msg global ctx lvl sl e ty
-			end
+let rec mem id ty = function
+	| [] -> false
+	| ((id', ty'), _) :: ctx -> 
+		if id = id' && ty = ty' then
+			true
+		else
+			mem id ty ctx
+
+let rec nmem n id ty = function
+	| [] -> false
+	| (m, ctx) :: l -> 
+		if m = n && mem id ty ctx then
+			true
+		else
+			nmem n id ty l
+
+let rec mktrue = function
+	| [] -> []
+	| ((id, ty), _) :: l ->
+		((id, ty), true) :: mktrue l
+
+let rec concat n id ty ctx = function
+	| [] -> 
+		if mem id ty ctx then
+			[(n, ctx)]
+		else
+			[(n, ((id, ty), true) :: ctx)]
 		
-		| Error (sa, msg) ->
-			witer sa msg global ctx lvl sl e ty
-	end
-
-and witer sa msg global ctx lvl sl e ty =
-	match sa with
-	| [] ->
-		Error msg
+	| (m, ctx') :: l ->
+		if m = n then
+			(n, ((id, ty), true) :: ctx') :: l
+		else
+			(m, ctx') :: concat n id ty ctx l
 		
-	| (n, id, _) :: _ -> (* l *)
-		let e' = Substitution.fullsubst (Wild n) (Id id) e in
-		let w = wild global ctx lvl sl e' ty in
-		match w with
-		| Ok (e', ty') -> 
-			Ok (e', ty')
-		| Error msg ->
-			begin
-				match Elab.find_index n (snd sl) with
-				| Ok ll ->
-					if remove_var id ll = ll then
-						Error ("Can't find variable '" ^ id ^ 
-							"' in list of candidates\n" ^ Elab.print ll ^ 
-							"(You should not see this message, please report)\n" ^ msg)
-					else
-						wild global ctx lvl ([], remove n id (snd sl)) e ty
+let make n ctx = (n, mktrue ctx)
 
-				| Error _ ->
-					wild global ctx lvl ([], (n, remove_var id ctx) :: (snd sl)) e ty
-			end
+(* make false *)
+
+let rec mkfalse_var var = function
+	| [] -> [] 
+	| ((var', ty'), b) :: ctx' -> 
+		if var = var' then
+			((var', ty'), false) :: ctx'
+		else
+			((var', ty'), b) :: mkfalse_var var ctx'
+
+let rec mkfalse n var = function
+	| [] -> []
+	| (m, ctx) :: l ->
+		if n = m then
+			(m, mkfalse_var var ctx) :: l
+		else
+			(m, ctx) :: mkfalse n var l
+
+(* other useful functions *) 
+
+let rec remove_row n = function
+	| [] -> [] 
+	| (m, ctx) :: l -> 
+		if n = m then
+			l
+		else
+			(m, ctx) :: remove_row n l
+
+let rec append_all x = function
+	| [] -> []
+	| (n, ctxs) :: l ->
+		(n, x :: ctxs) ::
+			append_all x l
+
+let rec find_index n = function
+	| [] -> Error "Can't find match"
+	| (m, sctx) :: l ->
+		if m = n then
+			Ok sctx
+		else
+			find_index n l
+
+let uniq ctx =
+	let helper = Hashtbl.create (List.length ctx) in
+	List.iter (fun x -> Hashtbl.replace helper x ()) ctx;
+	Hashtbl.fold (fun x () xs -> x :: xs) helper []
+
+let luniq sl =
+	let rec helper = function
+	| [] -> []
+	| l :: ll -> uniq l :: helper ll in
+	(uniq (fst sl), uniq (helper (snd sl)))
+
+(* Combines two contexts keeping a false flag (when it exists) when a type variable occurs in both *)
+
+let rec combine ctx = function
+	| [] -> []
+	| ((id, ty), b) :: ctx' ->
+		if List.mem ((id, ty), false) ctx then
+			((id, ty), false) :: combine ctx ctx'
+		else
+			((id, ty), b) :: combine ctx ctx'
+
+let combines ctx ctx' =
+	uniq ((combine ctx ctx') @ (combine ctx' ctx))
+
+let rec merge nctx = function
+	| [] -> nctx
+	| (n, ctx) :: l ->
+		match find_index n nctx with
+		| Ok ctx' -> 
+			(n, uniq (combines ctx ctx')) :: merge l (remove_row n nctx)
+		| Error _ ->
+			(n, ctx) :: merge nctx l
+
+let append sl sl' =
+	(uniq (fst sl @ fst sl'), uniq (merge (snd sl) (snd sl')))
+	(* (uniq (fst sl @ fst sl'), uniq (merge (snd sl) (snd sl'))) *)
+
+let lappend sl sl' sl'' = 
+	append sl (append sl' sl'')
+
+let rec lowest = function
+	| [] -> 0
+	| (n, _) :: [] -> n
+	| (n, _) :: l ->
+		if n < lowest l then
+			n
+		else 
+			lowest l
+
