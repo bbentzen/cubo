@@ -108,12 +108,10 @@ let rec elaborate global ctx lvl sl ty ph vars = function
   | Abs (x, e) -> 
     begin match ty with
     | Pi (y, ty1, ty2) ->
+      let s var = (fst sl, Synth.allconcat var ty1 (snd sl)) in
       if has_var x ty then
         let v1 = fresh_var e ty vars in
-        let elab = 
-          elaborate global (((v1, ty1), true) :: ctx) lvl sl (* no append_all *)
-          (subst y (Ast.Id v1) ty2) ph vars e 
-        in
+        let elab = elaborate global (((v1, ty1), true) :: ctx) lvl (s v1) (subst y (Ast.Id v1) ty2) ph vars e in
         begin match elab with
         | Ok (e', ty2', sa) ->
           Ok (Abs (v1, e'), Pi (v1, ty1, ty2'), sa)
@@ -121,9 +119,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           Error (sa, msg)
         end
       else
-        let elab = 
-          elaborate global (((x, ty1), true) :: ctx) lvl sl (* no append_all *)
-          (subst y (Ast.Id x) ty2) ph vars e in
+        let elab = elaborate global (((x, ty1), true) :: ctx) lvl (s x) (subst y (Ast.Id x) ty2) ph vars e in
         begin match elab with
         | Ok (e', ty2', sa) -> 
           Ok (Abs (x, e'), Pi (x, ty1, ty2'), sa)
@@ -748,7 +744,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     begin match elabt with
     | Ok (Pathd (Hole (n, l), e1, e2), _, _) ->
       let h0 = Placeholder.generate ty 0 [] in
-      let sl' = (fst sl, Synth.append_all ((i, Int()), true) (snd sl)) in
+      let sl' = (fst sl, Synth.allconcat i (Int()) (snd sl)) in
       let elab = elaborate global (((i, Int()), true) :: ctx) lvl sl' (Hole (n, l)) ph vars e in
 
       begin match elab with
@@ -797,7 +793,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     | Ok (Pathd (ty1, e1, e2), _, _) ->
       let elab = 
         elaborate global (((i, Int()), true) :: ctx) lvl 
-        (fst sl, Synth.append_all ((i, Int()), true) (snd sl)) 
+        (fst sl, Synth.allconcat i (Int()) (snd sl)) 
         (eval (App(ty1, Id i))) ph vars e
       in
       begin match elab with
@@ -1021,7 +1017,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
     let elab2 = 
       elaborate global (((x, ty1), true) :: ctx) lvl 
-      (fst sl, Synth.append_all ((x, ty1), true) (snd sl)) h1 (ph+1) vars ty2 
+      (fst sl, Synth.allconcat x ty1 (snd sl)) h1 (ph+1) vars ty2 
     in
     begin match elab1, elab2 with
     | Ok (ty1', Type n1, sa1), Ok (ty2', Type n2, sa2) -> 
@@ -1090,7 +1086,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
     let elab2 = 
       elaborate global (((x, ty1), true) :: ctx) lvl 
-      (fst sl, Synth.append_all ((x, ty1), true) (snd sl)) h1 (ph+1) vars ty2 
+      (fst sl, Synth.allconcat x ty1 (snd sl)) h1 (ph+1) vars ty2 
     in
     begin match elab1, elab2 with
     | Ok (ty1', Type n1, sa1), Ok (ty2', Type n2, sa2) -> 
@@ -1426,7 +1422,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       in*)
       
       let helper x =
-        match find global ctx x ty lvl sl ph vars with
+        match find true global ctx x ty lvl sl ph vars with
         | Ok (e', ty') ->
           if List.mem (n, e', ty') (fst sl) then
             let sl' = (fst sl, Synth.make n ctx :: (snd sl)) in 
@@ -1445,7 +1441,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       match Synth.find_index n (snd sl) with
       | Ok l (* l*) ->
         begin
-          match find global ctx l ty lvl sl ph vars with
+          match find false global ctx l ty lvl sl ph vars with
           | Ok (e', ty') ->
             if List.mem (n, e', ty') (fst sl) then
               Ok (Id e', ty, sl) (* not accounting for abstraction *)
@@ -1461,9 +1457,9 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         helper ctx
     end
 
-(* Finds a variable set as "true" in a context for a given type up to unification *)
+(* Finds a variable in a context for a given type up to unification *)
 
-and find global ctx l ty lvl sl ph vars =
+and find flag global ctx l ty lvl sl ph vars =
   match Local.find_true ty l with
   | Ok id -> Ok (id, ty)
   | Error _ ->
@@ -1476,49 +1472,24 @@ and find global ctx l ty lvl sl ph vars =
             match l with
             | [] -> Error "Can't find match" 
             | ((id, ty'), b) :: l' ->
-              if b then
+
+              (* When flag=false the search ignores variables set as false *)
+
+              if b || flag then
                 let u = unify global ctx lvl sl ph vars (ty, ty', tTy) true in
                 begin
                   match u with
                   | Ok uty ->
                     Ok (id, uty)
                   | Error _ ->
-                    find global ctx l' ty lvl sl ph vars
+                    find flag global ctx l' ty lvl sl ph vars
                 end
               else 
-                find global ctx l' ty lvl sl ph vars
+                find flag global ctx l' ty lvl sl ph vars
           end
         | Error (_, msg) ->
           Error msg
     end
-
-(*
-and find global ctx l ty lvl sl ph vars =
-  match Local.find_ty ty l with
-  | Ok id -> Ok (id, ty)
-  | Error _ ->
-    begin
-      let h1 = Placeholder.generate ty ph [] in
-      let elab = elaborate global ctx lvl sl h1 ph vars ty in
-      match elab with
-        | Ok (_, tTy, _) ->
-          begin 
-            match l with
-            | [] -> Error "Can't find match" 
-            | ((id, ty'), _) :: l' ->
-              let u = unify global ctx lvl sl ph vars (ty, ty', tTy) true in
-              begin
-                match u with
-                | Ok uty ->
-                  Ok (id, uty)
-                | Error _ ->
-                  find global ctx l' ty lvl sl ph vars
-              end
-          end
-        | Error (_, msg) ->
-          Error msg
-    end
-*)
 
 (* Unifies two expressions at type *)
 

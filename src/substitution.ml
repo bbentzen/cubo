@@ -219,94 +219,121 @@ let hsubst x t e hole_flag = presubst x t hole_flag (alphasubst x t false hole_f
 
 let subst x t e = hsubst x t e true
 
-let rec termsubst e t hole_flag = function
-	| Ast.Id y -> hsubst y t e hole_flag
+let rec termsubst pre f e t hole_flag = function
+	| Ast.Id y -> f y t e hole_flag
 	| ex ->
 		if e = ex 
 		then t 
 		else match e with
-		| Ast.Id e -> if ex = Ast.Id e then t else Ast.Id e
+		| Ast.Id e -> 
+			if ex = Ast.Id e then 
+				t 
+			else 
+				Ast.Id e
+
 		| Ast.Abs (y, e1) ->
-			let var = fresh_var t e1 0 in
-			if not (free_var y t) then
-				Ast.Abs (y, termsubst e1 t hole_flag ex)
+			if pre = false then
+				let var = fresh_var t e1 0 in
+				if not (free_var y t) then
+					Ast.Abs (y, termsubst pre f e1 t hole_flag ex)
+				else
+					Ast.Abs (var, termsubst pre f (f y (Ast.Id var) e1 hole_flag) t hole_flag ex) 
 			else
-				Ast.Abs (var, termsubst (hsubst y (Ast.Id var) e1 hole_flag) t hole_flag ex) 
-			
+				Ast.Abs (y, termsubst true f e1 t hole_flag ex)
+		
+		| Ast.Pabs (y, e1) ->
+			let var = fresh_var t e1 0 in
+			if pre = false then
+				if not (free_var y t) then 
+					Ast.Pabs (y, termsubst pre f e1 t hole_flag ex) 
+				else 
+					Ast.Pabs (var, termsubst pre f e1 t hole_flag ex)
+			else
+				Ast.Pabs (y, termsubst true f e1 t hole_flag ex) 			
+
 		| Ast.App (e1, e2) -> 
 			if ex = e1 
 			then if ex = e2 
 				then Ast.App (t, t) 
-				else Ast.App (t, termsubst e2 t hole_flag ex)
+				else Ast.App (t, termsubst pre f e2 t hole_flag ex)
 			else 
 				if ex = e2 
-				then Ast.App (termsubst e1 t hole_flag ex, t) 
-				else Ast.App (termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+				then Ast.App (termsubst pre f e1 t hole_flag ex, t) 
+				else Ast.App (termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+
 		| Ast.Pi (y, e1, e2) ->
 			let var = fresh_var t t 0 in
 			if not (free_var y ex) 
 			then if ex = e1 
-				then if ex = e2 then Ast.Pi (y, hsubst y (Ast.Id var) t hole_flag, hsubst y (Ast.Id var) t hole_flag) 
-				else Ast.Pi (y, hsubst y (Ast.Id var) t hole_flag, termsubst e2 t hole_flag ex) 
+				then if ex = e2 then Ast.Pi (y, f y (Ast.Id var) t hole_flag, f y (Ast.Id var) t hole_flag) 
+				else Ast.Pi (y, f y (Ast.Id var) t hole_flag, termsubst pre f e2 t hole_flag ex) 
 			else if ex = e2 
-				then Ast.Pi (y, termsubst e1 t hole_flag ex, hsubst y (Ast.Id var) t hole_flag) 
-				else Ast.Pi (y, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+				then Ast.Pi (y, termsubst pre f e1 t hole_flag ex, f y (Ast.Id var) t hole_flag) 
+				else Ast.Pi (y, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 			else Ast.Pi (y, e1, e2)
+
 		| Ast.Pair (e1, e2) -> 
 			if ex = e1 
 			then if ex = e2 
 				then Ast.Pair (t, t) 
-				else Ast.Pair (t, termsubst e2 t hole_flag ex)
+				else Ast.Pair (t, termsubst pre f e2 t hole_flag ex)
 			else 
 				if ex = e2 
-				then Ast.Pair (termsubst e1 t hole_flag ex, t) 
-				else Ast.Pair (termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+				then Ast.Pair (termsubst pre f e1 t hole_flag ex, t) 
+				else Ast.Pair (termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+
 		| Ast.Fst e -> 
 			if ex = e 
 			then Ast.Fst t
-			else Ast.Fst (termsubst e t hole_flag ex)
+			else Ast.Fst (termsubst pre f e t hole_flag ex)
+
 		| Ast.Snd e -> 
 			if ex = e 
 			then Ast.Snd t
-			else Ast.Snd (termsubst e t hole_flag ex)
+			else Ast.Snd (termsubst pre f e t hole_flag ex)
+
 		| Ast.Sigma (y, e1, e2) ->
 			let var = fresh_var t t 0 in
 			if not (free_var y ex) 
 			then if ex = e1 
-				then if ex = e2 then Ast.Sigma (y, hsubst y (Ast.Id var) t hole_flag, hsubst y (Ast.Id var) t hole_flag) 
-				else Ast.Sigma (y, hsubst y (Ast.Id var) t hole_flag, termsubst e2 t hole_flag ex) 
+				then if ex = e2 then Ast.Sigma (y, f y (Ast.Id var) t hole_flag, f y (Ast.Id var) t hole_flag) 
+				else Ast.Sigma (y, f y (Ast.Id var) t hole_flag, termsubst pre f e2 t hole_flag ex) 
 			else if ex = e2 
-				then Ast.Sigma (y, termsubst e1 t hole_flag ex, hsubst y (Ast.Id var) t hole_flag) 
-				else Ast.Sigma (y, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+				then Ast.Sigma (y, termsubst pre f e1 t hole_flag ex, f y (Ast.Id var) t hole_flag) 
+				else Ast.Sigma (y, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 			else Ast.Sigma (y, e1, e2)
+
 		| Ast.Inl e -> 
 			if ex = e 
 			then Ast.Inl t
-			else Ast.Inl (termsubst e t hole_flag ex)
+			else Ast.Inl (termsubst pre f e t hole_flag ex)
+
 		| Ast.Inr e -> 
 			if ex = e 
 			then Ast.Inr t
-			else Ast.Inr (termsubst e t hole_flag ex)
+			else Ast.Inr (termsubst pre f e t hole_flag ex)
+
 		| Ast.Case (e, e1, e2) -> 
 			if ex = e then 
 				if ex = e1 then 
 					if ex = e2 then 
 						Ast.Case (t, t, t) 
-					else Ast.Case (t, t, termsubst e2 t hole_flag ex)
+					else Ast.Case (t, t, termsubst pre f e2 t hole_flag ex)
 				else 
 					if ex = e2 then 
-						Ast.Case (t, termsubst e1 t hole_flag ex, t)
+						Ast.Case (t, termsubst pre f e1 t hole_flag ex, t)
 					else 
-						Ast.Case (t, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+						Ast.Case (t, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 			else 
 				if ex = e1 then 
 					if ex = e2 then 
-						Ast.Case (termsubst e t hole_flag ex, t, t) 
-					else Ast.Case (termsubst e t hole_flag ex, t, termsubst e2 t hole_flag ex)
+						Ast.Case (termsubst pre f e t hole_flag ex, t, t) 
+					else Ast.Case (termsubst pre f e t hole_flag ex, t, termsubst pre f e2 t hole_flag ex)
 				else 
 					if ex = e2 then 
-						Ast.Case (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, t)
-					else Ast.Case (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+						Ast.Case (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, t)
+					else Ast.Case (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+
 		| Ast.Coe (i, j, e1, e2) -> 
 			if ex = i then
 			begin
@@ -315,24 +342,24 @@ let rec termsubst e t hole_flag = function
 						if ex = e2 then 
 							Ast.Coe (t, t, t, t) 
 						else 
-							Ast.Coe (t, t, t, termsubst e2 t hole_flag ex)
+							Ast.Coe (t, t, t, termsubst pre f e2 t hole_flag ex)
 					else 
 						if ex = e2 then 
-							Ast.Coe (t, t, termsubst e1 t hole_flag ex, t)
+							Ast.Coe (t, t, termsubst pre f e1 t hole_flag ex, t)
 						else 
-							Ast.Coe (t, t, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+							Ast.Coe (t, t, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 				else
 				begin
 					if ex = e1 then 
 						if ex = e2 then 
-							Ast.Coe (t, termsubst j t hole_flag j, t, t) 
+							Ast.Coe (t, termsubst pre f j t hole_flag j, t, t) 
 						else 
-							Ast.Coe (t, termsubst j t hole_flag j, t, termsubst e2 t hole_flag ex)
+							Ast.Coe (t, termsubst pre f j t hole_flag j, t, termsubst pre f e2 t hole_flag ex)
 					else 
 						if ex = e2 then 
-							Ast.Coe (t, termsubst j t hole_flag j, termsubst e1 t hole_flag ex, t)
+							Ast.Coe (t, termsubst pre f j t hole_flag j, termsubst pre f e1 t hole_flag ex, t)
 						else 
-							Ast.Coe (t, termsubst j t hole_flag j, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+							Ast.Coe (t, termsubst pre f j t hole_flag j, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 				end
 			end
 			else
@@ -340,151 +367,153 @@ let rec termsubst e t hole_flag = function
 				if ex = j then
 					if ex = e1 then 
 						if ex = e2 then 
-							Ast.Coe (termsubst i t hole_flag ex, t, t, t) 
+							Ast.Coe (termsubst pre f i t hole_flag ex, t, t, t) 
 						else 
-							Ast.Coe (termsubst i t hole_flag ex, t, t, termsubst e2 t hole_flag ex)
+							Ast.Coe (termsubst pre f i t hole_flag ex, t, t, termsubst pre f e2 t hole_flag ex)
 					else 
 						if ex = e2 then 
-							Ast.Coe (termsubst i t hole_flag ex, t, termsubst e1 t hole_flag ex, t)
+							Ast.Coe (termsubst pre f i t hole_flag ex, t, termsubst pre f e1 t hole_flag ex, t)
 						else 
-							Ast.Coe (termsubst i t hole_flag ex, t, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+							Ast.Coe (termsubst pre f i t hole_flag ex, t, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 				else
 				begin
 						if ex = e1 then 
 							if ex = e2 then 
-								Ast.Coe (termsubst i t hole_flag ex, termsubst j t hole_flag ex, t, t) 
+								Ast.Coe (termsubst pre f i t hole_flag ex, termsubst pre f j t hole_flag ex, t, t) 
 							else 
-								Ast.Coe (termsubst i t hole_flag ex, termsubst j t hole_flag ex, t, termsubst e2 t hole_flag ex)
+								Ast.Coe (termsubst pre f i t hole_flag ex, termsubst pre f j t hole_flag ex, t, termsubst pre f e2 t hole_flag ex)
 						else 
 							if ex = e2 then 
-								Ast.Coe (termsubst i t hole_flag ex, termsubst j t hole_flag ex, termsubst e1 t hole_flag ex, t)
+								Ast.Coe (termsubst pre f i t hole_flag ex, termsubst pre f j t hole_flag ex, termsubst pre f e1 t hole_flag ex, t)
 							else 
-								Ast.Coe (termsubst i t hole_flag ex, termsubst j t hole_flag ex, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+								Ast.Coe (termsubst pre f i t hole_flag ex, termsubst pre f j t hole_flag ex, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 				end
 			end
+
 		| Ast.Hfill (e, e1, e2) -> 
 			if ex = e
 			then if ex = e1 
 				then if ex = e2 
 					then Ast.Hfill (t, t, t) 
-					else Ast.Hfill (t, t, termsubst e2 t hole_flag ex)
+					else Ast.Hfill (t, t, termsubst pre f e2 t hole_flag ex)
 				else if ex = e2 
-					then Ast.Hfill (t, termsubst e1 t hole_flag ex, t)
-					else Ast.Hfill (t, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+					then Ast.Hfill (t, termsubst pre f e1 t hole_flag ex, t)
+					else Ast.Hfill (t, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 			else if ex = e1 
 				then if ex = e2 
-					then Ast.Hfill (termsubst e t hole_flag ex, t, t) 
-					else Ast.Hfill (termsubst e t hole_flag ex, t, termsubst e2 t hole_flag ex)
+					then Ast.Hfill (termsubst pre f e t hole_flag ex, t, t) 
+					else Ast.Hfill (termsubst pre f e t hole_flag ex, t, termsubst pre f e2 t hole_flag ex)
 				else if ex = e2 
-					then Ast.Hfill (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, t)
-					else Ast.Hfill (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+					then Ast.Hfill (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, t)
+					else Ast.Hfill (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+
 		| Ast.Sum (e1, e2) -> 
 			if ex = e1 
 			then if ex = e2 
 				then Ast.Sum (t, t) 
-				else Ast.Sum (t, termsubst e2 t hole_flag ex)
+				else Ast.Sum (t, termsubst pre f e2 t hole_flag ex)
 			else if ex = e2 
-				then Ast.Sum (termsubst e1 t hole_flag ex, t) 
-				else Ast.Sum (termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+				then Ast.Sum (termsubst pre f e1 t hole_flag ex, t) 
+				else Ast.Sum (termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+
 		| Ast.Succ e -> 
 			if ex = e 
 			then Ast.Succ t
-			else Ast.Succ (termsubst e t hole_flag ex)
+			else Ast.Succ (termsubst pre f e t hole_flag ex)
+
 		| Ast.Natrec (e, e1, e2) -> 
 			if ex = e
 			then if ex = e1 
 				then if ex = e2 
 					then Ast.Natrec (t, t, t) 
-					else Ast.Natrec (t, t, termsubst e2 t hole_flag ex)
+					else Ast.Natrec (t, t, termsubst pre f e2 t hole_flag ex)
 				else if ex = e2 
-					then Ast.Natrec (t, termsubst e1 t hole_flag ex, t)
-					else Ast.Natrec (t, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+					then Ast.Natrec (t, termsubst pre f e1 t hole_flag ex, t)
+					else Ast.Natrec (t, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 			else if ex = e1 
 				then if ex = e2 
-					then Ast.Natrec (termsubst e t hole_flag ex, t, t) 
-					else Ast.Natrec (termsubst e t hole_flag ex, t, termsubst e2 t hole_flag ex)
+					then Ast.Natrec (termsubst pre f e t hole_flag ex, t, t) 
+					else Ast.Natrec (termsubst pre f e t hole_flag ex, t, termsubst pre f e2 t hole_flag ex)
 				else if ex = e2 
-					then Ast.Natrec (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, t)
-					else Ast.Natrec (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+					then Ast.Natrec (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, t)
+					else Ast.Natrec (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+
 		| Ast.If (e, e1, e2) -> 
 			if ex = e
 			then if ex = e1 
 				then if ex = e2 
 					then Ast.If (t, t, t) 
-					else Ast.If (t, t, termsubst e2 t hole_flag ex)
+					else Ast.If (t, t, termsubst pre f e2 t hole_flag ex)
 				else if ex = e2 
-					then Ast.If (t, termsubst e1 t hole_flag ex, t)
-					else Ast.If (t, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+					then Ast.If (t, termsubst pre f e1 t hole_flag ex, t)
+					else Ast.If (t, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 			else if ex = e1 
 				then if ex = e2 
-					then Ast.If (termsubst e t hole_flag ex, t, t) 
-					else Ast.If (termsubst e t hole_flag ex, t, termsubst e2 t hole_flag ex)
+					then Ast.If (termsubst pre f e t hole_flag ex, t, t) 
+					else Ast.If (termsubst pre f e t hole_flag ex, t, termsubst pre f e2 t hole_flag ex)
 				else if ex = e2 
-					then Ast.If (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, t)
-					else Ast.If (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+					then Ast.If (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, t)
+					else Ast.If (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+
 		| Ast.Let (e1, e2) -> 
 			if ex = e1 
 			then if ex = e2 
 				then Ast.Let (t, t) 
-				else Ast.Let (t, termsubst e2 t hole_flag ex)
+				else Ast.Let (t, termsubst pre f e2 t hole_flag ex)
 			else 
 				if ex = e2 
-				then Ast.Let (termsubst e1 t hole_flag ex, t) 
-				else Ast.Let (termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+				then Ast.Let (termsubst pre f e1 t hole_flag ex, t) 
+				else Ast.Let (termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+		
 		| Ast.Abort e -> 
 				if ex = e 
 				then Ast.Abort t
-				else Ast.Abort (termsubst e t hole_flag ex)
-		| Ast.Pabs (y, e1) ->
-			let var = fresh_var t t 0 in
-			if not (free_var y e1)
-			then if ex = e1
-				then Ast.Pabs (y, hsubst y (Ast.Id var) t hole_flag) 
-				else Ast.Pabs (y, termsubst e1 t hole_flag ex)
-			else Ast.Pabs (y, e1)
+				else Ast.Abort (termsubst pre f e t hole_flag ex)
+
 		| Ast.At (e1, e2) -> 
 			if ex = e1 
 			then if ex = e2 
 				then Ast.At (t, t) 
-				else Ast.At (t, termsubst e2 t hole_flag ex)
+				else Ast.At (t, termsubst pre f e2 t hole_flag ex)
 			else 
 				if ex = e2 
-				then Ast.At (termsubst e1 t hole_flag ex, t) 
-				else Ast.At (termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+				then Ast.At (termsubst pre f e1 t hole_flag ex, t) 
+				else Ast.At (termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+
 		| Ast.Pathd (e, e1, e2) -> 
 			if ex = e
 			then if ex = e1 
 				then if ex = e2 
 					then Ast.Pathd (t, t, t) 
-					else Ast.Pathd (t, t, termsubst e2 t hole_flag ex)
+					else Ast.Pathd (t, t, termsubst pre f e2 t hole_flag ex)
 				else if ex = e2 
-					then Ast.Pathd (t, termsubst e1 t hole_flag ex, t)
-					else Ast.Pathd (t, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+					then Ast.Pathd (t, termsubst pre f e1 t hole_flag ex, t)
+					else Ast.Pathd (t, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
 			else if ex = e1 
 				then if ex = e2 
-					then Ast.Pathd (termsubst e t hole_flag ex, t, t) 
-					else Ast.Pathd (termsubst e t hole_flag ex, t, termsubst e2 t hole_flag ex)
+					then Ast.Pathd (termsubst pre f e t hole_flag ex, t, t) 
+					else Ast.Pathd (termsubst pre f e t hole_flag ex, t, termsubst pre f e2 t hole_flag ex)
 				else if ex = e2 
-					then Ast.Pathd (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, t)
-					else Ast.Pathd (termsubst e t hole_flag ex, termsubst e1 t hole_flag ex, termsubst e2 t hole_flag ex)
+					then Ast.Pathd (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, t)
+					else Ast.Pathd (termsubst pre f e t hole_flag ex, termsubst pre f e1 t hole_flag ex, termsubst pre f e2 t hole_flag ex)
+
 		| Ast.Hole (n, l) ->
 			if hole_flag then
 				let rec helper = function
 					| [] -> []
 					| e :: l' ->
-						termsubst e t hole_flag ex :: helper l' in
+						termsubst pre f e t hole_flag ex :: helper l' in
 				Ast.Hole (n, helper l)
 			else 
 				Ast.Hole (n, l)
-		(*| Ast.Wild n ->
-				if ex = Ast.Wild n then 
-					t
-				else 
-					Ast.Wild n*)
+				
 		| e -> e
 
 let fullsubst e1 t e2 = 
-	termsubst e2 t true e1
+	termsubst false hsubst e2 t true e1
 
 let hfullsubst e1 t e2 = 
-	termsubst e2 t false e1
+	termsubst false hsubst e2 t false e1
+
+let prefull e1 t e2 = 
+	termsubst true (fun s t flag e -> presubst s t e flag) e2 t true e1

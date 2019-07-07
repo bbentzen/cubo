@@ -178,11 +178,23 @@ let rec remove_row n = function
 		else
 			(m, ctx) :: remove_row n l
 
+(*
 let rec append_all x = function
 	| [] -> []
 	| (n, ctxs) :: l ->
 		(n, x :: ctxs) ::
 			append_all x l
+*)
+
+(* concatenates a typed variable to a list of contexts setting it as "true" *)
+
+let rec allconcat id ty = function
+	| [] -> []
+	| (n, ctx) :: l ->
+		if List.mem ((id, ty), false) ctx then
+			(n, ctx) :: allconcat id ty l
+		else
+			(n, ((id, ty), true) :: ctx) :: allconcat id ty l
 
 let rec find_index n = function
 	| [] -> Error "Can't find match"
