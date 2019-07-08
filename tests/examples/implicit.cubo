@@ -1,0 +1,53 @@
+/*
+ * Copyright (c) 2019 Bruno Bentzen. All rights reserved.
+ * Released under the Apache License 2.0 (see "License");
+ * Author: Bruno Bentzen
+ */
+ 
+universe l  
+
+/* examples involving implicit arguments */
+ 
+def ex1 {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d)
+⊢ I → A := 
+hcom (λ i, _ @ i) 
+ | i0 →  λ _, a 
+ | i1 → λ j, app
+   hcom (λ i, _ @ i) 
+   | i0 →  λ _, b 
+   | i1 → λ j, _ @ j 
+   j
+ 
+def ex2 {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d) (f : path A a b → I → A) 
+⊢ I → A := 
+λ k, app app f _ _ 
+ 
+def ex3 {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d) (f : I → path A a b → A)
+⊢ I → A := 
+λ i, app app f _ _
+ 
+
+def ex4 {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d)
+⊢ path A a c := 
+<k> app 
+hcom (λ i, _ @ i) 
+ | i0 →  λ i, _ 
+ | i1 → λ j, _ @ j 
+k 
+ 
+def ex5 {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d) (f : path A a b → I → A) 
+⊢ path A (app app f p i0) (app app f p i0) := 
+<k> app app f _ i0
+ 
+def ex6 {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d)
+⊢ path A a d := 
+<k> app 
+hcom (λ i, _ @ i) 
+ | i0 →  λ _, _ 
+ | i1 → λ j, app
+   hcom (λ i, _ @ i) 
+   | i0 →  λ _, _ 
+   | i1 → λ j, _ @ j 
+   j 
+k 
+ 

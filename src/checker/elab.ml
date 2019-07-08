@@ -18,18 +18,6 @@ let rec print ctx =
 	| ((id, ty), _) :: ctx' -> 
     " " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ print ctx'
 
-let rec printb ctx =
-  match (List.rev ctx) with
-  | [] -> "" 
-  | ((id, ty), b) :: ctx' -> 
-    " " ^ id ^ " : " ^ Pretty.print ty ^ "- " ^ string_of_bool b ^ "\n" ^ printb ctx'
-
-let rec printsl = function
-  | [] -> "" 
-  | (n, ctx) :: l -> 
-    "wildcard " ^ string_of_int n ^ ":\n" ^ printb ctx ^ 
-    printsl l
-
 let goal_msg ctx e ty =
   "when checking that\n  " ^ Pretty.print e ^ "\nhas the expected type\n" ^ print ctx ^ 
   "-------------------------------------------\n ⊢ " ^ Pretty.print ty
@@ -1396,31 +1384,6 @@ let rec elaborate global ctx lvl sl ty ph vars = function
 
   | Wild n ->
     begin
-      (*
-      let helper x =
-      match find global ctx x ty lvl sl ph vars with
-      | Ok (e', ty') ->
-        if List.mem (n, e', ty') (fst sl) then
-          if Synth.nmem n e' ty' (snd sl) then
-            Ok (Id e', ty, sl)
-          else
-            let sl' = (fst sl, Synth.concat n e' ty' ctx (snd sl)) in
-            Ok (Id e', ty, sl')
-        else
-          if Synth.nmem n e' ty' (snd sl) then
-            let sl' = ((n, e', ty') :: fst sl, snd sl) in
-            Ok (Id e', ty, sl')
-          else
-            let sl' = ((n, e', ty') :: fst sl, Synth.concat n e' ty' ctx (snd sl)) in
-            Ok (Id e', ty, sl')
-      | Error _ -> 
-        Error (([], []), "Failed to synthesize placeholder for ?0" ^ string_of_int n ^ "? in the current goal:\n" ^ 
-          print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty)
-
-           (*^ "\n" ^ printsl (snd sl) ^ "\n"   TODO: remove this *)
-          )
-      in*)
-      
       let helper x =
         match find true global ctx x ty lvl sl ph vars with
         | Ok (e', ty') ->
@@ -1432,19 +1395,15 @@ let rec elaborate global ctx lvl sl ty ph vars = function
             Ok (Id e', ty, sl') (* n, ctx | all true at n *)
         | Error _ ->
           Error (([], []), "Failed to synthesize placeholder for ?0" ^ string_of_int n ^ "? in the current goal:\n" ^ 
-            print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty)
-  
-             (*^ "\n" ^ printsl (snd sl) ^ "\n"   TODO: remove this *)
-            )
-        in
-
+            print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty))
+      in
       match Synth.find_index n (snd sl) with
-      | Ok l (* l*) ->
+      | Ok l ->
         begin
           match find false global ctx l ty lvl sl ph vars with
           | Ok (e', ty') ->
             if List.mem (n, e', ty') (fst sl) then
-              Ok (Id e', ty, sl) (* not accounting for abstraction *)
+              Ok (Id e', ty, sl) 
             else    
               let sl' = ((n, e', ty') :: fst sl, snd sl) in
               Ok (Id e', ty, sl')

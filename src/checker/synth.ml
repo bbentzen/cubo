@@ -1,11 +1,31 @@
 (**
  * (c) Copyright 2019 Bruno Bentzen. All rights reserved.
  * Released under Apache 2.0 license as described in the file LICENSE.
- * Desc: Basic operations for synthesis of placeholders for expressions and universe levels,
-          
+ * Desc: Basic operations on synthesization lists, i.e. terms of type
+ 				 (int * string * expr) list * ((int * (string * expr * bool) list) list)
+				 Used for implicit arguments and universe levels
  **)
 
 open Basis
+
+(* Print synthesization list *)
+
+let rec printfst synl =
+	match synl with
+	| [] -> "" 
+	| (n, id, ty) :: synl' -> 
+		string_of_int n ^ ", " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ printfst synl'
+
+let rec printb synl =
+	match (List.rev synl) with
+	| [] -> "" 
+	| ((id, ty), b) :: synl' -> 
+		" " ^ id ^ " : " ^ Pretty.print ty ^ "- " ^ string_of_bool b ^ "\n" ^ printb synl'
+
+let rec printsl = function
+	| [] -> "" 
+	| (n, synl) :: l -> 
+		"wildcard " ^ string_of_int n ^ ":\n" ^ printb synl ^ printsl l
 
 (* Replaces 0-indexed wildcards with uniquely assigned indices starting at n *)
 
@@ -86,71 +106,16 @@ let rec read n = function
 let convert e =
 	fst (read 1 e)
 
-(* Synthesizes wildcards *)
-
-let rec printlist ctx =
-	match (List.rev ctx) with
-	| [] -> "" 
-	| (n, id, ty) :: ctx' -> 
-		string_of_int n ^ ", " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ printlist ctx'
-
-(* Synthesizes wildcards *)
-
-let rec remove_var var = function
-	| [] -> [] 
-	| ((var', ty'), b) :: ctx' -> 
-		if var = var' then
-			ctx'
-		else
-			((var', ty'), b) :: remove_var var ctx'
-
-let rec remove n var = function
-	| [] -> [] 
-	| (m, ctx) :: l -> 
-		if n = m then
-			(m, remove_var var ctx) :: l
-		else
-			(m, ctx) :: remove n var l
-
-(* snd sl operations *)
-
-let rec mem id ty = function
-	| [] -> false
-	| ((id', ty'), _) :: ctx -> 
-		if id = id' && ty = ty' then
-			true
-		else
-			mem id ty ctx
-
-let rec nmem n id ty = function
-	| [] -> false
-	| (m, ctx) :: l -> 
-		if m = n && mem id ty ctx then
-			true
-		else
-			nmem n id ty l
+(* Makes a synthesization list out of a local context *)
 
 let rec mktrue = function
 	| [] -> []
 	| ((id, ty), _) :: l ->
 		((id, ty), true) :: mktrue l
 
-let rec concat n id ty ctx = function
-	| [] -> 
-		if mem id ty ctx then
-			[(n, ctx)]
-		else
-			[(n, ((id, ty), true) :: ctx)]
-		
-	| (m, ctx') :: l ->
-		if m = n then
-			(n, ((id, ty), true) :: ctx') :: l
-		else
-			(m, ctx') :: concat n id ty ctx l
-		
 let make n ctx = (n, mktrue ctx)
 
-(* make false *)
+(* Sets a specific variable as false *)
 
 let rec mkfalse_var var = function
 	| [] -> [] 
@@ -178,14 +143,6 @@ let rec remove_row n = function
 		else
 			(m, ctx) :: remove_row n l
 
-(*
-let rec append_all x = function
-	| [] -> []
-	| (n, ctxs) :: l ->
-		(n, x :: ctxs) ::
-			append_all x l
-*)
-
 (* concatenates a typed variable to a list of contexts setting it as "true" *)
 
 let rec allconcat id ty = function
@@ -209,23 +166,17 @@ let uniq ctx =
 	List.iter (fun x -> Hashtbl.replace helper x ()) ctx;
 	Hashtbl.fold (fun x () xs -> x :: xs) helper []
 
-let luniq sl =
-	let rec helper = function
-	| [] -> []
-	| l :: ll -> uniq l :: helper ll in
-	(uniq (fst sl), uniq (helper (snd sl)))
-
-(* Combines two contexts keeping a false flag (when it exists) when a type variable occurs in both *)
-
-let rec combine ctx = function
-	| [] -> []
-	| ((id, ty), b) :: ctx' ->
-		if List.mem ((id, ty), false) ctx then
-			((id, ty), false) :: combine ctx ctx'
-		else
-			((id, ty), b) :: combine ctx ctx'
+(* Combines two synthesization lists keeping their false flag when there is conflict *)
 
 let combines ctx ctx' =
+	let rec combine x = function
+	| [] -> []
+	| ((id, ty), b) :: ctx' ->
+		if List.mem ((id, ty), false) x then
+			((id, ty), false) :: combine x ctx'
+		else
+			((id, ty), b) :: combine x ctx'
+	in
 	uniq ((combine ctx ctx') @ (combine ctx' ctx))
 
 let rec merge nctx = function
@@ -233,23 +184,12 @@ let rec merge nctx = function
 	| (n, ctx) :: l ->
 		match find_index n nctx with
 		| Ok ctx' -> 
-			(n, uniq (combines ctx ctx')) :: merge l (remove_row n nctx)
+			(n, uniq (combines ctx ctx')) :: merge l nctx (* (remove_row n nctx) *)
 		| Error _ ->
 			(n, ctx) :: merge nctx l
 
 let append sl sl' =
 	(uniq (fst sl @ fst sl'), uniq (merge (snd sl) (snd sl')))
-	(* (uniq (fst sl @ fst sl'), uniq (merge (snd sl) (snd sl'))) *)
 
 let lappend sl sl' sl'' = 
 	append sl (append sl' sl'')
-
-let rec lowest = function
-	| [] -> 0
-	| (n, _) :: [] -> n
-	| (n, _) :: l ->
-		if n < lowest l then
-			n
-		else 
-			lowest l
-
