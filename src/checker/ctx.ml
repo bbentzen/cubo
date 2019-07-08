@@ -12,14 +12,14 @@ let check global ctx lvl =
   let rec helper l = 
     match l with
   | [] -> Ok []
-  | ((x, ty), b) :: ctx' ->
+  | (x, ty, b) :: ctx' ->
     match Type.check global ctx' lvl ty, helper ctx' with
     | Ok elab, Ok ctx'' -> 
       if Global.is_declared x global then
         Error ("Naming conflict with the identifier '" ^ x ^ 
           "'\nIt occurs as a definition/theorem name but is declared as a local variable")
       else
-        Ok (((x, eval (fst elab)), b) :: ctx'')
+        Ok ((x, eval (fst elab), b) :: ctx'')
     | Error msg, _ -> 
       Error ("The specified context is invalid: " ^ msg)
     | _ , Error msg -> Error msg

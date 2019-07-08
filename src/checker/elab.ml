@@ -15,7 +15,7 @@ open Eval
 let rec print ctx =
 	match (List.rev ctx) with
 	| [] -> "" 
-	| ((id, ty), _) :: ctx' -> 
+	| (id, ty, _) :: ctx' -> 
     " " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ print ctx'
 
 let goal_msg ctx e ty =
@@ -99,7 +99,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       let s var = (fst sl, Synth.allconcat var ty1 (snd sl)) in
       if has_var x ty then
         let v1 = fresh_var e ty vars in
-        let elab = elaborate global (((v1, ty1), true) :: ctx) lvl (s v1) (subst y (Ast.Id v1) ty2) ph vars e in
+        let elab = elaborate global ((v1, ty1, true) :: ctx) lvl (s v1) (subst y (Ast.Id v1) ty2) ph vars e in
         begin match elab with
         | Ok (e', ty2', sa) ->
           Ok (Abs (v1, e'), Pi (v1, ty1, ty2'), sa)
@@ -107,7 +107,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           Error (sa, msg)
         end
       else
-        let elab = elaborate global (((x, ty1), true) :: ctx) lvl (s x) (subst y (Ast.Id x) ty2) ph vars e in
+        let elab = elaborate global ((x, ty1, true) :: ctx) lvl (s x) (subst y (Ast.Id x) ty2) ph vars e in
         begin match elab with
         | Ok (e', ty2', sa) -> 
           Ok (Abs (x, e'), Pi (x, ty1, ty2'), sa)
@@ -733,12 +733,12 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     | Ok (Pathd (Hole (n, l), e1, e2), _, _) ->
       let h0 = Placeholder.generate ty 0 [] in
       let sl' = (fst sl, Synth.allconcat i (Int()) (snd sl)) in
-      let elab = elaborate global (((i, Int()), true) :: ctx) lvl sl' (Hole (n, l)) ph vars e in
+      let elab = elaborate global ((i, Int(), true) :: ctx) lvl sl' (Hole (n, l)) ph vars e in
 
       begin match elab with
       | Ok (e', _, sa) ->
-        let elab1 = elaborate global (((i, Int()), true) :: ctx) lvl sl' h0 ph vars (subst i (I0()) e') in
-        let elab2 = elaborate global (((i, Int()), true) :: ctx) lvl sl' h0 ph vars (subst i (I1()) e') in
+        let elab1 = elaborate global ((i, Int(), true) :: ctx) lvl sl' h0 ph vars (subst i (I0()) e') in
+        let elab2 = elaborate global ((i, Int(), true) :: ctx) lvl sl' h0 ph vars (subst i (I1()) e') in
         begin match elab1, elab2 with
         | Ok (ei0, tyi0, _), Ok (ei1, tyi1, _) ->
         
@@ -780,7 +780,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       end
     | Ok (Pathd (ty1, e1, e2), _, _) ->
       let elab = 
-        elaborate global (((i, Int()), true) :: ctx) lvl 
+        elaborate global ((i, Int(), true) :: ctx) lvl 
         (fst sl, Synth.allconcat i (Int()) (snd sl)) 
         (eval (App(ty1, Id i))) ph vars e
       in
@@ -1004,7 +1004,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     let h1 = Placeholder.generate ty 0 [] in
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
     let elab2 = 
-      elaborate global (((x, ty1), true) :: ctx) lvl 
+      elaborate global ((x, ty1, true) :: ctx) lvl 
       (fst sl, Synth.allconcat x ty1 (snd sl)) h1 (ph+1) vars ty2 
     in
     begin match elab1, elab2 with
@@ -1073,7 +1073,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     let h1 = Placeholder.generate ty 0 [] in
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
     let elab2 = 
-      elaborate global (((x, ty1), true) :: ctx) lvl 
+      elaborate global ((x, ty1, true) :: ctx) lvl 
       (fst sl, Synth.allconcat x ty1 (snd sl)) h1 (ph+1) vars ty2 
     in
     begin match elab1, elab2 with
@@ -1430,7 +1430,7 @@ and find flag global ctx l ty lvl sl ph vars =
           begin 
             match l with
             | [] -> Error "Can't find match" 
-            | ((id, ty'), b) :: l' ->
+            | (id, ty', b) :: l' ->
 
               (* When flag=false the search ignores variables set as false *)
 
@@ -1514,7 +1514,7 @@ and unify global ctx lvl sl ph vars x lift =
         | Ok s1 -> 
           let x2 = fullsubst ty1 s1 (subst x (Id v1) ty2) in
           let x2' = fullsubst ty1' s1 (subst x' (Id v1) ty2') in
-          let u2 = unify global (((v1, s1), true) :: ctx) lvl sl ph (vars+1) (x2, x2', ty) lift in
+          let u2 = unify global ((v1, s1, true) :: ctx) lvl sl ph (vars+1) (x2, x2', ty) lift in
           begin match u2 with
           | Ok s2 -> 
             Ok (Pi (v1, s1, s2))
@@ -1531,7 +1531,7 @@ and unify global ctx lvl sl ph vars x lift =
         | Ok s1 -> 
           let x2 = fullsubst ty1 s1 (subst x (Id v1) ty2) in
           let x2' = fullsubst ty1' s1 (subst x' (Id v1) ty2') in
-          let u2 = unify global (((v1, s1), true) :: ctx) lvl sl ph (vars+1) (x2, x2', ty) lift in
+          let u2 = unify global ((v1, s1, true) :: ctx) lvl sl ph (vars+1) (x2, x2', ty) lift in
           begin match u2 with
           | Ok s2 -> Ok (Sigma (v1, s1, s2))
           | Error (s, msg) -> Error (s, "Don't know how to unify\n  " ^ Pretty.print ty2 ^ "\nwith\n  " ^ Pretty.print ty2' ^ "\n" ^ msg)
@@ -1597,7 +1597,7 @@ and unify global ctx lvl sl ph vars x lift =
             end
           | _ ->
             let v1 = fresh_var e e' vars in
-            let u = unify global (((v1, ty1), true) :: ctx) lvl sl ph (vars+1) (subst x (Id v1) e, subst x' (Id v1) e', subst y (Id v1) ty2) lift in
+            let u = unify global ((v1, ty1, true) :: ctx) lvl sl ph (vars+1) (subst x (Id v1) e, subst x' (Id v1) e', subst y (Id v1) ty2) lift in
             begin match u with
             | Ok s -> Ok (Abs (v1, s))
             | Error msg -> Error msg

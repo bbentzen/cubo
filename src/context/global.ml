@@ -23,10 +23,10 @@ let rec is_declared x global =
 let function_of_def id ctx elab hole =
 	let rec helper h' = function
 		| [] -> fst elab, snd elab
-		| ((x, ty), true) :: ctx ->  
+		| (x, ty, true) :: ctx ->  
 			Ast.Abs (x, fst (helper h' ctx )), 
 			Ast.Pi (x, ty, snd (helper h' ctx))
-		| ((x, _), false) :: ctx ->  
+		| (x, _, false) :: ctx ->  
 			let h = Placeholder.generate (fst (helper (h'+1) ctx)) h' [] in
 			Substitution.subst x h (fst (helper (h'+1) ctx)), 
 			Substitution.subst x h (snd (helper (h'+1) ctx )) 

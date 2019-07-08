@@ -19,7 +19,7 @@ let rec printfst synl =
 let rec printb synl =
 	match (List.rev synl) with
 	| [] -> "" 
-	| ((id, ty), b) :: synl' -> 
+	| (id, ty, b) :: synl' -> 
 		" " ^ id ^ " : " ^ Pretty.print ty ^ "- " ^ string_of_bool b ^ "\n" ^ printb synl'
 
 let rec printsl = function
@@ -110,8 +110,8 @@ let convert e =
 
 let rec mktrue = function
 	| [] -> []
-	| ((id, ty), _) :: l ->
-		((id, ty), true) :: mktrue l
+	| (id, ty, _) :: l ->
+		(id, ty, true) :: mktrue l
 
 let make n ctx = (n, mktrue ctx)
 
@@ -119,11 +119,11 @@ let make n ctx = (n, mktrue ctx)
 
 let rec mkfalse_var var = function
 	| [] -> [] 
-	| ((var', ty'), b) :: ctx' -> 
+	| (var', ty', b) :: ctx' -> 
 		if var = var' then
-			((var', ty'), false) :: ctx'
+			(var', ty', false) :: ctx'
 		else
-			((var', ty'), b) :: mkfalse_var var ctx'
+			(var', ty', b) :: mkfalse_var var ctx'
 
 let rec mkfalse n var = function
 	| [] -> []
@@ -148,10 +148,10 @@ let rec remove_row n = function
 let rec allconcat id ty = function
 	| [] -> []
 	| (n, ctx) :: l ->
-		if List.mem ((id, ty), false) ctx then
+		if List.mem (id, ty, false) ctx then
 			(n, ctx) :: allconcat id ty l
 		else
-			(n, ((id, ty), true) :: ctx) :: allconcat id ty l
+			(n, (id, ty, true) :: ctx) :: allconcat id ty l
 
 let rec find_index n = function
 	| [] -> Error "Can't find match"
@@ -171,11 +171,11 @@ let uniq ctx =
 let combines ctx ctx' =
 	let rec combine x = function
 	| [] -> []
-	| ((id, ty), b) :: ctx' ->
-		if List.mem ((id, ty), false) x then
-			((id, ty), false) :: combine x ctx'
+	| (id, ty, b) :: ctx' ->
+		if List.mem (id, ty, false) x then
+			(id, ty, false) :: combine x ctx'
 		else
-			((id, ty), b) :: combine x ctx'
+			(id, ty, b) :: combine x ctx'
 	in
 	uniq ((combine ctx ctx') @ (combine ctx' ctx))
 

@@ -14,7 +14,7 @@ let rec create_ctx = function
 		begin match ids with
 			| [] -> []
 			| e :: ids' -> 
-				((e, ty), b) :: create_ctx ([((ids', ty), b)]) @ create_ctx l
+				(e, ty, b) :: create_ctx ([((ids', ty), b)]) @ create_ctx l
 		end
 
 (* Determines whether a variable has been declared *)
@@ -22,7 +22,7 @@ let rec create_ctx = function
 let rec is_declared x ctx =
 	match (List.rev ctx) with
 	| [] -> false
-	| ((y, _), _) :: ctx' -> 
+	| (y, _, _) :: ctx' -> 
 		if x = y then
 			true
 		else
@@ -31,7 +31,7 @@ let rec is_declared x ctx =
 let rec var_type x ctx =
 	match (List.rev ctx) with
 	| [] -> Error()
-	| ((y, ty), _) :: ctx' -> 
+	| (y, ty, _) :: ctx' -> 
 		if x = y then 
 			Ok ty
 		else 
@@ -42,7 +42,7 @@ let rec var_type x ctx =
 let rec check_var_ty x ty ctx =
   match (List.rev ctx) with
   | [] -> false 
-  | ((y, ty'), _) :: ctx' -> 
+  | (y, ty', _) :: ctx' -> 
     if x = y && ty' = ty then 
 			true
 		else
@@ -53,7 +53,7 @@ let rec check_var_ty x ty ctx =
 let rec find_ty ty ctx =
   match (List.rev ctx) with
 	| [] -> Error () 
-  | ((y, ty'), _) :: ctx' -> 
+  | (y, ty', _) :: ctx' -> 
     if ty' = ty then 
 			Ok y
 		else 
@@ -62,7 +62,7 @@ let rec find_ty ty ctx =
 let rec find_true ty ctx =
 	match (List.rev ctx) with
 	| [] -> Error () 
-	| ((y, ty'), b) :: ctx' -> 
+	| (y, ty', b) :: ctx' -> 
 		if ty' = ty && b then 
 			Ok y
 		else 

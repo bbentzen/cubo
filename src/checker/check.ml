@@ -39,7 +39,7 @@ and iter sl' msg global ctx lvl e ty max =
 		match (fst sl') with
 		| [] ->
 			(* ----------------------------------------------------------------*)
-			Error (msg ^ "\n----\n" ^ Elab.printsl (snd sl'))
+			Error (msg ^ "\n----\n" ^ Synth.printsl (snd sl'))
 		
 		| (n, id, _) :: _ ->
 
