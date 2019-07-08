@@ -7,6 +7,7 @@
 
 open Basis
 open Checker
+open Synthesis
 open Eval
 open File
 open Context
@@ -14,7 +15,7 @@ open Context
 let rec compile global lopen filename lvl = function
 	| Ast.Thm (cmd, Prf (id, l, ty, e)) ->
 		begin
-			match Global.unfold_all global 0 (Synth.convert ty) with
+			match Global.unfold_all global 0 (Implicit.convert ty) with
 			| Ok hty ->
 				let ctx = Local.create_ctx l in
 				let h1 = Ctx.check global ctx lvl in
@@ -24,13 +25,13 @@ let rec compile global lopen filename lvl = function
 					| Ok l, Ok (ty', _) -> 
 						let ctx' = List.rev l in
 						begin 
-							match Global.unfold_all global 0 (Synth.convert e) with
+							match Global.unfold_all global 0 (Implicit.convert e) with
 							| Ok e' ->
 								if Global.is_declared id global then 
 									Error ("Naming conflict with the identifier '" ^ id ^ 
 										"'\nName already exists in the environment (try 'print " ^ id ^ "' for more information)")
 								else
-									let res = Check.init global ctx' lvl e' ty' in
+									let res = Synthesize.init global ctx' lvl e' ty' in
 									begin 
 										match res with 
 										| Ok (e1, ty1) ->

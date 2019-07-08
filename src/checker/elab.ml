@@ -96,7 +96,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
   | Abs (x, e) -> 
     begin match ty with
     | Pi (y, ty1, ty2) ->
-      let s var = (fst sl, Synth.allconcat var ty1 (snd sl)) in
+      let s var = (fst sl, Stack.allconcat var ty1 (snd sl)) in
       if has_var x ty then
         let v1 = fresh_var e ty vars in
         let elab = elaborate global ((v1, ty1, true) :: ctx) lvl (s v1) (subst y (Ast.Id v1) ty2) ph vars e in
@@ -134,14 +134,14 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         let elab1 = elaborate global ctx lvl sl ty1' (ph+1) (vars+2) e1 in (* variable renaming, vars+2 *)
         begin match elab1 with
         | Ok (e1', Pi(x, _, ty'), sa1) ->
-          Ok (App (e1', e2'), subst x e2 ty', Synth.append sa1 sa2)
+          Ok (App (e1', e2'), subst x e2 ty', Stack.append sa1 sa2)
         | Ok (e1', _, sa1) -> 
-          Error (Synth.append sa1 sa2, 
+          Error (Stack.append sa1 sa2, 
             "Failed application\n  " ^ Pretty.print (App (e1', e2')) ^
             "\nThe term\n  " ^ Pretty.print e1' ^ 
             "\nis expected to have type\n " ^ Pretty.print ty1')
         | Error (sa1, msg) -> 
-          Error (Synth.append sa1 sa2,
+          Error (Stack.append sa1 sa2,
             "Failed application\n  " ^ Pretty.print (App (e1, e2')) ^
             "\nThe term\n  " ^ Pretty.print e1 ^ 
             "\nis expected to have type\n  " ^ Pretty.print ty1' ^ "\n" ^ msg)
@@ -168,10 +168,10 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         begin match ty2 with
         | Hole (n, l) ->
           let ty' = fullsubst e1' (Hole (n, e1 :: e1' :: Id y :: l)) ty2' in
-          Ok (Pair (e1', e2'), Sigma(y, ty1', ty'), Synth.append sa2 sa1)
+          Ok (Pair (e1', e2'), Sigma(y, ty1', ty'), Stack.append sa2 sa1)
         | _ ->
           let ty' = fullsubst e1' (Id y) ty2' in
-          Ok (Pair (e1', e2'), Sigma(y, ty1', ty'), Synth.append sa2 sa1)
+          Ok (Pair (e1', e2'), Sigma(y, ty1', ty'), Stack.append sa2 sa1)
         end
       | Error msg, _ | _, Error msg -> 
         Error msg
@@ -293,24 +293,24 @@ let rec elaborate global ctx lvl sl ty ph vars = function
               match tyl', tyr' with
               | Type n, Type m ->
                 if n > m then
-                  Ok (Case(e', e1', e2'), Type n, Synth.lappend sa sa1 sa2)
+                  Ok (Case(e', e1', e2'), Type n, Stack.lappend sa sa1 sa2)
                 else
-                  Ok (Case(e', e1', e2'), Type m, Synth.lappend sa sa1 sa2)
+                  Ok (Case(e', e1', e2'), Type m, Stack.lappend sa sa1 sa2)
               | _ ->
                 let u = unify global ctx lvl sl ph vars (tyl', tyr', tTy) false in
                 begin match u1, u2, u with
                 | Ok _, Ok _, Ok st ->
                   let st' = hfullsubst h1 e st in
-                  Ok (Case(e', e1', e2'), st', Synth.lappend sa sa1 sa2)
+                  Ok (Case(e', e1', e2'), st', Stack.lappend sa sa1 sa2)
                 | Ok _, Ok _, _ ->
-                  Error (Synth.lappend sa sa1 sa2, 
+                  Error (Stack.lappend sa sa1 sa2, 
                     "Failed to unify\n  " ^ Pretty.print tyl' ^ "\nwith\n  " ^ Pretty.print tyr')
                 | Ok _, _, _ ->
-                  Error (Synth.lappend sa sa1 sa2, 
+                  Error (Stack.lappend sa sa1 sa2, 
                     "The term\n  " ^ Pretty.print e2' ^ "\nhas type\n  " ^ Pretty.print (Ast.Pi(y, ty2', tyr)) ^ 
                     "\nbut is expected to have type\n  Π (" ^ y ^ " : " ^ Pretty.print ty2 ^ ") ?1?")
                 | _ ->
-                  Error (Synth.lappend sa sa1 sa2, 
+                  Error (Stack.lappend sa sa1 sa2, 
                     "The term\n  " ^ Pretty.print e1' ^ "\nhas type\n  " ^ Pretty.print (Ast.Pi(x, ty1', tyl)) ^ 
                     "\nbut is expected to have type\n  Π (" ^ x ^ " : " ^ Pretty.print ty1 ^ ") ?1?")
               end
@@ -333,7 +333,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         let elab2 = elaborate global ctx lvl sl (Pi(v1, ty2, fullsubst e (Inr (Id v1)) ty)) ph (vars+1) e2 in
         begin match elab1, elab2 with
         | Ok (e1', _, sa1), Ok (e2', _, sa2) ->
-          Ok (Case(e', e1', e2'), ty, Synth.lappend sa sa1 sa2)
+          Ok (Case(e', e1', e2'), ty, Stack.lappend sa sa1 sa2)
         | Error msg, _ | _, Error msg -> Error msg
         end
       end
@@ -386,13 +386,13 @@ let rec elaborate global ctx lvl sl ty ph vars = function
               let u = unify global ctx lvl sl ph vars (Nat(), nat, Type (Num 0)) false in
               begin match u with
               | Ok _ ->
-                Ok (Natrec(e', e1', e2'), ty', Synth.lappend sa sa1 sa2)
+                Ok (Natrec(e', e1', e2'), ty', Stack.lappend sa sa1 sa2)
               | Error (_, msg) ->
-                Error (Synth.lappend sa sa1 sa2, 
+                Error (Stack.lappend sa sa1 sa2, 
                   "Don't know how to unify\n  " ^ Pretty.print nat ^ "\nwith\n  nat\n" ^ msg)
               end
             | Ok (e2', ty', sa2) -> 
-              Error (Synth.lappend sa sa1 sa2, 
+              Error (Stack.lappend sa sa1 sa2, 
                 "The term\n  " ^ Pretty.print e2' ^ "\nhas type\n  " ^ Pretty.print ty' ^ 
                 "\nbut is expected to have type\n  Π (v? : nat) ?0? → ?1?")  
             | Error msg -> 
@@ -409,7 +409,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           let elab2 = elaborate global ctx lvl sl tyx ph (vars+2) e2 in
           begin match elab1, elab2 with
           | Ok (e1', _, sa1), Ok (e2', _, sa2) ->
-            Ok (Natrec (e', e1', e2'), ty, Synth.lappend sa sa1 sa2)
+            Ok (Natrec (e', e1', e2'), ty, Stack.lappend sa sa1 sa2)
           | Error msg, _| _, Error msg -> 
             Error msg
           end
@@ -453,9 +453,9 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           match tyt, tyf with
           | Type n, Type m ->
             if Universe.leq (m, n) then
-              Ok (If(e', e1', e2'), Type n, Synth.lappend sa sa1 sa2)
+              Ok (If(e', e1', e2'), Type n, Stack.lappend sa sa1 sa2)
             else
-            Ok (If(e', e1', e2'), Type m, Synth.lappend sa sa1 sa2)
+            Ok (If(e', e1', e2'), Type m, Stack.lappend sa sa1 sa2)
           | _ ->
             let elabTy = elaborate global ctx lvl sl h1 ph vars ty in
             begin match elabTy with
@@ -469,9 +469,9 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                 let elabf = elaborate global ctx lvl sl tyf' ph vars e2' in
                 begin match elabt, elabf with
                 | Ok _, Ok _ ->
-                  Ok (If (e', e1', e2'), fullsubst h1 e' sty, Synth.lappend sa sa1 sa2)
+                  Ok (If (e', e1', e2'), fullsubst h1 e' sty, Stack.lappend sa sa1 sa2)
                 | _ -> 
-                  Error (Synth.lappend sa sa1 sa2, 
+                  Error (Stack.lappend sa sa1 sa2, 
                   "Failed to unify the types\n  " ^ Pretty.print (fullsubst (Ast.True()) h1 ty1') ^ 
                   "\nand\n  " ^ Pretty.print (fullsubst (Ast.False()) h1 ty2'))
                 end
@@ -482,9 +482,9 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                 let elabf = elaborate global ctx lvl sl tyt' ph vars e2' in
                 begin match elabt, elabf with
                 | Ok (_, _, sa'), _ | _, Ok (_, _, sa') -> 
-                  Ok (If (e', e1', e2'), ty, Synth.append sa' (Synth.lappend sa sa1 sa2))
+                  Ok (If (e', e1', e2'), ty, Stack.append sa' (Stack.lappend sa sa1 sa2))
                 | _ ->
-                  Error (Synth.lappend sa sa1 sa2, 
+                  Error (Stack.lappend sa sa1 sa2, 
                     "Failed to unify the types\n  " ^ Pretty.print (fullsubst (Ast.True()) h1 ty1') ^ 
                     "\nand\n  " ^ Pretty.print (fullsubst (Ast.False()) h1 ty2'))
                 end
@@ -495,7 +495,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         end
 
       | _ ->
-        Ok (If (e', e1', e2'), ty, Synth.lappend sa sa1 sa2)
+        Ok (If (e', e1', e2'), ty, Stack.lappend sa sa1 sa2)
       end
     | Error msg, _, _| _, Error msg, _ | _, _, Error msg -> 
       Error msg
@@ -522,7 +522,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         | Ok (e2', ty2, sa2) ->
           let h1 = Placeholder.generate ty 0 [e1; e1'; Ast.Star()] in
           let ty' = hfullsubst (Ast.Star()) h1 ty2 in
-          Ok (Let (e1', e2'), ty', Synth.append sa1 sa2)
+          Ok (Let (e1', e2'), ty', Stack.append sa1 sa2)
         | Error msg ->
           Error msg
         end
@@ -530,7 +530,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         let elab2 = elaborate global ctx lvl sl (fullsubst e1 (Ast.Star()) ty) ph vars e2 in
         begin match elab2 with
         | Ok (e2', _, sa2) ->
-          Ok (Let (e1', e2'), ty, Synth.append sa1 sa2)
+          Ok (Let (e1', e2'), ty, Stack.append sa1 sa2)
         | Error msg -> Error msg
         end
       end
@@ -564,9 +564,9 @@ let rec elaborate global ctx lvl sl ty ph vars = function
               let u = unify global ctx lvl sl ph vars (eval tyj, ty', eTy) false in
               begin match u with
               | Ok tty ->
-                Ok (Coe (i', j', eval ety, e'), tty, Synth.lappend sa sat sat')
+                Ok (Coe (i', j', eval ety, e'), tty, Stack.lappend sa sat sat')
               | Error (_, msg) -> 
-                Error (Synth.lappend sa sat sat', 
+                Error (Stack.lappend sa sat sat', 
                   "Failed to unify the terms\n  " ^ Pretty.print tyj ^ "\nand\n  " ^ Pretty.print ty' ^ 
                   "\nwhen checking that the coercion\n  " ^ Pretty.print (Coe(i, j, ety, e)) ^ (* Improve error msg *)
                   "\nhas type\n  " ^ Pretty.print (eval ty) ^
@@ -615,7 +615,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                           begin
                             match u1, u2 with
                             | Ok _, Ok _ ->
-                              let return x = Ok (Hfill(e', e1', e2'), x, Synth.lappend sa sa1 sa2) in
+                              let return x = Ok (Hfill(e', e1', e2'), x, Stack.lappend sa sa1 sa2) in
                               if not (Placeholder.has_placeholder ty) then
                                 return ty
                               else if not (Placeholder.has_placeholder ety) then
@@ -627,41 +627,41 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                               else
                                 return ty
                             | Error (_, msg), _ ->
-                              Error (Synth.lappend sa sa1 sa2,
+                              Error (Stack.lappend sa sa1 sa2,
                                 "Error when unifying the terms\n  " ^ 
                                 Pretty.print (eval ei0) ^ "\nand\n  " ^ Pretty.print (eval e1i0) ^
                                 "\n" ^ msg)
                             | _, Error (_, msg) -> 
-                              Error (Synth.lappend sa sa1 sa2, 
+                              Error (Stack.lappend sa sa1 sa2, 
                                 "Error when unifying the terms\n  " ^ 
                                 Pretty.print (eval ei1) ^ "\nand\n  " ^ Pretty.print (eval e2i0) ^
                                 "\n" ^ msg)
                           end
                           
                       | Error (sa', msg), _ | _, Error (sa', msg) -> 
-                        Error (Synth.append sa' (Synth.lappend sa sa1 sa2), msg)
+                        Error (Stack.append sa' (Stack.lappend sa sa1 sa2), msg)
                     end
                     
                   | Error (sa', msg), _, _, _ ->
-                    Error (Synth.append sa' (Synth.lappend sa sa1 sa2), 
+                    Error (Stack.append sa' (Stack.lappend sa sa1 sa2), 
                     "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
                     "\nThe i0-face of the lid\n  " ^ Pretty.print (eval (App(e', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
                   | _, Error (sa', msg), _, _ ->
-                    Error (Synth.append sa' (Synth.lappend sa sa1 sa2), 
+                    Error (Stack.append sa' (Stack.lappend sa sa1 sa2), 
                     "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
                     "\nThe i1-face of the lid\n  " ^ Pretty.print (eval (App(e', I1()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
                   | _, _, Error (sa', msg), _ ->
-                    Error (Synth.append sa' (Synth.lappend sa sa1 sa2), 
+                    Error (Stack.append sa' (Stack.lappend sa sa1 sa2), 
                     "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
                     "\nThe i0-face of the i0-tube\n  " ^ Pretty.print (eval (App(e1', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
                   | _, _, _, Error (sa', msg) ->
-                    Error (Synth.append sa' (Synth.lappend sa sa1 sa2), 
+                    Error (Stack.append sa' (Stack.lappend sa sa1 sa2), 
                     "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
                     "\nThe i0-face of the i1-tube\n  " ^ Pretty.print (eval (App(e2', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
@@ -701,14 +701,14 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                       begin 
                         match u1, u2 with
                         | Ok _, Ok _ ->
-                          Ok (Hfill(e', e1', e2'), Ast.Pi("v?", Int(), Pi("v?", Int(), ty')), Synth.lappend sa sa1 sa2)
+                          Ok (Hfill(e', e1', e2'), Ast.Pi("v?", Int(), Pi("v?", Int(), ty')), Stack.lappend sa sa1 sa2)
                         | Error (_, msg), _ | _, Error (_, msg) -> 
-                          Error (Synth.lappend sa sa1 sa2, "Failed composition, endpoints do not match:\n" ^ msg)
+                          Error (Stack.lappend sa sa1 sa2, "Failed composition, endpoints do not match:\n" ^ msg)
                       end
                     end
 
                   | Error (sa', msg), _, _ ->
-                    Error (Synth.append sa sa', 
+                    Error (Stack.append sa sa', 
                       "Error when checking that the line\n  " ^ Pretty.print (eval (Ast.App(e', Ast.I1()))) ^ "\nhas type\n  " ^ Pretty.print ty' ^ 
                       "\nin the homogeneous filling\n  hfill (" ^ Pretty.print e' ^ 
                       ")\n    | i0 → " ^ Pretty.print e1' ^
@@ -732,7 +732,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     begin match elabt with
     | Ok (Pathd (Hole (n, l), e1, e2), _, _) ->
       let h0 = Placeholder.generate ty 0 [] in
-      let sl' = (fst sl, Synth.allconcat i (Int()) (snd sl)) in
+      let sl' = (fst sl, Stack.allconcat i (Int()) (snd sl)) in
       let elab = elaborate global ((i, Int(), true) :: ctx) lvl sl' (Hole (n, l)) ph vars e in
 
       begin match elab with
@@ -761,7 +761,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
               end
 
             | Error (sa', msg) -> (* This case is impossible *)
-              Error (Synth.append sa sa', msg)
+              Error (Stack.append sa sa', msg)
             end
           | _ , Ok _ ->
             Error (sa, "Failed to unify\n  " ^
@@ -781,7 +781,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     | Ok (Pathd (ty1, e1, e2), _, _) ->
       let elab = 
         elaborate global ((i, Int(), true) :: ctx) lvl 
-        (fst sl, Synth.allconcat i (Int()) (snd sl)) 
+        (fst sl, Stack.allconcat i (Int()) (snd sl)) 
         (eval (App(ty1, Id i))) ph vars e
       in
       begin match elab with
@@ -914,21 +914,21 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         if eval e2' = I0() then
           match a, ty' with
           | Hole _, Abs(v, ty') -> (* unify ty' and ty*)
-            Ok (At (e1', I0()), subst v (I0()) ty', Synth.append sa1 sa2)
+            Ok (At (e1', I0()), subst v (I0()) ty', Stack.append sa1 sa2)
           | Hole _, Hole _ -> 
-            Ok (At (e1', I0()), ty, Synth.append sa1 sa2)
+            Ok (At (e1', I0()), ty, Stack.append sa1 sa2)
           | Hole _, ty' -> 
-            Ok (At (e1', I0()), App(ty', I0()), Synth.append sa1 sa2)
+            Ok (At (e1', I0()), App(ty', I0()), Stack.append sa1 sa2)
           | _ -> 
             elaborate global ctx lvl sl ty ph vars a
         else if eval e2' = I1() then
           match b, ty' with
           | Hole _, Abs(v, ty') -> 
-            Ok (At (e1', I1()), subst v (I1()) ty', Synth.append sa1 sa2)
+            Ok (At (e1', I1()), subst v (I1()) ty', Stack.append sa1 sa2)
           | Hole _, Hole _ -> 
-            Ok (At (e1', I1()), ty, Synth.append sa1 sa2)
+            Ok (At (e1', I1()), ty, Stack.append sa1 sa2)
           | Hole _, ty' -> 
-            Ok (At (e1', I1()), App(ty', I1()), Synth.append sa1 sa2)
+            Ok (At (e1', I1()), App(ty', I1()), Stack.append sa1 sa2)
           | _ -> 
             elaborate global ctx lvl sl ty ph vars b
         else
@@ -942,9 +942,9 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                 let u = unify global ctx lvl sl ph vars (ty2', ty, tTy) false in
                 begin
                   match u with
-                  | Ok tty -> Ok (At (e1', e2'), tty, Synth.append sa1 sa2)
+                  | Ok tty -> Ok (At (e1', e2'), tty, Stack.append sa1 sa2)
                   | _ -> 
-                    Error (Synth.append sa1 sa2, 
+                    Error (Stack.append sa1 sa2, 
                       "Failed to unify\n  " ^ 
                       Pretty.print ty2' ^ "\nwith\n  " ^ Pretty.print ty)
                 end
@@ -963,9 +963,9 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                   begin 
                     match u, e2 = i with 
                     | Ok tty, true -> 
-                      Ok (At (e1', e2'), App(tty, i), Synth.append sa1 sa2)
+                      Ok (At (e1', e2'), App(tty, i), Stack.append sa1 sa2)
                     | _ -> 
-                      Error (Synth.append sa1 sa2, 
+                      Error (Stack.append sa1 sa2, 
                         "Failed to unify\n  " ^ 
                         Pretty.print ty' ^ "\nwith\n  " ^ Pretty.print ty)
                   end
@@ -981,9 +981,9 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                   begin
                     match u with
                     | Ok tty -> 
-                      Ok (At (e1', e2'), tty, Synth.append sa1 sa2) 
+                      Ok (At (e1', e2'), tty, Stack.append sa1 sa2) 
                     | _ -> 
-                      Error (Synth.append sa1 sa2, "Failed to unify\n  " ^ 
+                      Error (Stack.append sa1 sa2, "Failed to unify\n  " ^ 
                       Pretty.print ty' ^ "\nwith\n  " ^ Pretty.print ty)
                   end
               | Error msg -> (* This case is impossible *)
@@ -992,7 +992,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
             end
           end
       | _ -> 
-        Error (Synth.append sa1 sa2, 
+        Error (Stack.append sa1 sa2, 
           "Type mismatch when checking that\n  " ^ Pretty.print e1' ^ 
           "\nof type\n  " ^ Pretty.print ty1' ^ "\nhas type\n  pathd ?0? ?1? ?2? ")
       end
@@ -1005,22 +1005,22 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
     let elab2 = 
       elaborate global ((x, ty1, true) :: ctx) lvl 
-      (fst sl, Synth.allconcat x ty1 (snd sl)) h1 (ph+1) vars ty2 
+      (fst sl, Stack.allconcat x ty1 (snd sl)) h1 (ph+1) vars ty2 
     in
     begin match elab1, elab2 with
     | Ok (ty1', Type n1, sa1), Ok (ty2', Type n2, sa2) -> 
       begin match ty with
       | Type m -> 
         if Universe.leq (n1, m) && Universe.leq (n2, m) then 
-          Ok (Pi(x, ty1', ty2'), Type m, Synth.append sa1 sa2) 
+          Ok (Pi(x, ty1', ty2'), Type m, Stack.append sa1 sa2) 
         else 
-          Error (Synth.append sa1 sa2, 
+          Error (Stack.append sa1 sa2, 
             "Type mismatch when checking that \n  Π ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
             "\nof type \n  " ^ Pretty.print (eval (Type (Max (n1, n2)))) ^ "\nhas type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
-        Ok (Pi(x, ty1', ty2'), Type (Universe.eval (Max(n1, n2))), Synth.append sa1 sa2)
+        Ok (Pi(x, ty1', ty2'), Type (Universe.eval (Max(n1, n2))), Stack.append sa1 sa2)
       | _ ->
-        Error (Synth.append sa1 sa2, 
+        Error (Stack.append sa1 sa2, 
           "Type mismatch when checking that\n  Π ( " ^ x ^ " : " ^ 
           Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
@@ -1062,7 +1062,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       end
     
     | Ok (_, Type _, sa), Error (sb, msg) -> 
-      Error (Synth.append sa sb, "Failed to check that\n  " ^ Pretty.print (eval ty2) ^ "\nis a type\n" ^ msg)
+      Error (Stack.append sa sb, "Failed to check that\n  " ^ Pretty.print (eval ty2) ^ "\nis a type\n" ^ msg)
     | Error (sa, msg), _ -> 
       Error (sa, "Failed to check that\n  " ^ Pretty.print (eval ty1) ^ "\nis a type\n" ^ msg)
     | _ -> 
@@ -1074,21 +1074,21 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     let elab1 = elaborate global ctx lvl sl h1 (ph+1) vars ty1 in
     let elab2 = 
       elaborate global ((x, ty1, true) :: ctx) lvl 
-      (fst sl, Synth.allconcat x ty1 (snd sl)) h1 (ph+1) vars ty2 
+      (fst sl, Stack.allconcat x ty1 (snd sl)) h1 (ph+1) vars ty2 
     in
     begin match elab1, elab2 with
     | Ok (ty1', Type n1, sa1), Ok (ty2', Type n2, sa2) -> 
       begin match ty with
       | Type m -> 
         if Universe.leq (n1, m) && Universe.leq (n2, m) then 
-          Ok (Sigma(x, ty1', ty2'), Type m, Synth.append sa1 sa2) 
+          Ok (Sigma(x, ty1', ty2'), Type m, Stack.append sa1 sa2) 
         else 
-          Error (Synth.append sa1 sa2, "Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
+          Error (Stack.append sa1 sa2, "Type mismatch when checking that \n  Σ ( " ^ x ^ " : " ^ Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ 
             "\nof type \n  " ^ Pretty.print (eval (Type (Max(n1, n2)))) ^ "\n has type\n  " ^ Pretty.print (Type m))
       | Hole _ -> 
-        Ok (Sigma(x, ty1', ty2'), Type (Universe.eval (Max(n1, n2))), Synth.append sa1 sa2)
+        Ok (Sigma(x, ty1', ty2'), Type (Universe.eval (Max(n1, n2))), Stack.append sa1 sa2)
       | _ ->
-        Error (Synth.append sa1 sa2, "Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ 
+        Error (Stack.append sa1 sa2, "Type mismatch when checking that\n  Σ ( " ^ x ^ " : " ^ 
           Pretty.print ty1 ^ ") " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     
@@ -1143,14 +1143,14 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         match ty with
         | Type m -> 
           if Universe.leq (n1, m) && Universe.leq (n2, m) then 
-            Ok (Sum(ty1', ty2'), Type m, Synth.append sa1 sa2) 
+            Ok (Sum(ty1', ty2'), Type m, Stack.append sa1 sa2) 
           else 
-            Error (Synth.append sa1 sa2, "Type mismatch when checking that \n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ 
+            Error (Stack.append sa1 sa2, "Type mismatch when checking that \n  " ^ Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ 
               "\nof type \n  " ^ Pretty.print (eval (Type (Max(n1, n2)))) ^ "\n has type\n  " ^ Pretty.print (Type m))
         | Hole _ -> 
-          Ok (Sum(ty1', ty2'), Type (Universe.eval (Max(n1, n2))), Synth.append sa1 sa2)
+          Ok (Sum(ty1', ty2'), Type (Universe.eval (Max(n1, n2))), Stack.append sa1 sa2)
         | _ ->
-          Error (Synth.append sa1 sa2, "Type mismatch when checking that\n  " ^ 
+          Error (Stack.append sa1 sa2, "Type mismatch when checking that\n  " ^ 
             Pretty.print ty1 ^ "+ " ^ Pretty.print ty2 ^ "\nhas type\n  " ^ Pretty.print ty)
       end
     | Ok (ty1', Type n, sa), Ok (Hole (k,l), _, _) -> 
@@ -1269,16 +1269,16 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           begin match ty with
           | Type m ->
             if eval tye1 = eval tye2 then
-              Ok (Pathd(tye1, e1', e2'), Type m, Synth.append sa1 sa2)
+              Ok (Pathd(tye1, e1', e2'), Type m, Stack.append sa1 sa2)
             else
-              Ok (Pathd(Hole (n,l), e1', e2'), Type m, Synth.append sa1 sa2)
+              Ok (Pathd(Hole (n,l), e1', e2'), Type m, Stack.append sa1 sa2)
           | Hole (m,k) ->
             if eval tye1 = eval tye2 then
-              Ok (Pathd(eval tye1, e1', e2'), Hole (m,k), Synth.append sa1 sa2)
+              Ok (Pathd(eval tye1, e1', e2'), Hole (m,k), Stack.append sa1 sa2)
             else 
-              Ok (Pathd(Hole (n,l), e1', e2'), Hole (m,k), Synth.append sa1 sa2)
+              Ok (Pathd(Hole (n,l), e1', e2'), Hole (m,k), Stack.append sa1 sa2)
           | _ -> 
-            Error (Synth.append sa1 sa2, "Failed to check that\n  " ^ Pretty.print ty ^ "\nis a type")
+            Error (Stack.append sa1 sa2, "Failed to check that\n  " ^ Pretty.print ty ^ "\nis a type")
           end
         | _ -> 
           Error (sl, "Failed to check that\n  " ^ Pretty.print e1 ^ "\nhas type\n ?0?")
@@ -1302,11 +1302,11 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         | Ok (e1', _, sa1), Ok (e2', _, sa2) ->
           begin match ty with
           | Type m ->
-            Ok (Pathd(Abs(x,Hole (n,l)), e1', e2'), Type m, Synth.append sa1 sa2)
+            Ok (Pathd(Abs(x,Hole (n,l)), e1', e2'), Type m, Stack.append sa1 sa2)
           | Hole (m,k) ->
-            Ok (Pathd(Abs(x,Hole (n,l)), e1', e2'), Hole (m,k), Synth.append sa1 sa2)
+            Ok (Pathd(Abs(x,Hole (n,l)), e1', e2'), Hole (m,k), Stack.append sa1 sa2)
           | _ -> 
-            Error (Synth.append sa1 sa2, "Failed to check that\n  " ^ Pretty.print ty ^ "\nis a type")
+            Error (Stack.append sa1 sa2, "Failed to check that\n  " ^ Pretty.print ty ^ "\nis a type")
             end
         | Ok _, Error (sa, msg) -> 
           Error (sa, "Failed to check that\n  " ^ Pretty.print e2 ^ "\nhas type\n ?0?\n" ^ msg)
@@ -1329,22 +1329,22 @@ let rec elaborate global ctx lvl sl ty ph vars = function
             begin match ty with
             | Type m ->
               if m >= n then 
-                Ok (Pathd(ty1', e1', e2'), Type m, Synth.lappend sa sa1 sa2) 
+                Ok (Pathd(ty1', e1', e2'), Type m, Stack.lappend sa sa1 sa2) 
               else 
-                Error (Synth.lappend sa sa1 sa2, 
+                Error (Stack.lappend sa sa1 sa2, 
                   "Failed to check that\n  pathd " ^ 
                   Pretty.print ty1' ^ " " ^  Pretty.print e1' ^ " " ^  Pretty.print e2' ^ 
                   "\nhas type\n  " ^ Pretty.print ty)
             | Hole _ -> 
-              Ok (Pathd(ty1', e1', e2'), Type n, Synth.lappend sa sa1 sa2)
+              Ok (Pathd(ty1', e1', e2'), Type n, Stack.lappend sa sa1 sa2)
             | _ -> 
-              Error (Synth.lappend sa sa1 sa2, 
+              Error (Stack.lappend sa sa1 sa2, 
               "Failed to check that\n  " ^ Pretty.print ty2 ^ "\nis a type")
             end
           | Int() , Hole _ | Hole _, Hole _ -> 
-            Ok (Pathd(ty1', e1', e2'), tTyi0, Synth.lappend sa sa1 sa2)
+            Ok (Pathd(ty1', e1', e2'), tTyi0, Stack.lappend sa sa1 sa2)
           | _ -> 
-            Error (Synth.lappend sa sa1 sa2, "Failed to unify \n  " ^ Pretty.print i ^ "with\n  I ")
+            Error (Stack.lappend sa sa1 sa2, "Failed to unify \n  " ^ Pretty.print i ^ "with\n  I ")
           end
         | Ok (ty1', _, sa), Ok _, Ok _ ->
           Error (sa, "Type mismatch when checking that\n  " ^ Pretty.print ty1' ^ "\nhas type\n  Π (v? : I) ?0?")
@@ -1383,21 +1383,28 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     Ok (Hole (n, l), ty, sl)
 
   | Wild n ->
-    begin
-      let helper x =
-        match find true global ctx x ty lvl sl ph vars with
-        | Ok (e', ty') ->
-          if List.mem (n, e', ty') (fst sl) then
-            let sl' = (fst sl, Synth.make n ctx :: (snd sl)) in 
-            Ok (Id e', ty, sl') (* n, ctx | all true at n *)
-          else
-            let sl' = ((n, e', ty') :: fst sl, Synth.make n ctx :: (snd sl)) in
-            Ok (Id e', ty, sl') (* n, ctx | all true at n *)
-        | Error _ ->
-          Error (([], []), "Failed to synthesize placeholder for ?0" ^ string_of_int n ^ "? in the current goal:\n" ^ 
-            print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty))
+    let fails = 
+      Error (([], []), 
+      "Failed to synthesize placeholder for ?0" ^ string_of_int n ^ "? in the current goal:\n" ^ 
+      print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty))
+    in
+    if Placeholder.is ty then
+
+      let helper x y =
+        match Local.find_any_true x with
+        | Ok e ->
+          let sl' = ((n, e, ty) :: fst sl, y) in
+          Ok (Id e, ty, sl')
+        | Error _ -> fails
       in
-      match Synth.find_index n (snd sl) with
+      match Stack.find_index n (snd sl) with
+      | Ok l -> 
+        helper l (snd sl)
+      | Error _ ->
+        helper ctx (Stack.make n ctx :: (snd sl))
+
+    else
+      match Stack.find_index n (snd sl) with
       | Ok l ->
         begin
           match find false global ctx l ty lvl sl ph vars with
@@ -1408,13 +1415,21 @@ let rec elaborate global ctx lvl sl ty ph vars = function
               let sl' = ((n, e', ty') :: fst sl, snd sl) in
               Ok (Id e', ty, sl')
           | Error _ -> 
-            Error (([], []), 
-            "Failed to synthesize placeholder for ?0" ^ string_of_int n ^ "? in the current goal:\n" ^ 
-            print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty))
+            fails
         end
       | Error _ ->
-        helper ctx
-    end
+        begin
+          match find true global ctx ctx ty lvl sl ph vars with
+          | Ok (e', ty') ->
+            if List.mem (n, e', ty') (fst sl) then
+              let sl' = (fst sl, Stack.make n ctx :: (snd sl)) in 
+              Ok (Id e', ty, sl') (* n, ctx | all true at n *)
+            else
+              let sl' = ((n, e', ty') :: fst sl, Stack.make n ctx :: (snd sl)) in
+              Ok (Id e', ty, sl') (* n, ctx | all true at n *)
+          | Error _ ->
+            fails
+        end
 
 (* Finds a variable in a context for a given type up to unification *)
 

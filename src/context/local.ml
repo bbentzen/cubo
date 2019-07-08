@@ -67,3 +67,12 @@ let rec find_true ty ctx =
 			Ok y
 		else 
 			find_true ty ctx'
+
+let rec find_any_true ctx =
+	match (List.rev ctx) with
+	| [] -> Error () 
+	| (y, _, b) :: ctx' -> 
+		if b then 
+			Ok y
+		else 
+			find_any_true ctx'
