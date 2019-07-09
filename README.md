@@ -26,15 +26,17 @@ Universe type | type n |
 
 where A and B denote arbitrary types, x arbitrary variables, and M, N arbitrary terms.
 
-Moreover, because the unicity of identity proofs allows for a simplified version of the Kan conditions, 
+Moreover, the language also contains two primitive functions known as Kan operations:
 
 - Coercion. This is a cubical generalization of Leibniz's indiscernibility of identicals. Essentially, coercion states that, given any line type I → A and any term M : A i, where i j : I, we have a term of the type A j, called the coercion of M in A, and denoted by `coe i j A M`.
 
-- Homogeneous Kan composition. Simply put, this operation states that any open box has a lid. More precisely, given any three lines M N N' : I → A such that (i) the initial point of M is judgmentally equal to the initial point of N and (ii) the terminal point of M is judgmentally equal to the initial point of N', the composition also asserts the existence of square I → I → A whose top face is M, left face is N, right face is N'. The composition is written `hfill M | i0 → N0 | i1 → N1`.
+- Composition. Simply put, composition states that any open box has a lid. More precisely, given any three lines M N N' : I → A such that (i) the initial point of M is judgmentally equal to the initial point of N and (ii) the terminal point of M is judgmentally equal to the initial point of N', the composition also asserts the existence of square I → I → A whose top face is M, left face is N, right face is N'. The composition is written `hfill M | i0 → N0 | i1 → N1`.
 
-### 2 Enviroments
+Because the unicity of identity proofs holds judgmentally, Cubo rests on a simplified version of composition in which, unlike other cubical type theories, there are no higher-dimensional composition scenarios. 
 
-The main environment of Cubo is the proof environment, which consists of the syntax:
+### 2 The Proof Enviroment
+
+Cubo's main environment is the proof environment, which consists of the syntax:
 
 <dl>
   <dd>[<em>command</em>] [<em>name-of-theorem</em>] [<em>context</em>] ⊢ [<em>type</em>] := [<em>term</em>]</dd>
