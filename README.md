@@ -1,12 +1,13 @@
 # Cubo
 
-This repository describes an experimental proof assistant implementing the cubical extensional type theory developed by Jon Sterling, Carlo Angiuli, and Daniel Gratzer in [Cubical Syntax for Reflection-Free Extensional Equality](https://arxiv.org/abs/1904.08562).
+Cubo is an experimental proof assistant based on the cubical type theory developed by Jon Sterling, Carlo Angiuli, and Daniel Gratzer in [Cubical Syntax for Reflection-Free Extensional Equality](https://arxiv.org/abs/1904.08562), a cubical reconstruction of extensional type theory that enjoys canonicity, function extensionality, and a judgmental version of the unicity of identity proofs principle (UIP): any two elements of the same identity type are judgmentally equal. 
 
-## The syntax
 
-### 1 The language
+## Summary
 
-Cubo is based on the following term language:
+### 1 Language
+
+Cubo's core language contains the following type-formers, constructors, and eliminators:
 
 Type names | Notation | Constructors | Eliminators
 ------------ | ------------- | ------------- | -------------
@@ -25,40 +26,50 @@ Universe type | type n |
 
 where A and B denote arbitrary types, x arbitrary variables, and M, N arbitrary terms.
 
+Moreover, because the unicity of identity proofs allows for a simplified version of the Kan conditions, 
+
+- Coercion. This is a cubical generalization of Leibniz's indiscernibility of identicals. Essentially, coercion states that, given any line type I → A and any term M : A i, where i j : I, we have a term of the type A j, called the coercion of M in A, and denoted by `coe i j A M`.
+
+- Homogeneous Kan composition. Simply put, this operation states that any open box has a lid. More precisely, given any three lines M N N' : I → A such that (i) the initial point of M is judgmentally equal to the initial point of N and (ii) the terminal point of M is judgmentally equal to the initial point of N', the composition also asserts the existence of square I → I → A whose top face is M, left face is N, right face is N'. The composition is written `hfill M | i0 → N0 | i1 → N1`.
+
 ### 2 Enviroments
 
-#### 2.1 The proof environment
+The main environment of Cubo is the proof environment, which consists of the syntax:
 
-The proof environment of Cubo consists of the following syntax:
+<dl>
+  <dd>[<em>command</em>] [<em>name-of-theorem</em>] [<em>context</em>] ⊢ [<em>type</em>] := [<em>term</em>]</dd>
+</dl>
 
-````
-[command] [name-of-theorem] [context-goes-here]
-⊢ [type-goes-here] :=
-[term-to-be-checked]
-````
-where the [command] tag stands for 'definition', 'theorem', or 'lemma'.
+where the [*command*] tag stands for one of the following: 'def', 'definition', 'thm', 'theorem', 'lem', 'lemma'.
 
-### 3 Examples
+#### 2.1 Examples
 
-Function application and dependent function application:
+Some notable examples include nondependent and dependent function application,
 
 ````
-def ap (A B : type 1) (f : A → B) (a b : A) 
+def ap {A B : type l} (f : A → B) {a b : A} 
 ⊢ path A a b → path B (app f a) (app f b) :=
 λp, <i> app f (p @ i)
-
-def apd (A : type 1) (B : A → type 1) (f : Π (x : A) app B x) (a b : A) (p : pathd A a b)
+ 
+def apd {A : type l} {B : A → type l} (f : Π (x : A) app B x) {a b : A} (p : path A a b)
 ⊢ pathd (λi, app B (p @ i)) (app f a) (app f b) :=
 <i> app f (p @ i)
 ````
 
-Function extensionality:
+function extensionality,
 
 ````
-def funext (A : type 1) (B : A → type 1) (f g : Π (x : A) app B x) 
+def funext {A : type l} {B : A → type l} (f g : Π (x : A) app B x) 
 ⊢ (Π (x : A) path (app B x) (app f x) (app g x)) → path (Π (x : A) app B x) f g :=
 λh, <i> (λ x, (app h x) @ i)
 ````
 
-A comprehensive list of examples can be found [here](https://github.com/bbentzen/cubo/blob/master/tests/success/examples.cubo).
+and path induction (otherwise known as J), 
 
+````
+def pathrec {A : type l} {a : A} (C : Π (x : A) (path A a x → type l)) {b : A} (p : path A a b) (c : app app C a (<_> a)) 
+⊢ app app C b p := 
+coe i0 i1 (λ i, app app C (p @ i) (app meet p @ i)) c 
+````
+
+A comprehensive list of examples can be found [here](https://github.com/bbentzen/cubo/blob/master/tests/success/).
