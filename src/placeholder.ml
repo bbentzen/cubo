@@ -87,7 +87,7 @@ let rec has_underscore = function
 		has_underscore i || has_underscore j || has_underscore e1 || has_underscore e2
 	| _ -> false
 
-let preforget n e =
+let rec preforget n e =
 	let h n = Hole (string_of_int n, []) in
 	match e with
 	| Id y -> Id y, n
@@ -105,6 +105,8 @@ let preforget n e =
 		Fst (h n), n+1
 	| Snd _ -> 
 		Snd (h n), n+1
+	| Pi (y, Hole (k, l), e) ->
+		Pi (y, Hole (k, l), fst (preforget n e)), snd (preforget n e)
 	| Pi (y, _, _) -> 
 		Pi (y, h n, h (n+1)), n+2
 	| Sigma (y, _, _) -> 

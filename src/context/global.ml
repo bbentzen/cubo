@@ -23,9 +23,9 @@ let is_declared x global =
 
 (* Generates a triple id * term * type from a successfully elaborated triple id * ctx * elab *)
 
-let function_of_def id ctx elab hole =
+let function_of_def id ctx (e, ty) hole =
 	let rec helper h' = function
-		| [] -> fst elab, snd elab
+		| [] -> e, ty
 		| (x, ty, true) :: ctx ->  
 			Ast.Abs (x, fst (helper h' ctx )), 
 			Ast.Pi (x, ty, snd (helper h' ctx))

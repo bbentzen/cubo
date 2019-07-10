@@ -80,6 +80,8 @@ let rec read n = function
 		snd (read (snd (read (snd (read n e)) e1)) e2)
   | Ast.Wild 0 -> 
 		Ast.Wild n, n+1
+	| Ast.Wild m -> 
+		Ast.Wild m, n+m
 	| e -> e, n
 
 let convert e =
