@@ -117,6 +117,35 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       "\nhas type\n  " ^ Pretty.print ty ^ "\nbut is expected to have type\n  Π (v? : ?0?) ?1?")
     end
 
+  | App (e1, Ast.Wild n) ->
+    let h1 = Placeholder.generate ty ph [] in
+    let v1 = fresh_var e1 ty vars in
+    let (h2, ph) = Placeholder.preforget (ph+2) ty in
+    let elab1 = elaborate global ctx lvl sl (Pi(v1, h1, h2)) (ph+1) (vars+2) e1 in
+    begin match elab1 with
+    | Ok (e1', Pi(x, ty1, ty2), sa1) ->
+      let elab2 = elaborate global ctx lvl sl ty1 (ph+1) (vars+2) (Ast.Wild n) in
+      begin 
+        match elab2 with
+        | Ok (e2', _, sa2) ->
+          Ok (App (e1', e2'), subst x e2' ty2, Stack.append sa1 sa2)
+        | Error (sa2, msg) -> 
+          Error (Stack.append sa1 sa2,
+            "Failed application\n  " ^ Pretty.print (App (e1, Wild n)) ^
+            "\nThe term\n  " ^ Pretty.print (Wild n) ^ 
+            "\nis expected to have type\n  " ^ Pretty.print ty1 ^ "\n" ^ msg)
+        end
+      
+    | Ok (e1', _, sa1) -> 
+      Error (sa1,
+        "Failed application\n  " ^ Pretty.print (App (e1', Wild n)) ^
+        "\nThe term\n  " ^ Pretty.print e1' ^ 
+        "\nis expected to have type\n " ^ Pretty.print h2)
+    | Error (sa, msg) -> 
+      Error (sa, msg)
+    end
+
+
   | App (e1, e2) ->
     let h1 = Placeholder.generate ty ph [] in
     let v1 = fresh_var (App(e1, e2)) ty vars in

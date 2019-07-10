@@ -4,83 +4,138 @@
  * Desc: Operations involving placeholders
  **)
 
+open Ast
+
 (* Counts the number of placeholders in an expression, generates a new one *)
 
 let rec count = function
-	| Ast.Hole (_, _) -> 
+	| Hole (_, _) -> 
 		1
-	| Ast.Abs (_, e) | Ast.Pabs (_, e) -> 
+	| Abs (_, e) | Pabs (_, e) -> 
 		count e 
-	| Ast.Pi (_, e1, e2) | Ast.Sigma (_, e1, e2) -> 
+	| Pi (_, e1, e2) | Sigma (_, e1, e2) -> 
 		count e1 + count e2
-	| Ast.Fst e | Ast.Snd e | Ast.Inl e | Ast.Inr e | Ast.Succ e | Ast.Abort e -> 
+	| Fst e | Snd e | Inl e | Inr e | Succ e | Abort e -> 
 		count e
-	| Ast.App (e1, e2) | Ast.Pair (e1, e2) | Ast.Sum (e1, e2) | Ast.Let (e1, e2) | Ast.At(e1, e2) -> 
+	| App (e1, e2) | Pair (e1, e2) | Sum (e1, e2) | Let (e1, e2) | At(e1, e2) -> 
 		count e1 + count e2
-	| Ast.Case (e, e1, e2) | Ast.Natrec (e, e1, e2) | Ast.If (e, e1, e2) | Ast.Pathd (e, e1, e2) | Ast.Hfill (e, e1, e2) -> 
+	| Case (e, e1, e2) | Natrec (e, e1, e2) | If (e, e1, e2) | Pathd (e, e1, e2) | Hfill (e, e1, e2) -> 
 		count e + count e1 + count e2
-	| Ast.Coe (i, j, e1, e2) -> 
+	| Coe (i, j, e1, e2) -> 
 		count i + count j + count e1 + count e2
 	| _ -> 0
 
 	let generate e hole l = 
-		Ast.Hole ((string_of_int ((count e) + hole)), l)
+		Hole ((string_of_int ((count e) + hole)), l)
 
 (* Returns the type of a term variable when it has been declared *)
 
 let rec candidates = function (* TODO: remove duplicates *)
-	| Ast.Hole (n, l) ->
+	| Hole (n, l) ->
 		[n, l]
-	| Ast.Abs (_, e) | Ast.Pabs (_, e) -> 
+	| Abs (_, e) | Pabs (_, e) -> 
 		candidates e
-	| Ast.Fst e | Ast.Snd e | Ast.Inl e | Ast.Inr e | Ast.Succ e | Ast.Abort e -> 
+	| Fst e | Snd e | Inl e | Inr e | Succ e | Abort e -> 
 		candidates e
-	| Ast.Pi (_, e1, e2) | Ast.Sigma (_, e1, e2) -> 
+	| Pi (_, e1, e2) | Sigma (_, e1, e2) -> 
 		candidates e1 @ candidates e2
-	| Ast.App (e1, e2) | Ast.Pair (e1, e2) | Ast.Sum (e1, e2) | Ast.Let (e1, e2) | Ast.At(e1, e2) -> 
+	| App (e1, e2) | Pair (e1, e2) | Sum (e1, e2) | Let (e1, e2) | At(e1, e2) -> 
 		candidates e1 @ candidates e2
-	| Ast.Case (e, e1, e2) | Ast.Natrec (e, e1, e2) | Ast.If (e, e1, e2) | Ast.Pathd (e, e1, e2) -> 
+	| Case (e, e1, e2) | Natrec (e, e1, e2) | If (e, e1, e2) | Pathd (e, e1, e2) -> 
 		candidates e @ candidates e1 @ candidates e2
 	| _ -> []
 
 (* Determines whether an expression is or has a placeholder/underscore *)
 
 let is = function
-	| Ast.Hole _ -> true
+	| Hole _ -> true
 	| _ -> false
 
 let rec has_placeholder = function
-	| Ast.Hole _ -> 
+	| Hole _ -> 
 		true
-	| Ast.Abs (_, e) | Ast.Pabs (_, e) -> 
+	| Abs (_, e) | Pabs (_, e) -> 
 		has_placeholder e 
-	| Ast.Pi (_, e1, e2) | Ast.Sigma (_, e1, e2) -> 
+	| Pi (_, e1, e2) | Sigma (_, e1, e2) -> 
 		has_placeholder e1 || has_placeholder e2
-	| Ast.Fst e | Ast.Snd e | Ast.Inl e | Ast.Inr e | Ast.Succ e | Ast.Abort e -> 
+	| Fst e | Snd e | Inl e | Inr e | Succ e | Abort e -> 
 		has_placeholder e
-	| Ast.App (e1, e2) | Ast.Pair (e1, e2) | Ast.Sum (e1, e2) | Ast.Let (e1, e2) | Ast.At(e1, e2) -> 
+	| App (e1, e2) | Pair (e1, e2) | Sum (e1, e2) | Let (e1, e2) | At(e1, e2) -> 
 		has_placeholder e1 || has_placeholder e2
-	| Ast.Case (e, e1, e2) | Ast.Natrec (e, e1, e2) | Ast.If (e, e1, e2) | Ast.Pathd (e, e1, e2) | Ast.Hfill (e, e1, e2) -> 
+	| Case (e, e1, e2) | Natrec (e, e1, e2) | If (e, e1, e2) | Pathd (e, e1, e2) | Hfill (e, e1, e2) -> 
 		has_placeholder e || has_placeholder e1 || has_placeholder e2
-	| Ast.Coe (i, j, e1, e2) -> 
+	| Coe (i, j, e1, e2) -> 
 		has_placeholder i || has_placeholder j || has_placeholder e1 || has_placeholder e2
 	| _ -> false
 
 (* Determines whether an expression has underscores *)
 
 let rec has_underscore = function
-	| Ast.Wild _ -> 
+	| Wild _ -> 
 		true
-	| Ast.Abs (_, e) | Ast.Pabs (_, e) -> 
+	| Abs (_, e) | Pabs (_, e) -> 
 		has_underscore e 
-	| Ast.Pi (_, e1, e2) | Ast.Sigma (_, e1, e2) -> 
+	| Pi (_, e1, e2) | Sigma (_, e1, e2) -> 
 		has_underscore e1 || has_underscore e2
-	| Ast.Fst e | Ast.Snd e | Ast.Inl e | Ast.Inr e | Ast.Succ e | Ast.Abort e -> 
+	| Fst e | Snd e | Inl e | Inr e | Succ e | Abort e -> 
 		has_underscore e
-	| Ast.App (e1, e2) | Ast.Pair (e1, e2) | Ast.Sum (e1, e2) | Ast.Let (e1, e2) | Ast.At(e1, e2) -> 
+	| App (e1, e2) | Pair (e1, e2) | Sum (e1, e2) | Let (e1, e2) | At(e1, e2) -> 
 		has_underscore e1 || has_underscore e2
-	| Ast.Case (e, e1, e2) | Ast.Natrec (e, e1, e2) | Ast.If (e, e1, e2) | Ast.Pathd (e, e1, e2) | Ast.Hfill (e, e1, e2) -> 
+	| Case (e, e1, e2) | Natrec (e, e1, e2) | If (e, e1, e2) | Pathd (e, e1, e2) | Hfill (e, e1, e2) -> 
 		has_underscore e || has_underscore e1 || has_underscore e2
-	| Ast.Coe (i, j, e1, e2) -> 
+	| Coe (i, j, e1, e2) -> 
 		has_underscore i || has_underscore j || has_underscore e1 || has_underscore e2
 	| _ -> false
+
+let preforget n e =
+	let h n = Hole (string_of_int n, []) in
+	match e with
+	| Id y -> Id y, n
+	| Coe (_, _, _, _) ->
+		Coe (h n, h (n+1), h (n+2), h (n+3)), n+4
+	| Hfill (_, _, _) -> 
+		Hfill (h n, h (n+1), h (n+2)), n+3
+	| Abs (y, _) -> 
+		Abs (y, h n), n+1
+	| App (_, _) -> 
+		App (h n, h (n+1)), n+2
+	| Pair (_, _) -> 
+		Pair (h n, h (n+1)), n+2
+	| Fst _ -> 
+		Fst (h n), n+1
+	| Snd _ -> 
+		Snd (h n), n+1
+	| Pi (y, _, _) -> 
+		Pi (y, h n, h (n+1)), n+2
+	| Sigma (y, _, _) -> 
+		Sigma (y, h n, h (n+1)), n+2
+	| Inl _ -> 
+		Inl (h n), n+1
+	| Inr _ -> 
+		Inr (h n), n+1
+	| Case (_, _, _) -> 
+		Case (h n, h (n+1), h (n+2)), n+3
+	| Sum (_, _) -> 
+		Sum (h n, h (n+1)), n+2
+	| Succ _ -> 
+		Succ (h n), n+1
+	| Natrec (_, _, _) -> 
+		Natrec (h n, h (n+1), h (n+2)), n+3
+	| If (_, _, _) -> 
+		If (h n, h (n+1), h (n+2)), n+3
+	| Let (_, _) -> 
+		Let (h n, h (n+1)), n+2
+	| Abort _ -> 
+		Abort (h n), n+1
+	| Pabs (y, _) -> 
+		Pabs (y, h n), n+1
+	| At (_, _) -> 
+		At (h n, h (n+1)), n+2
+	| Pathd (_, _, _) -> 
+		Pathd (h n, h (n+1), h (n+2)), n+3
+  | Wild 0 -> 
+		h n, n+1
+	| e -> e, n
+
+let forget ph e =
+		fst (preforget ph e)

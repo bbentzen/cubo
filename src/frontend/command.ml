@@ -32,12 +32,10 @@ let rec compile global lopen filename lvl = function
 										"'\nName already exists in the environment (try 'print " ^ id ^ "' for more information)")
 								else
 									let res = Synthesize.init global ctx' lvl e' ty' in
-									(* let res = Synthesize.init global ctx' lvl e' ty' in *)
 									begin 
 										match res with 
 										| Ok (e1, ty1) ->
 											compile (Global.add_to_global_env global id ctx' (e1, ty1)) lopen filename lvl cmd
-											(* compile (Global.add_to_global_env global id ctx' (e1, ty1)) lopen filename lvl cmd *)
 										| Error msg -> 
 											Error ("The following error was found at '" ^ id ^ "'\n" ^ msg)
 									end
@@ -50,7 +48,7 @@ let rec compile global lopen filename lvl = function
 				| Error msg -> 
 					Error msg
 		end
-	
+
 	(* TODO: print function that evaluates expressions *)
 
 	| Ast.Print (cmd, id) -> 
@@ -104,7 +102,8 @@ let rec compile global lopen filename lvl = function
 	| Ast.Level (cmd, lvl') ->
 		compile global lopen filename (lvl @ lvl') cmd
 
-	| Ast.Eof() -> Ok (global, ("", lopen))
+	| Ast.Eof() -> 
+		Ok (global, ("", lopen))
 
 and checkfile global lopen filename lvl =
 	compile global lopen filename lvl (parse_file filename)
