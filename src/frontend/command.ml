@@ -22,8 +22,8 @@ let rec compile global lopen filename lvl = function
 				let h2 = Type.check global ctx lvl (reduce hty) in
 				begin 
 					match h1, h2 with
-					| Ok l, Ok (ty', _) -> 
-						let ctx' = List.rev l in
+					| Ok ctx, Ok (ty', _) -> 
+						let ctx' = List.rev ctx in
 						begin 
 							match Global.unfold_all global 0 (Implicit.convert e) with
 							| Ok e' ->
@@ -32,10 +32,12 @@ let rec compile global lopen filename lvl = function
 										"'\nName already exists in the environment (try 'print " ^ id ^ "' for more information)")
 								else
 									let res = Synthesize.init global ctx' lvl e' ty' in
+									(* let res = Synthesize.init global ctx' lvl e' ty' in *)
 									begin 
 										match res with 
 										| Ok (e1, ty1) ->
 											compile (Global.add_to_global_env global id ctx' (e1, ty1)) lopen filename lvl cmd
+											(* compile (Global.add_to_global_env global id ctx' (e1, ty1)) lopen filename lvl cmd *)
 										| Error msg -> 
 											Error ("The following error was found at '" ^ id ^ "'\n" ^ msg)
 									end

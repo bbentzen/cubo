@@ -12,14 +12,8 @@ open Ast
 open Substitution
 open Eval 
 
-let rec print ctx =
-	match (List.rev ctx) with
-	| [] -> "" 
-	| (id, ty, _) :: ctx' -> 
-    " " ^ id ^ " : " ^ Pretty.print ty ^ "\n" ^ print ctx'
-
 let goal_msg ctx e ty =
-  "when checking that\n  " ^ Pretty.print e ^ "\nhas the expected type\n" ^ print ctx ^ 
+  "when checking that\n  " ^ Pretty.print e ^ "\nhas the expected type\n" ^ Local.print ctx ^ 
   "-------------------------------------------\n ⊢ " ^ Pretty.print ty
 
 (* Checks whether the type of a given expression is the given type *)
@@ -1388,7 +1382,8 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       "Failed to synthesize placeholder for ?0" ^ string_of_int n ^ "? in the current goal:\n" ^ 
       print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty))
     in
-    if Placeholder.is ty then
+    
+    (*if Placeholder.is ty then
 
       let helper x y =
         match Local.find_any_true x with
@@ -1403,7 +1398,8 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       | Error _ ->
         helper ctx (Stack.make n ctx :: (snd sl))
 
-    else
+    else*)
+
       match Stack.find_index n (snd sl) with
       | Ok l ->
         begin

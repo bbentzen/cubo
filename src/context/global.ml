@@ -10,13 +10,16 @@ open Basis
 
 (* Determines whether a variable has been declared in the global context *)
 
-let rec is_declared x global =
-	match (List.rev global) with
+let is_declared x global =
+	let rec helper x = function
 	| [] -> false
 	| (id, (_, _)) :: global -> 
-		if x = id
-		then true
-		else is_declared x global
+		if x = id then 
+			true
+		else 
+			helper x global
+	in
+	helper x (List.rev global)
 
 (* Generates a triple id * term * type from a successfully elaborated triple id * ctx * elab *)
 
@@ -34,7 +37,8 @@ let function_of_def id ctx elab hole =
 	id, helper hole ctx
 
 let rec check_def_id id = function
-  | [] -> Error ("No definition or theorem found for the identifier '" ^ id ^ "'") 
+	| [] -> 
+		Error ("No definition or theorem found for the identifier '" ^ id ^ "'") 
   | (id', body) :: global -> 
     if id = id'
     then Ok body
@@ -50,19 +54,22 @@ let add_to_global_env global id ctx elab =
 (* Returns the body of a definition when given a declared global constant *)
 
 let rec unfold id = function
-  | [] -> Error ("No declaration found for identifier '" ^ id ^ "'")
+	| [] -> 
+		Error ("No declaration found for identifier '" ^ id ^ "'")
   | (id', (body , ty)) :: global -> 
-    if id = id'
-    then Ok (body, ty)
-		else unfold id global
+		if id = id' then 
+			Ok (body, ty)
+		else 
+			unfold id global
 
 (* Unfolds all declared global constants and checks for naming conflicts *)
 
 let rec unfold_all global vars = function
 	| Ast.Id x -> 
-		begin match unfold x global with
-		| Ok (body, _) -> Ok body
-		| _ -> Ok (Ast.Id x)
+		begin 
+			match unfold x global with
+			| Ok (body, _) -> Ok body
+			| _ -> Ok (Ast.Id x)
 		end
 
 	| Ast.Abs (x, e) ->

@@ -47,7 +47,7 @@ and iter sl' msg global ctx lvl e ty max =
 		| (n, id, _) :: _ ->
 
 			begin match Stack.find_index n (snd sl') with 
-			| Ok _ -> (* ll *)
+			| Ok _ -> 
 
 				let e' = Substitution.prefull (Wild n) (Id id) e in
 				let w = check global ctx lvl ([], snd sl') e' ty max in

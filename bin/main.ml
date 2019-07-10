@@ -8,6 +8,7 @@ open Frontend
 open Command
 
 let () =
+  let start = Sys.time() in
   let filename = "tests/test.cubo" in
   match checkfile [] [] filename [] with 
   | Ok (env, (s, _)) ->
@@ -19,5 +20,6 @@ let () =
         s 
     in
     print_endline s';
-    print_endline (string_of_int (List.length env) ^ " definition(s)/theorem(s) compiled successfully. ");
+    let time = string_of_float (Sys.time() -. start) in
+    print_endline (string_of_int (List.length env) ^ " theorem(s) compiled successfully in " ^ time ^ " seconds");
   | Error msg -> print_endline ("Error: " ^ msg);

@@ -97,14 +97,14 @@ jk
 jk 
 
 
-/** TODO: 
+/** 
+
+TODO: 
 - cannot open an already opened file
-- coe type computation rules
-- hcom
-- universe levels: id, num, max lvl lvl
+- coe on sum computation rules
+- universe level synthesization
 - refl direct handling 
-- holes _ should try all possible combinations
-- λ id id, notation for iterated lambda sigmas pis
+- fix bugs on implicit arguments
 
 -De Brujin variables
 -Better lexer/parser error messages

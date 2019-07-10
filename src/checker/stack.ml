@@ -10,11 +10,13 @@ open Basis
 
 (* Print synthesization list *)
 
-let rec printb synl =
-	match (List.rev synl) with
+let printb synl =
+	let rec printrev = function
 	| [] -> "" 
 	| (id, ty, b) :: synl' -> 
-		" " ^ id ^ " : " ^ Pretty.print ty ^ "- " ^ string_of_bool b ^ "\n" ^ printb synl'
+		" " ^ id ^ " : " ^ Pretty.print ty ^ "- " ^ string_of_bool b ^ "\n" ^ printrev synl'
+	in
+	printrev (List.rev synl)
 
 let rec printsl = function
 	| [] -> "" 
