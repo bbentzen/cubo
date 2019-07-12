@@ -53,7 +53,7 @@ def ex5 {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A
 def ex6 {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d) (f : path A a b → I → A) 
 ⊢ path A (app app f p i0) (app app f p i0) := 
 <k> app app f _ i0
-
+ 
 def ex7 (A : type l) (a b c d : A) (p : path A a b) (q : path A b c) (r : path A c d) (f : Π (x : A) path A a x → path A x c → A)
 ⊢ A := 
 app app app f _ _ _ 
