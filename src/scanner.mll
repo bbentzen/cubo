@@ -12,7 +12,8 @@ let identifier =
   ['A'-'Z' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_' ''']* as str
 
 let filename =
-  ['A'-'Z' '.' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_' '.' '/']* as str
+  ['.']['.']? '/' ['A'-'Z' '.' 'a'-'z' '0'-'9' '_' '.' '/']* as str
+| ['A'-'Z' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_' '.']* as str
 
 let number =
   ['0'-'9']* as str
@@ -92,6 +93,7 @@ rule token = parse
   | "{"                { LBRACE }
   | "}"                { RBRACE }
   | "import"           { IMPORT }
+  | "open"             { IMPORT }
   | "universe"         { UNIVERSE }
   | "definition"       { DEF }
   | "def"              { DEF }

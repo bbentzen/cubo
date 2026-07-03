@@ -9,7 +9,14 @@ open Command
 
 let () =
   let start = Sys.time() in
-  let filename = "tests/test.cubo" in
+  let filename =
+  if Array.length Sys.argv > 1 then
+    Sys.argv.(1)
+  else (
+    print_endline "Usage: cubo <filename>";
+    exit 1
+  )
+  in
   match checkfile [] [] filename [] with 
   | Ok (env, (s, _)) ->
     let n = String.length s in

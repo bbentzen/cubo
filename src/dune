@@ -1,5 +1,5 @@
 (menhir
- (flags --explain --interpret-show-cst)
+ (flags --explain)
  (modules syntax))
 
 (ocamllex scanner)

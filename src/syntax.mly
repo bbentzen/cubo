@@ -22,6 +22,11 @@ let rec sigma_of_list e = function
   | (id, ty) :: l ->
     Ast.Sigma (id, ty, sigma_of_list e l)
 
+let rec ids_to_bindings ids ty =
+  match ids with
+  | [] -> []
+  | id :: rest -> (id, ty) :: ids_to_bindings rest ty
+
 let fill_def i j ty e e1 e2 =
   let v1 = Substitution.fresh_var (App(e1, e2)) e 2 in
   Hfill(Abs(v1, Coe (i, j, ty, App(e, Id v1))), 
@@ -64,7 +69,8 @@ let fill_def i j ty e e1 e2 =
 %type <((string list * Ast.expr) * bool) list> ctx
 %type <Ast.level> level
 %type <Ast.expr> expr
-%type <string list> ids 
+%type <string list> ids
+%type <string list> vars
 %type <((string * expr) list) * expr> blocks
 
 %%
@@ -97,7 +103,7 @@ vars:
 
 blocks:
   | expr                                                   { ([], $1) }
-  | LPAREN ID COLON expr RPAREN blocks                     { (($2, $4) :: fst $6, snd $6) }
+  | LPAREN ids COLON expr RPAREN blocks                    { (ids_to_bindings $2 $4 @ fst $6, snd $6) }
 
 level:
   | ID                                                     { Var ($1) }
