@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Cubo",
+  "patterns": [
+    { "include": "#comments-block" },
+    { "include": "#keywords" }
+  ],
+  "repository": {
+    "keywords": {
+      "match": "\\b(def|let|data|U|Path|Id|glue|unglue|comp|kan|fill)\\b",
+      "name": "keyword.control.cubo"
+    },
+    "comments-block": {
+      "begin": "/\\*",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.comment.cubo" }
+      },
+      "end": "\\*/",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.comment.cubo" }
+      },
+      "name": "comment.block.cubo"
+    }
+  },
+  "scopeName": "source.cubo"
+}

@@ -5,3 +5,6 @@
 *.install
 
 /tests/test.cubo
+
+/node_modules
+/out
