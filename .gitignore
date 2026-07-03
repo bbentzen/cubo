@@ -1,0 +1,7 @@
+*.cmi
+/_build
+/_opam
+
+*.install
+
+/tests/test.cubo
