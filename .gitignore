@@ -6,5 +6,5 @@
 
 /tests/test.cubo
 
-/node_modules
-/out
+/cubo-vscode/node_modules
+/cubo-vscode/out
