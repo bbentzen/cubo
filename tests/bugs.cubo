@@ -82,34 +82,17 @@ def sumsasae (A B : type 1) (v v' : A + B)
 ⊢ ??1 :=
 case v (λ x, path (A + B) (inl x) (inl x)) (λ _, void) 
 
-/** Fatal error: exception Failure("Lex error: *") ***/
-
-open ./success/all.cubo
- 
-open ./success/function.cubo
- 
-/** Stack overflow **/
-
-def tsts {A : I → type 1} 
-⊢ Π (k : I) app A k := 
-λ jk, app 
-jk
-jk 
-
 
 /** 
 
 TODO: 
-- cannot open an already opened file
 - coe on sum computation rules
 - universe level synthesization
 - refl direct handling 
 - fix bugs on implicit arguments
 
--De Brujin variables
--Better lexer/parser error messages
--Fix Enter bug
--Line comments
--Use juxtaposition for App
+- De Brujin variables
+- Better lexer/parser error messages
+- Use juxtaposition for App
 
 **/
