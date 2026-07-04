@@ -92,12 +92,12 @@ let rec compile global lopen filename lvl = function
     if List.mem path' lopen then
       compile global lopen filename lvl cmd
     else
-      begin 
+      begin
         match checkfile global lopen path' lvl with
-        | Ok (global', (_, lopen')) -> 
+        | Ok (global', (_, lopen')) ->
           compile global' (path' :: lopen') filename lvl cmd
-        | Error s -> 
-          Error ("Failed to open the file '" ^ path' ^ "'\n" ^ s)
+        | Error msg ->
+          Error msg
       end
   
   | Ast.Level (cmd, lvl') ->
@@ -107,4 +107,12 @@ let rec compile global lopen filename lvl = function
     Ok (global, ("", lopen))
 
 and checkfile global lopen filename lvl =
-  compile global lopen filename lvl (parse_file filename)
+  try
+    compile global lopen filename lvl (parse_file filename)
+  with
+  | Sys_error s ->
+      Error ("Failed to open the file '" ^ filename ^ "'\n" ^ s)
+  | Parsing.Parse_error ->
+      Error ("Failed to parse the file '" ^ filename ^ "'")
+  | Failure msg ->
+      Error ("Failed to parse the file '" ^ filename ^ "'\n" ^ msg)
