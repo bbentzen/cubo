@@ -19,7 +19,8 @@ let read_file filename =
 
 let rec concat_string_list = function
   | [] -> ""
-  | s :: l -> s ^ concat_string_list l
+  | [s] -> s
+  | s :: l -> s ^ "\n" ^ concat_string_list l
 
 (* Parses a string *)
 
@@ -42,32 +43,34 @@ let parse_file filename =
 (* Handles directories *)
 
 let parent dir =
-  match String.rindex_opt dir '/' with
-  | Some n ->
-    String.sub dir 0 n
-  | None -> ""
+  if dir = "" then "."
+  else Filename.dirname dir
 
-let rec dot_dir cd s =
-  let n = String.length s in
-  if s.[0] = '.' && s.[1] = '/' then
-    let s = String.sub s 1 (n - 1) in
-	  cd ^ s
-  else if s.[0] = '.' && s.[1] = '.' && s.[2] = '/' then
-	  let s' = String.sub s  2 (n - 2) in
-    dot_dir (parent cd) s'
-  else
-  cd ^ s
-	
-let read_dir cd s =
-  let n = String.length s in
-  if n > 2 then
-    if s.[0] = '.' then
-      let s' = dot_dir cd s in
-      if s'.[0] = '/' then
-        String.sub s 1 (n - 1)
-      else 
-        s'
+let normalize_path path =
+  let parts = String.split_on_char '/' path in
+  let rec loop acc = function
+    | [] -> List.rev acc
+    | "." :: rest -> loop acc rest
+    | ".." :: rest ->
+        begin
+          match acc with
+          | [] -> loop [".."] rest
+          | _ :: rest_acc -> loop rest_acc rest
+        end
+    | part :: rest -> loop (part :: acc) rest
+  in
+  let normalized = loop [] parts in
+  match normalized with
+  | [] -> "."
+  | parts -> String.concat "/" parts
+
+let resolve_path current_file import_path =
+  let candidate =
+    if Filename.is_relative import_path then
+      let parent_dir = parent current_file in
+      if parent_dir = "." then import_path
+      else Filename.concat parent_dir import_path
     else
-      s
-  else 
-    s
+      import_path
+  in
+  normalize_path candidate

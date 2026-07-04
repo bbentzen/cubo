@@ -127,7 +127,7 @@ function runCuboDiagnostics(document: vscode.TextDocument) {
             const endChar = parseInt(menhirMatch[3], 10);
             const message = menhirMatch[4].trim();
 
-            createDiagnostic(document, line, startChar, endChar, `Syntax Error: ${message}`);
+            createDiagnostic(document, line, startChar, endChar, `Syntax Error: ${message}`, vscode.DiagnosticSeverity.Error);
             return;
         }
 
@@ -137,15 +137,15 @@ function runCuboDiagnostics(document: vscode.TextDocument) {
         if (lineMatch) {
             const line = parseInt(lineMatch[1], 10) - 1;
             const lineText = document.lineAt(line).text;
-            createDiagnostic(document, line, 0, lineText.length, output);
+            createDiagnostic(document, line, 0, lineText.length, output, vscode.DiagnosticSeverity.Error);
             return;
         }
 
-        createDiagnostic(document, 0, 0, 10, `Cubo Elaboration Output:\n${output}`);
+        createDiagnostic(document, 0, 0, 10, `Cubo Output:\n${output}`, vscode.DiagnosticSeverity.Information);
     });
 }
 
-function createDiagnostic(document: vscode.TextDocument, line: number, start: number, end: number, message: string) {
+function createDiagnostic(document: vscode.TextDocument, line: number, start: number, end: number, message: string, severity: vscode.DiagnosticSeverity) {
     const safeLine = Math.min(Math.max(0, line), document.lineCount - 1);
     const lineText = document.lineAt(safeLine).text;
     const safeEnd = Math.min(end, lineText.length);
@@ -158,7 +158,7 @@ function createDiagnostic(document: vscode.TextDocument, line: number, start: nu
     const diagnostic = new vscode.Diagnostic(
         range,
         message,
-        vscode.DiagnosticSeverity.Error
+        severity
     );
 
     diagnosticCollection.set(document.uri, [diagnostic]);

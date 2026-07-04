@@ -15,7 +15,7 @@ $ opam update
 $ dune build
 ```
 
-We also recommend to use the cubo-vscode extension for verification support. This extension is available on the VSCode marketplace as cubo-vscode. In addition to basic code highligthing features, it supports Unicode abbreviations for transforming `\to` into `→`, `\to` into `→`, `\lambda` and `\let' into `λ`, `\Pi` into `Π`, `\Sigma` into `Σ`, `\times` into `×`, `\vdash` into `⊢`, `\nat` into `ℕ`, and `\I` into '𝕀', using VS Code's native IntelliSense engine.
+We also recommend to use the cubo-vscode extension for verification support. This extension is available on the VSCode marketplace as cubo-vscode. In addition to basic code highligthing features, it supports Unicode abbreviations for transforming `\to` into `→`, `\to` into `→`, `\lambda` and `\let` into `λ`, `\Pi` into `Π`, `\Sigma` into `Σ`, `\times` into `×`, `\vdash` into `⊢`, `\nat` into `ℕ`, and `\I` into `𝕀`, using VS Code's native IntelliSense engine.
 
 ## Usage
 
@@ -29,8 +29,6 @@ The proof environment is the main command where definitions are stated and theor
   def [name-of-theorem] [context] 
   ⊢ [type] := [term]
 ```
-
-
 
 Contexts are lists of variable declarations. Explicit variables are enclosed with `(` and `)` and must be passed as parameters when the definition or theorem is reused later. Implicit variables are enclosed with curly braces `{` and `}` and can be inferred by the elaborator. Multiple variables of the same type can be declared at the same time.
 

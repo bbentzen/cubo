@@ -88,8 +88,7 @@ let rec compile global lopen filename lvl = function
     end
   
   | Ast.Import (cmd, s) ->
-    let cd = File.parent filename in
-    let path' = File.read_dir cd s in
+    let path' = File.resolve_path filename s in
     if List.mem path' lopen then
       compile global lopen filename lvl cmd
     else

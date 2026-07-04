@@ -5,7 +5,7 @@ def test1 (A : type 1) (a b : A) (p : path A a b) (q : path A a a)
 <_> (λ i, p @ i)
 
 def test2 (p : path bool true false)
-⊢ ??1 := --Σ (b : bool) path bool b false :=
+⊢ ??1 := 
 if (p @ i0) (false, p) (false, <_> false) 
 
 def path_coe_nw (A : I → I → type 1) {a : Π (i : I) app app A i i0} {b : Π (i : I) app app A i i1} (p : pathd (app A i0) (app a i0) (app b i0)) (j : I)

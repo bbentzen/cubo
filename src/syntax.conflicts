@@ -1,5 +1,5 @@
 
-** Conflict (shift/reduce) in state 174.
+** Conflict (shift/reduce) in state 175.
 ** Tokens involved: TRANS SYMM SUM RARROW PROD LRARROW AT
 ** The following explanations concentrate on token TRANS.
 ** This state is reached from command after reading:
@@ -13,7 +13,7 @@ command
 INFER expr command 
       (?)
 
-** In state 174, looking ahead at TRANS, reducing production
+** In state 175, looking ahead at TRANS, reducing production
 ** blocks -> expr
 ** is permitted because of the following sub-derivation:
 
@@ -21,7 +21,7 @@ expr TRANS expr // lookahead token appears
 SIGMA blocks // lookahead token is inherited
       expr . 
 
-** In state 174, looking ahead at TRANS, shifting is permitted
+** In state 175, looking ahead at TRANS, shifting is permitted
 ** because of the following sub-derivation:
 
 SIGMA blocks 
