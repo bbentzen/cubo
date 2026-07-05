@@ -6,7 +6,7 @@ Cubo is an experimental proof assistant based on the cubical type theory develop
 
 Cubo uses [opam](https://opam.ocaml.org/), [menhir](https://opam.ocaml.org/packages/menhir/), and [dune](https://github.com/ocaml/dune) and runs on OCaml version 4.02.3 or greater.
 
-Clone the repository and build the project using dune::
+Clone the repository and build the project using dune:
 
 ```
 $ git clone https://github.com/bbentzen/cubo.git
@@ -15,13 +15,15 @@ $ opam update
 $ dune build
 ```
 
-We also recommend to use the cubo-vscode extension for verification support. This extension is available on the VSCode marketplace as cubo-vscode. In addition to basic code highligthing features, it supports Unicode abbreviations for transforming `\to` into `→`, `\to` into `→`, `\lambda` and `\let` into `λ`, `\Pi` into `Π`, `\Sigma` into `Σ`, `\times` into `×`, `\vdash` into `⊢`, `\nat` into `ℕ`, and `\I` into `𝕀`, using VS Code's native IntelliSense engine.
+We also recommend to use the cubo-vscode extension for verification support. This extension is available on the VSCode marketplace as cubo-vscode. 
+It supports syntax highlighting, snippet completion, bracket matching, bracket autoclosing, bracket autosurrounding, 
+comment toggling (`Ctrl` + `/`), and Unicode abbreviations for transforming `\to` into `→`, `\to` into `→`, `\lambda` and `\let` into `λ`, `\Pi` into `Π`, `\Sigma` into `Σ`, `\times` into `×`, `\vdash` into `⊢`, `\nat` into `ℕ`, and `\I` into `𝕀`, using VS Code's native IntelliSense engine.
 
 ## Usage
 
 There are essentially four main kinds of commands for entering the proof environment, importing files and modularizing proofs, declaring variables and universe levels, and extracting and priting terms from definitions and theorems:
 
-### 1. Proof environment: 
+### Proof environment
 
 The proof environment is the main command where definitions are stated and theorems and lemmas are proven. Syntactically speaking, there is no difference between defintitions and theorems and lemmas. Users can use `def`, `definition`, `thm`, `theorem`, `lem`, and `lemma` interchangeably.
 
@@ -57,19 +59,19 @@ Moreover, the language also contains two primitive functions known as Kan operat
 
 Because the unicity of identity proofs holds judgmentally, Cubo rests on a simplified version of composition in which, unlike other cubical type theories, there are no higher-dimensional composition scenarios. 
 
-### 2. File import
+### File import
 
 This command imports a specified file into the current file. The syntax is 
 
 `import [filename]`
 
-### 3. Universe declaration 
+### Universe declaration 
 
 This declares a universe level variable according to the syntax 
 
 `universe [id]`
 
-### 4. Term extraction: 
+### Term extraction 
 
 This extracts and prints the term corresponding to a definition or theorem with the syntax 
 
