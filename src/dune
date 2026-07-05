@@ -5,4 +5,4 @@
 (ocamllex scanner)
 
 (library
-  (name basis))
+ (name basis))

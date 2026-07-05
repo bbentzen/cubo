@@ -1,7 +1,9 @@
 (executable
-  (name main)
-  (libraries frontend basis checker context))
+ (modes byte exe)
+ (name main)
+ (libraries frontend basis checker context))
 
 (install
  (section bin)
- (files (main.exe as cubo)))
+ (files
+  (main.exe as cubo)))
