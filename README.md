@@ -4,7 +4,7 @@ Cubo is an experimental proof assistant based on the cubical type theory develop
 
 ## Installation
 
-Cubo uses [opam](https://opam.ocaml.org/), [menhir](https://opam.ocaml.org/packages/menhir/), and [dune](https://github.com/ocaml/dune) and runs on OCaml version 4.02.3 or greater.
+Cubo runs on OCaml version 4.14.2 or greater and uses [opam](https://opam.ocaml.org/), [menhir](https://opam.ocaml.org/packages/menhir/), and [dune](https://github.com/ocaml/dune).
 
 Clone the repository and build the project using dune:
 

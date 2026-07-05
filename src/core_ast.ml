@@ -1,6 +1,8 @@
 (**
- * Internal core syntax using de Bruijn indices for local variables.
- * Binder names are preserved as formatting hints.
+ * (c) Copyright 2026 Bruno Bentzen. All rights reserved.
+ * Released under Apache 2.0 license as described in the file LICENSE.
+ * Desc: Internal core syntax using de Bruijn indices for local variables.
+ *       Binder names are preserved as formatting hints for the pretty printer.
  **)
 
 type level =

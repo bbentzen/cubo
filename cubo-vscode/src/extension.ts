@@ -1,3 +1,10 @@
+//  * (c) Copyright 2026 Bruno Bentzen. All rights reserved.
+//  * Released under Apache 2.0 license as described in the file LICENSE.
+//  * Desc: Monitors when a .cubo file is saved, runs the compiler binary, and 
+//          interprets standard OCaml error messages via regular expressions
+//          to highlight lines in VS Code.
+ 
+
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import * as path from 'path';

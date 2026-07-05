@@ -1,6 +1,8 @@
 (**
- * Translation between user-facing raw syntax and internal de Bruijn syntax.
- * Free identifiers remain globals; bound identifiers become local indices.
+ * (c) Copyright 2026 Bruno Bentzen. All rights reserved.
+ * Released under Apache 2.0 license as described in the file LICENSE.
+ * Desc: Translation between user raw AST and internal de Bruijn AST.
+ *       Free identifiers remain globals and bound identifiers become local indices.
  **)
 
 let rec index_of x = function
