@@ -12,7 +12,9 @@ open Checker
 (* Iterated synthesization attempts *)
 
 let rec check global ctx lvl sl e ty max =
-  let elab = Elab.elaborate global ctx lvl sl (Eval.eval ty) 0 0 (Eval.reduce e) in
+  let e' = Debruijn.normalize_expr (Eval.reduce e) in
+  let ty' = Debruijn.normalize_expr (Eval.eval ty) in
+  let elab = Elab.elaborate global ctx lvl sl ty' 0 0 e' in
   begin
     match elab with
     | Ok (e', ty', sl') ->
@@ -21,7 +23,9 @@ let rec check global ctx lvl sl e ty max =
         Ok (e', ty')
       else
 
-        let relab = Elab.elaborate global ctx lvl sl ty' 0 0 e' in
+        let e'' = Debruijn.normalize_expr e' in
+        let ty'' = Debruijn.normalize_expr ty' in
+        let relab = Elab.elaborate global ctx lvl sl ty'' 0 0 e'' in
         begin
           match relab with
           | Ok _ -> 

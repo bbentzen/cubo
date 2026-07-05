@@ -12,7 +12,8 @@ let check global ctx lvl ty =
   match ty with
   | Hole _ -> Ok (Hole ("0",[]), ty)
   | _ ->
-    let elab = Elab.elaborate global ctx lvl ([], []) (Hole ("0",[])) 1 0 (Eval.reduce ty) in
+    let ty' = Debruijn.normalize_expr (Eval.reduce ty) in
+    let elab = Elab.elaborate global ctx lvl ([], []) (Hole ("0",[])) 1 0 ty' in
     match elab with
     | Ok (ty', tTy, _) ->
       begin

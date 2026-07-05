@@ -2,7 +2,7 @@
 /** synthesize placeholders in path ?1? ?2? ?3? **/
 
 def path_coe2 (A : I → I → type 1) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (λ i, app app A i0 i) a b) 
-⊢ ??1 :=
+⊢ A :=
 <k> app app 
 hfill (λ j, coe j k (λ i, app app A i0 i) (p @ j))
  | i0 →  (λ _, coe i0 k (λ i, app app A i0 i) (p @ i0)) 
@@ -16,7 +16,7 @@ def dp22m {A : type 1} {B : A → type 1} {w1 w1' w2 w2' : Σ (x : A) app B x} (
 λ i, coe i0 j (λ x, app B (app app (hfill (λ i, fst (p @ i)) | i0 →  λ j, fst (q @ j) | i1 → λ j, fst (r @ j)) x i)) (snd (p @ i)) 
 
 
-/** this is correctly rejected, but error message could be improved **/
+/** this is correctly rejected, but error message could be improved (com is a reserved word) **/
 
 def com {A : I → type 1} {a b : app A i0} {c d : app A i1} (p : pathd (λ j, app A j) a c) (q : path (app A i0) a b) (r : path (app A i1) c d) 
 ⊢ I → Π (ijk : I) app A ijk := 

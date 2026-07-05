@@ -12,12 +12,18 @@ open Eval
 open File
 open Context
 
+let normalize_expr = Debruijn.normalize_expr
+
+let normalize_ctx = Debruijn.normalize_ctx
+
 let rec compile global lopen filename lvl = function
   | Ast.Thm (cmd, Prf (id, l, ty, e)) ->
     begin
-      match Global.unfold_all global 0 (Implicit.convert ty) with
+      let ty_raw = normalize_expr (Implicit.convert ty) in
+      let e_raw = normalize_expr (Implicit.convert e) in
+      match Global.unfold_all global 0 ty_raw with
       | Ok hty ->
-        let ctx = Local.create_ctx l in
+        let ctx = normalize_ctx (Local.create_ctx l) in
         let (h1, h2) = 
           Ctx.check global ctx lvl, 
           Type.check global ctx lvl (reduce hty)
@@ -27,7 +33,7 @@ let rec compile global lopen filename lvl = function
           | Ok ctx, Ok (ty', _) -> 
             let ctx' = List.rev ctx in
             begin 
-              match Global.unfold_all global 0 (Implicit.convert e) with
+              match Global.unfold_all global 0 e_raw with
               | Ok e' ->
                 if Global.is_declared id global then 
                   Error ("Naming conflict with the identifier '" ^ id ^ 
@@ -37,7 +43,9 @@ let rec compile global lopen filename lvl = function
                     let res = Synthesize.init global ctx' lvl e' ty' in 
                     match res with 
                     | Ok (e1, ty1) ->
-                      compile (Global.add_to_global_env global id ctx' (e1, ty1)) lopen filename lvl cmd
+                      let e1' = normalize_expr e1 in
+                      let ty1' = normalize_expr ty1 in
+                      compile (Global.add_to_global_env global id ctx' (e1', ty1')) lopen filename lvl cmd
                     | Error msg -> 
                       Error ("The following error was found at '" ^ id ^ "'\n" ^ msg)
                   end
@@ -70,16 +78,19 @@ let rec compile global lopen filename lvl = function
     end
   
   | Ast.Infer (cmd, e) ->
-    let h1 = Placeholder.generate e 0 [] in
-    let elab = Elab.elaborate global [] lvl ([], []) h1 0 0 e in 
+    let e' = normalize_expr e in
+    let h1 = Placeholder.generate e' 0 [] in
+    let elab = Elab.elaborate global [] lvl ([], []) h1 0 0 e' in 
     begin 
       match elab with
-      | Ok (e, ty, _) ->
+      | Ok (e1, ty, _) ->
+        let e'' = normalize_expr e1 in
+        let ty' = normalize_expr ty in
         begin 
           match compile global lopen filename lvl cmd with
           | Ok (global', (s, lopen)) -> 
-            Ok (global', ("infer := " ^ Pretty.print e ^ ": \n" ^
-              "         " ^ Pretty.print ty ^ 
+            Ok (global', ("infer := " ^ Pretty.print e'' ^ ": \n" ^
+              "         " ^ Pretty.print ty' ^ 
               "\n" ^ s, lopen))
           | Error msg -> Error msg
         end

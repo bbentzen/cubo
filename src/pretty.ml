@@ -173,3 +173,6 @@ and print_level = function
   | Var l -> l
   | Max (n, Num m) | Max (Num m, n) -> print_level n ^ " + " ^ string_of_int m
   | Max (n, m) -> "max(" ^ print_level n ^ "," ^ print_level m ^ ")"
+
+let print_core e =
+  print (Debruijn.to_raw_expr e)
