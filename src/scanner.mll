@@ -108,7 +108,7 @@ rule token = parse
   | identifier         { ID(str) }
   | filename           { FILENAME(str) }
   | number             { NUMBER(str) }
-  | _ as chr           { failwith ("Lex error: "^(Char.escaped chr))}
+  | _ as chr           { failwith ("Lexer does not recognize the token '"^(Char.escaped chr)^"'") }
   | eof                { EOF }
 
 and comment = parse

@@ -86,13 +86,12 @@ case v (λ x, path (A + B) (inl x) (inl x)) (λ _, void)
 /** 
 
 TODO: 
+- Use juxtaposition for App
 - coe on sum computation rules
 - universe level synthesization
 - refl direct handling 
-- fix bugs on implicit arguments
-
-- De Brujin variables
-- Better lexer/parser error messages
-- Use juxtaposition for App
+- fix bugs on implicit arguments ?
+- quotients
+- inductive types
 
 **/

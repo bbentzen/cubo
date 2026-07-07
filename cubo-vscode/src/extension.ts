@@ -115,6 +115,8 @@ function runCuboDiagnostics(document: vscode.TextDocument) {
 
     exec(`"${cuboPath}" "${filePath}"`, (error, stdout, stderr) => {
         const output = (stdout + "\n" + stderr).trim();
+        const normalizedOutput = normalizeCuboOutput(output);
+        const isCommandFailure = !!error;
 
         if (error && ((error as any).code === 127 || error.message.includes('ENOENT'))) {
             vscode.window.showErrorMessage(
@@ -123,33 +125,59 @@ function runCuboDiagnostics(document: vscode.TextDocument) {
             return;
         }
 
-        if (!output) return;
+        if (!normalizedOutput) return;
 
-        const menhirRegex = /line\s+(\d+),\s+characters\s+(\d+)-(\d+):([\s\S]*)/i;
-        const menhirMatch = output.match(menhirRegex);
+        const locatedRegex = /line\s+(\d+),\s+characters\s+(\d+)-(\d+):([\s\S]*)/i;
+        const locatedMatch = normalizedOutput.match(locatedRegex);
 
-        if (menhirMatch) {
-            const line = parseInt(menhirMatch[1], 10) - 1;
-            const startChar = parseInt(menhirMatch[2], 10);
-            const endChar = parseInt(menhirMatch[3], 10);
-            const message = menhirMatch[4].trim();
+        if (locatedMatch) {
+            const line = parseInt(locatedMatch[1], 10) - 1;
+            const startChar = parseInt(locatedMatch[2], 10);
+            const endChar = parseInt(locatedMatch[3], 10);
+            const message = locatedMatch[4].trim();
+            const diagnosticMessage = /unexpected token variant/i.test(message)
+                ? `Syntax Error:\n${message}`
+                : message;
 
-            createDiagnostic(document, line, startChar, endChar, `Syntax Error: ${message}`, vscode.DiagnosticSeverity.Error);
+            createDiagnostic(document, line, startChar, endChar, diagnosticMessage, vscode.DiagnosticSeverity.Error);
             return;
         }
 
         const genericLineRegex = /(?:line|line:)\s+(\d+)/i;
-        const lineMatch = output.match(genericLineRegex);
+        const lineMatch = normalizedOutput.match(genericLineRegex);
 
         if (lineMatch) {
             const line = parseInt(lineMatch[1], 10) - 1;
             const lineText = document.lineAt(line).text;
-            createDiagnostic(document, line, 0, lineText.length, output, vscode.DiagnosticSeverity.Error);
+            createDiagnostic(document, line, 0, lineText.length, normalizedOutput, vscode.DiagnosticSeverity.Error);
             return;
         }
 
-        createDiagnostic(document, 0, 0, 10, `Cubo Output:\n${output}`, vscode.DiagnosticSeverity.Information);
+        createDiagnostic(
+            document,
+            0,
+            0,
+            10,
+            isCommandFailure ? `Cubo Error:\n${normalizedOutput}` : `Cubo Output:\n${normalizedOutput}`,
+            isCommandFailure ? vscode.DiagnosticSeverity.Error : vscode.DiagnosticSeverity.Information
+        );
     });
+}
+
+function normalizeCuboOutput(output: string): string {
+    const failurePrefix = 'Fatal error: exception Failure("';
+
+    if (output.startsWith(failurePrefix) && output.endsWith('")')) {
+        const escaped = output.slice(failurePrefix.length, -2);
+        return escaped
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\r')
+            .replace(/\\t/g, '\t')
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\');
+    }
+
+    return output;
 }
 
 function createDiagnostic(document: vscode.TextDocument, line: number, start: number, end: number, message: string, severity: vscode.DiagnosticSeverity) {
