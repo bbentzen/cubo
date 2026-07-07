@@ -1,4 +1,6 @@
 *.cmi
+*.merlin
+**/.merlin
 /_build
 /_opam
 
