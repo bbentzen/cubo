@@ -2,6 +2,6 @@
 
 (using menhir 2.0)
 
-(name cubo)
+(name cubicle)
 
 (formatting disabled)

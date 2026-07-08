@@ -6,7 +6,5 @@
 
 *.install
 
-/tests/test.cubo
-
-/cubo-vscode/node_modules
-/cubo-vscode/out
+/cubicle-vscode/node_modules
+/cubicle-vscode/out

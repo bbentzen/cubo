@@ -8,6 +8,7 @@ The Cubicle VS Code Extension extension is available on the VS Code marketplace.
 
 ```
 $ cd cubicle-vscode
+$ npm install
 $ npm run compile
 ```
 
