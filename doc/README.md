@@ -1,5 +1,7 @@
 # The Cubicle documentation
 
+This contains a short reference manual on the basics of Cubicle.
+
 ## Usage
 
 There are essentially four main kinds of commands for entering the proof environment, importing files and modularizing proofs, declaring variables and universe levels, and extracting and priting terms from definitions and theorems:

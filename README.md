@@ -22,7 +22,7 @@ $ dune build
 This will create the executable `main.exe` which you can run on any `.cube` file to typecheck its contents with Cubicle. Since this compiled executable is typically be found under a subfolder such as `_build/default/bin`, you can run it as follows:
 
 ```
-$ dune exec _build/default/bin/main.exe [filename].cube
+$ dune exec _build/default/bin/main.exe <filename>.cube
 ```
 
 However, we recommend using the cubicle-vscode extension for verification support. This extension is available on the VSCode marketplace as cubicle-vscode. 
