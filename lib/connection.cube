@@ -4,7 +4,7 @@
  * Author: Bruno Bentzen
  */
  
-import ./function.cubo
+import ./function.cube
  
 universe l 
 

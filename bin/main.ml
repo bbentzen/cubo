@@ -13,7 +13,7 @@ let () =
   if Array.length Sys.argv > 1 then
     Sys.argv.(1)
   else (
-    print_endline "Usage: cubo <filename>";
+    print_endline "Usage: cubicle <filename>";
     exit 1
   )
   in

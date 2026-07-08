@@ -4,8 +4,8 @@
  * Author: Bruno Bentzen
  */
  
-import ./connection.cubo 
-import ./function.cubo 
+import ./connection.cube
+import ./function.cube
 
 universe l 
 

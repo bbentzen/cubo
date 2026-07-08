@@ -1,0 +1,56 @@
+{
+  "name": "cubicle-vscode",
+  "displayName": "Cubicle Language Support",
+  "description": "Syntax highlighting and diagnostics for the Cubicle proof assistant",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "cubicle",
+        "aliases": [
+          "Cubicle",
+          "cubicle"
+        ],
+        "extensions": [
+          ".cube"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "cubicle",
+        "scopeName": "source.cubicle",
+        "path": "./syntaxes/cubicle.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Cubicle Configuration",
+      "properties": {
+        "cubicle.executablePath": {
+          "type": "string",
+          "default": "cubicle",
+          "description": "Path to the Cubicle compiler binary (assumes global PATH if left default)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@types/vscode": "^1.125.0",
+    "typescript": "^6.0.3"
+  }
+}
