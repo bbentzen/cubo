@@ -10,11 +10,11 @@ universe l1 l2
 
 def pi_form {A : type l1} {B : A → type l2} 
 ⊢ type (max l1 l2) :=
-Π (x : A) app B x
+Π (x : A) B x
  
 def sigma_form {A : type l1} {B : A → type l2} 
 ⊢ type (max l1 l2) :=
-Σ (x : A) app B x
+Σ (x : A) B x
  
 def sum_type {A : type l1} {B : type l2} 
 ⊢ type (max l1 l2) :=
@@ -24,19 +24,19 @@ def path_form {A : type l1} (a b : A)
 ⊢ type l1 :=
 path A a b
  
-def pathd_form {A : I → type l1} (a : app A i0) (b : app A i1)
+def pathd_form {A : I → type l1} (a : A i0) (b : A i1)
 ⊢ type l1 :=
 pathd A a b
  
-def pathd_type {A : I → type l1} (p : Π (i : I) app A i)
+def pathd_type {A : I → type l1} (p : Π (i : I) A i)
 ⊢ type l1 :=
-pathd A (app p i0) (app p i1)
+pathd A (p i0) (p i1)
 
 /** Lifting **/
  
 def lift {f : type (max l1 l2) → type l2} {A : type l1} 
 ⊢ type l2 := 
-app f A
+f A
   
 def next_lvl 
 ⊢ type (next l2) := 

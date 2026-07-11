@@ -23,7 +23,7 @@ def mult
 /* Equations */
  
 def add_zero (m : nat)
-⊢ path nat (app (app add 0) m) m :=
+⊢ path nat ((add 0) m) m :=
 natrec m (<_> 0) (λ n p , <i> succ (p @ i))
 
 def nat_eq_succ {n m : nat}
@@ -31,12 +31,12 @@ def nat_eq_succ {n m : nat}
 λ p, <i> natrec (p @ i) n (λ k _, k)
  
 def pred_succ {n : nat}
-⊢ path nat (app pred (succ n)) n :=
+⊢ path nat (pred (succ n)) n :=
 <_> n
  
 def succ_pred {n : nat} (w : Σ (k : nat) path nat (succ k) n)
-⊢ path nat (succ (app pred n)) n :=
-coe i0 i1 (λ i, path nat (succ (app pred (snd w @ i))) (snd w @ i)) (<_> succ (fst w)) 
+⊢ path nat (succ (pred n)) n :=
+coe i0 i1 (λ i, path nat (succ (pred (snd w @ i))) (snd w @ i)) (<_> succ (fst w)) 
  
 def nat_neq {n : nat}
 ⊢ ¬ path nat 0 (succ n) :=
@@ -55,7 +55,7 @@ natrec n
   (λ n' C, natrec m void (λ m' _, path nat succ n' succ m'))
  
 def nat_eq {n m : nat}
-⊢ path nat n m ↔ app app nat_code n m :=
+⊢ path nat n m ↔ nat_code n m :=
 natrec n
  (natrec m id_iff_id (λ k _, (nat_neq, absurd)))
  (λ k _, natrec m (nat_neq', absurd) (λ k' _, id_iff_id))

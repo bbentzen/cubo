@@ -78,5 +78,3 @@ if b
   (if b' id_iff_id (bool_neq, absurd)) 
   (if b' (bool_neq', absurd) id_iff_id)
 
-
-

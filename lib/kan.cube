@@ -10,11 +10,10 @@ universe l
  
 def fill_def {A : I → type l} {a b : app A i0} {c d : app A i1} (p : path (app A i0) a b) (q : pathd (λ j, app A j) a c) (r : pathd (λ j, app A j) b d)
 ⊢ I → I → app A i1 := 
-λ i k, app app 
-hfill (λ i, coe i0 i1 (λ i, app A i) (p @ i))
+λ i k, (hfill (λ i, coe i0 i1 (λ i, app A i) (p @ i))
  | i0 →  (λ j, coe j i1 (λ i, app A i) (q @ j)) 
  | i1 → (λ j, coe j i1 (λ i, app A i) (r @ j)) 
-i k 
+) i k
   
 def com_def {A : I → type l} {a b : app A i0} {c d : app A i1} (p : path (app A i0) a b) (q : pathd (λ j, app A j) a c) (r : pathd (λ j, app A j) b d)
 ⊢ I → app A i1 := 
@@ -48,11 +47,10 @@ def product_coe (A : I → type l) (B : Π (i : I) app A i → type l) (w : Σ (
   
 def path_com {A : I → type l} {a : app A i0} {b : app A i1} (p : pathd A a b) (k : I)
 ⊢ pathd A a b := 
-<k> app 
-hcom (λ i, coe i k A (p @ i))
+<k> (hcom (λ i, coe i k A (p @ i))
  | i0 →  (λ _, coe i0 k A (p @ i0)) 
  | i1 → (λ _, coe i1 k A (p @ i1)) 
-k 
+) k
  
 def path_coe_com1 (A : I → type l) {a b : app A i0} (p : path (app A i0) a b)
 ⊢ I → I → app A i1 :=   
@@ -70,9 +68,9 @@ coe i0 i1
  
 def coe_path_com (A : I → type l) {a b : app A i0} (p : path (app A i0) a b)
 ⊢ path (app A i1) (coe i0 i1 A a) (coe i0 i1 A b) :=   
-<k> app hcom (λ i, coe i0 i1 A (p @ i))
+<k> (hcom (λ i, coe i0 i1 A (p @ i))
  | i0 →  λ j, coe j i1 A (coe i0 j A a) 
- | i1 → λ j, coe j i1 A (coe i0 j A b) k
+ | i1 → λ j, coe j i1 A (coe i0 j A b)) k
  
 def path_coe (A : I → I → type l) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (app A i0) a b) 
 ⊢ pathd (app A i1) 
@@ -86,44 +84,39 @@ coe i0 i1
   
 def fill_side {A : I → type l} {a c : app A i0} {b d : app A i1} (p : pathd (λ j, app A j) a b) (q : path (app A i0) a c) (r : path (app A i1) b d)
 ⊢ I → Π (k : I) app A k := 
-λ i k, app app 
-hfill (λ i, coe i k (λ i, app A i) (p @ i))
+λ i k, (hfill (λ i, coe i k (λ i, app A i) (p @ i))
  | i0 →  (λ j, coe i0 k (λ i, app A i) (q @ j)) 
  | i1 → (λ j, coe i1 k (λ i, app A i) (r @ j)) 
-i k 
+) i k
  
 def coe_path_side (A : I → I → type l) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (app A i0) a b) 
 ⊢ I → Π (k : I) app app A i0 k := 
-λ i k, app app 
-hfill (λ i, coe i k (λ i, app app A i0 i) (p @ i))
+λ i k, (hfill (λ i, coe i k (λ i, app app A i0 i) (p @ i))
  | i0 →  (λ j, coe i0 k (λ j, app app A i0 j) a) 
  | i1 → (λ j, coe i1 k (λ j, app app A i0 j) b) 
-i k 
+) i k
 
 def coe_path_side_coe (A : I → I → type l) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (app A i0) a b) 
 ⊢ I → Π (k : I) app app A i1 k := 
-λ i k, app app 
-hfill (λ i, coe i0 i1 (λ i, app app A i k) coe i k (λ i, app app A i0 i) (p @ i))
+λ i k, (hfill (λ i, coe i0 i1 (λ i, app app A i k) coe i k (λ i, app app A i0 i) (p @ i))
  | i0 →  (λ j, coe i0 i1 (λ i, app app A i k) coe i0 k (λ j, app app A i0 j) a) 
  | i1 → (λ j, coe i0 i1 (λ i, app app A i k) coe i1 k (λ j, app app A i0 j) b) 
-i k 
+) i k
   
 def coe_path_side_coes (A : I → I → type l) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (app A i0) a b) 
 ⊢ pathd (app A i1) 
   (coe i0 i1 (λ i, app app A i i0) a) 
   (coe i0 i1 (λ i, app app A i i1) b) := 
-<k> app 
-hcom (λ i, coe i0 i1 (λ i, app app A i k) coe i k (λ i, app app A i0 i) (p @ i))
+<k> (hcom (λ i, coe i0 i1 (λ i, app app A i k) coe i k (λ i, app app A i0 i) (p @ i))
  | i0 →  (λ j, coe i0 i1 (λ i, app app A i k) coe i0 k (λ j, app app A i0 j) a) 
  | i1 → (λ j, coe i0 i1 (λ i, app app A i k) coe i1 k (λ j, app app A i0 j) b) 
-k 
+) k
  
 def path_coe_beta (A : I → I → type l) (a : app app A i0 i0) (b : app app A i0 i1) (p : pathd (app A i0) a b) 
 ⊢ pathd (app A i0) a b :=
-<k> app 
-hcom (λ j, coe j k (λ i, app app A i0 i) (p @ j))
+<k> (hcom (λ j, coe j k (λ i, app app A i0 i) (p @ j))
  | i0 →  (λ _, coe i0 k (λ i, app app A i0 i) (p @ i0)) 
  | i1 → (λ _, coe i1 k (λ i, app app A i0 i) (p @ i1))  
-k 
+) k
  
 

@@ -29,3 +29,14 @@ hcom (λ i, coe i0 i1 (λ k, app app A k i) (p @ i))
  | i0 →  λ _, coe i0 i1 (λ i, app app A i i0) (app a i0) 
  | i1 → λ _, coe i0 i1 (λ i, app app A i i1) (app b i0)
 
+/* after the introduction of juxtaposition notation for application we now have set
+   this to fail because the hcom function is not enclosed within parentheses */
+
+def old_path_symm {A : type 1} {a b : A} (p : path A a b)
+⊢ path A b a := 
+<k> app 
+hcom (λ i, a)
+ | i0 →  λ j, p @ j
+ | i1 → λ _, a 
+k 
+

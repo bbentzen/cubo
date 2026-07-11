@@ -22,23 +22,23 @@ def k_combinator {A B : type l}
  
 def s_combinator {A B C : type l}
 ⊢ (A → B → C) → (A → B) → (A → C) :=
-λ f g x, app (app f x) (app g x)
+λ f g x, (f x) (g x)
  
 def b_combinator {A B C : type l}
 ⊢ (B → C) → (A → B) → (A → C) :=
-λ f g x, app f (app g x)
+λ f g x, f (g x)
  
 def arg_exg {A B C : type l}
 ⊢ (A → B → C) → (B → A → C) :=
-λ f y x, app (app f x) y
+λ f y x, (f x) y
  
 def w_combinator {A B : type l} 
 ⊢ (A → A → B) → (A → B) :=
-λ f x, app (app f x) x
+λ f x, (f x) x
  
 def comp {A B C : type l} 
 ⊢ (A → B) → (B → C) → (A → C) :=
-λf g x, app g (app f x)
+λf g x, g (f x)
  
 /* Negation & Empty type */
  
@@ -48,105 +48,104 @@ def not_false
  
 def dni {A : type l}
 ⊢ A → ¬¬A :=
-λx f, app f x
+λx f, f x
  
 def tne {A : type l}
 ⊢ ¬¬¬A → ¬A :=
-λf x, app f (λnx, app nx x)
+λf x, f (λnx, nx x)
  
 def contrap {A B : type l}
 ⊢ (A → B) → (¬ B → ¬ A) :=
-λf g x, app g (app f x)
+λf g x, g (f x)
  
 def neg_distr {A B : type l}
 ⊢ ¬ (A → B) → (A → ¬ B) :=
-λf _ y, app f (λ_, y)
+λf _ y, f (λ_, y)
  
 def neg_ant {A B : type l}
 ⊢ (A → B) → (A → ¬ B) → ¬ A :=
-λ f g, (λ x, app (app g x) (app f x))
+λ f g, (λ x, (g x) (f x))
  
 def ex_falso {A B : type l}
 ⊢ A → ¬ A → B :=
-λ x f, abort (app f x)
+λ x f, abort (f x)
  
 def absurd {A : type l}
 ⊢ void → A :=
 λ x, abort x
-  
+
 /* Dependent function type */
  
 def dcombinator_s {A : type l} {B C : A → type l}
-⊢ (Π (x : A) app B x → app C x) → (Π (x : A) app B x) → (Π (x : A) app C x) :=
-λ f g x, app (app f x) (app g x)
+⊢ (Π (x : A) B x → C x) → (Π (x : A) B x) → (Π (x : A) C x) :=
+λ f g x, (f x) (g x)
  
 theorem pi_comm {A : type l} {B : A → A → type l}
-⊢ (Π (x : A) (y : A) app (app B x) y) → Π (y : A) (x : A) (app (app B x) y) :=
-λ f y x, app (app f x) y
+⊢ (Π (x : A) (y : A) B x y) → Π (y : A) (x : A) B x y :=
+λ f y x, f x y
  
 theorem pi_fun_distr1 {A B : type l} {C : A → type l}
-⊢ (B → (Π (x : A) app C x)) → (Π (x : A) (B → app C x)) :=
-λ f y x, app (app f x) y
+⊢ (B → (Π (x : A) C x)) → (Π (x : A) (B → C x)) :=
+λ f y x, (f x) y
  
 theorem pi_fun_distr2 {A B : type l} {C : A → type l}
-⊢ (Π (x : A) (B → app C x)) → (B → (Π (x : A) app C x)) :=
-λ f y x, app (app f x) y
+⊢ (Π (x : A) (B → C x)) → (B → (Π (x : A) C x)) :=
+λ f y x, (f x) y
  
 theorem dprod_up_2_fst {A : type l} {B C : A → type l}
-⊢ (Π (x : A) app B x × app C x) → (Π (x : A) app B x) :=
-λ f x, fst (app f x)
+⊢ (Π (x : A) B x × C x) → (Π (x : A) B x) :=
+λ f x, fst (f x)
  
 theorem dprod_up_2_snd {A : type l} {B C : A → type l}
-⊢ (Π (x : A) app B x × app C x) → (Π (x : A) app C x) :=
-λ f x, snd (app f x)
+⊢ (Π (x : A) B x × C x) → (Π (x : A) C x) :=
+λ f x, snd (f x)
  
 theorem pi_prod_distr {A B : type l} {C : A → type l}
-⊢ (B × Π (x : A) app C x) → (Π (x : A) B × app C x) :=
-λ w x, (fst w, app (snd w) x)
+⊢ (B × Π (x : A) C x) → (Π (x : A) B × C x) :=
+λ w x, (fst w, (snd w) x)
  
 theorem pi_sum_distr {A : type l} {B C : A → type l}
-⊢ ((Π (x : A) app B x) + (Π (x : A) app C x)) → (Π (x : A) app B x + app C x) :=
-λ w x, case w (λ f, inl (app f x)) (λ g, inr (app g x))
+⊢ ((Π (x : A) B x) + (Π (x : A) C x)) → (Π (x : A) B x + C x) :=
+λ w x, case w (λ f, inl (f x)) (λ g, inr (g x))
  
 theorem pi_sum_distrb {A B : type l} {C : A → type l}
-⊢ (B + (Π (x : A) app C x)) → (Π (x : A) B + app C x) :=
-λ w x, case w (λ y, inl y) (λ f, inr (app f x))
+⊢ (B + (Π (x : A) C x)) → (Π (x : A) B + C x) :=
+λ w x, case w (λ y, inl y) (λ f, inr (f x))
  
-theorem dcase {A B : type l} {C : (A + B) → type l} (f : Π (x : A) app C (inl x)) (g : Π (y : B) app C (inr y))
-⊢ Π (x : A + B) app C x :=
+theorem dcase {A B : type l} {C : (A + B) → type l} (f : Π (x : A) C (inl x)) (g : Π (y : B) C (inr y))
+⊢ Π (x : A + B) C x :=
 λ v, case v f g
  
-theorem dlet {C : unit → type l} (c : app C ())
-⊢ Π (x : unit) app C x :=
+theorem dlet {C : unit → type l} (c : C ())
+⊢ Π (x : unit) C x :=
 λ u, let u c
  
-theorem dif {C : bool → type l} (c1 : app C true) (c2 : app C false)
-⊢ Π (x : bool) app C x :=
+theorem dif {C : bool → type l} (c1 : C true) (c2 : C false)
+⊢ Π (x : bool) C x :=
 λ b, if b c1 c2
  
-theorem dnatrec {C : nat → type l} (c0 : app C 0) (cs : Π (n : nat) app C n → app C (succ n))
-⊢ Π (n : nat) app C n :=
+theorem dnatrec {C : nat → type l} (c0 : C 0) (cs : Π (n : nat) C n → C (succ n))
+⊢ Π (n : nat) C n :=
 λ n, natrec n c0 cs
  
-/* Function application and extensionality */
+/* Function lication and extensionality */
  
 def ap {A B : type l} (f : A → B) {a b : A} 
-⊢ path A a b → path B (app f a) (app f b) :=
-λp, <i> app f (p @ i)
+⊢ path A a b → path B (f a) (f b) :=
+λp, <i> f (p @ i)
  
-def apd {A : type l} {B : A → type l} (f : Π (x : A) app B x) {a b : A} (p : path A a b)
-⊢ pathd (λi, app B (p @ i)) (app f a) (app f b) :=
-<i> app f (p @ i)	
+def apd {A : type l} {B : A → type l} (f : Π (x : A) B x) {a b : A} (p : path A a b)
+⊢ pathd (λi, B (p @ i)) (f a) (f b) :=
+<i> f (p @ i)	
  
-def funext {A : type l} {B : A → type l} (f g : Π (x : A) app B x) 
-⊢ (Π (x : A) path (app B x) (app f x) (app g x)) → path (Π (x : A) app B x) f g :=
-λh, <i> (λ x, (app h x) @ i)
+def funext {A : type l} {B : A → type l} (f g : Π (x : A) B x) 
+⊢ (Π (x : A) path (B x) (f x) (g x)) → path (Π (x : A) B x) f g :=
+λh, <i> (λ x, (h x) @ i)
 
 /* Homogeneous composition */
-   
-def function_hcom {A : type l} {B : A → type l} {f f' g g' : Π (x : A) app B x} (p : path (Π (x : A) app B x) f g) (q : path (Π (x : A) app B x) f f') (r : path (Π (x : A) app B x) g g') (i : I)
-⊢ path (Π (x : A) app B x) 
-  (app (hcom (λ i, p @ i) | i0 →  λ j, q @ j | i1 → λ j, r @ j) i) 
-  (λ x, app (hcom (λ j, app (p @ j) x) | i0 →  λ j, app (q @ j) x | i1 → λ j, app (r @ j) x) i) := 
-<_> app (hcom (λ i, p @ i) | i0 →  λ j, q @ j | i1 → λ j, r @ j) i
- 
+
+def function_hcom {A : type l} {B : A → type l} {f f' g g' : Π (x : A) B x} (p : path (Π (x : A) B x) f g) (q : path (Π (x : A) B x) f f') (r : path (Π (x : A) B x) g g') (i : I)
+⊢ path (Π (x : A) B x) 
+  ((hcom (λ i, p @ i) | i0 → λ j, q @ j | i1 → λ j, r @ j) i) 
+  (λ x, (hcom (λ j, (p @ j) x) | i0 → λ j, (q @ j) x | i1 → λ j, (r @ j) x) i) := 
+<_> (hcom (λ i, p @ i) | i0 → λ j, q @ j | i1 → λ j, r @ j) i

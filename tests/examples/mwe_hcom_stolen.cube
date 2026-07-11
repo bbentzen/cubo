@@ -1,0 +1,7 @@
+def path_symm {A : type 1} {a b : A} (p : path A a b)
+⊢ path A b a := 
+<k> app 
+hcom (λ i, a)
+ | i0 →  λ j, p @ j
+ | i1 → λ _, a 
+k 

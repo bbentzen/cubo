@@ -6,10 +6,35 @@
  **)
 
 open Syntax
+
+let ids_of_idscolon str =
+  let buf = Buffer.create 16 in
+  let push acc =
+    if Buffer.length buf = 0 then acc
+    else
+      let id = Buffer.contents buf in
+      Buffer.clear buf;
+      id :: acc
+  in
+  let rec aux i acc =
+    if i >= String.length str then List.rev (push acc)
+    else
+      match str.[i] with
+      | ' ' | '\t' | ':' -> aux (i + 1) (push acc)
+      | c ->
+        Buffer.add_char buf c;
+        aux (i + 1) acc
+  in
+  aux 0 []
 }
 
 let identifier =
   ['A'-'Z' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_' ''']* as str
+
+let idlistcolon =
+  ['A'-'Z' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_' ''']*
+  ([' ' '\t']+ ['A'-'Z' 'a'-'z']['A'-'Z' 'a'-'z' '0'-'9' '_' ''']*)*
+  [' ' '\t']* ':' [' ' '\t']+ as str
 
 let filename =
   ['.']['.']? '/' ['A'-'Z' '.' 'a'-'z' '0'-'9' '_' '.' '/']* as str
@@ -103,6 +128,7 @@ rule token = parse
   | "thm"              { DEF }
   | "print"            { PRINT }
   | "infer"            { INFER }
+  | idlistcolon         { IDSCOLON (ids_of_idscolon str) }
   | whitespace         { token lexbuf }
   | end_of_line        { Lexing.new_line lexbuf; token lexbuf } (* needs fix later *)
   | identifier         { ID(str) }

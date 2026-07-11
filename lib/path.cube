@@ -11,12 +11,12 @@ universe l
 
 /* Path introduction and elimination */
 
-def pathd_abs {A : I → type l} (p : Π (i : I) app A i)
-⊢ pathd A (app p i0) (app p i1) :=
-<i> app p i
+def pathd_abs {A : I → type l} (p : Π (i : I) A i)
+⊢ pathd A (p i0) (p i1) :=
+<i> p i
  
-def pathd_app {A : I → type l} (a : app A i0) (b : app A i1) (p : pathd A a b)
-⊢ Π (i : I) app A i :=
+def pathd_app {A : I → type l} (a : A i0) (b : A i1) (p : pathd A a b)
+⊢ Π (i : I) A i :=
 λ i, p @ i
  
 /* Reflexivity, symmetry and transitivity */
@@ -27,38 +27,34 @@ def path_rfl {A : type l} {a : A}
  
 def path_symm {A : type l} {a b : A} (p : path A a b)
 ⊢ path A b a := 
-<k> app 
-hcom (λ i, a)
- | i0 →  λ j, p @ j
- | i1 → λ _, a 
-k 
+<k> (hcom (λ i, a)
+ | i0 → λ j, p @ j
+ | i1 → λ _, a) k
  
 def path_trans {A : type l} {a b c : A} (p : path A a b) (q : path A b c)
 ⊢ path A a c := 
-<k> app 
-hcom (λ i, p @ i) 
- | i0 →  λ _, a 
- | i1 → λ j, q @ j 
-k 
+<k> (hcom (λ i, p @ i) 
+ | i0 → λ _, a 
+ | i1 → λ j, q @ j) k
  
 /** Path induction **/
 
-def path_subst {A : type l} (C : A → type l) {a b : A} (p : path A a b) (c : app C a)
-⊢ app C b :=
-coe i0 i1 (λ i, app C (p @ i)) c
+def path_subst {A : type l} (C : A → type l) {a b : A} (p : path A a b) (c : C a)
+⊢ C b :=
+coe i0 i1 (λ i, C (p @ i)) c
  
-def path_subst' {A : type l} {C : A → type l} {a b : A} (p : path A a b) (c : app C b)
-⊢ app C a :=
-coe i1 i0 (λ i, app C (p @ i)) c
+def path_subst' {A : type l} {C : A → type l} {a b : A} (p : path A a b) (c : C b)
+⊢ C a :=
+coe i1 i0 (λ i, C (p @ i)) c
  
-def pathrec {A : type l} {a : A} (C : Π (x : A) (path A a x → type l)) {b : A} (p : path A a b) (c : app app C a (<_> a)) 
-⊢ app app C b p := 
-coe i0 i1 (λ i, app app C (p @ i) (app meet p @ i)) c 
+def pathrec {A : type l} {a : A} (C : Π (x : A) (path A a x → type l)) {b : A} (p : path A a b) (c : C a (<_> a)) 
+⊢ C b p := 
+coe i0 i1 (λ i, C (p @ i) (meet p @ i)) c 
  
 /** Regularity **/
  
-def coe_boundary {C : I → type l} (i : I) (c : app C i) 
-⊢ path (app C i) (coe i i C c) c :=
+def coe_boundary {C : I → type l} (i : I) (c : C i) 
+⊢ path (C i) (coe i i C c) c :=
 <_> c
  
 def coe_regularity {A : type l} (i j : I) (a : A) 
@@ -68,11 +64,10 @@ def coe_regularity {A : type l} (i j : I) (a : A)
 def hcom_regularity {A : type l} {a b : A} (p : path A a b)
 ⊢ path (path A a b) 
   p 
-  (<k> app 
-  hcom (λ i, p @ i)
-   | i0 →  λ j, a 
+  (<k> (hcom (λ i, p @ i)
+   | i0 → λ j, a 
    | i1 → λ j, b 
-  k ) := 
+  ) k) := 
 <_> p
  
 /** Proof irrevelance **/
@@ -90,12 +85,12 @@ def irrel_k {A : type l} {a : A} (p : path A a a)
 <_> _
  
 def irrel_example {A : type l} {a b : A} {B : path A a b → (Π (x : I) A) → type l} (p q : path A a b) 
-⊢ app app B p (λ i, p @ i) →  app app B q (λ j, q @ j) :=
+⊢ B p (λ i, p @ i) → B q (λ j, q @ j) :=
 id
  
 def irrel_example2 {A : type l} (i j : I) {a b : A} (p q : I → path A a b)
-⊢ path (path A a b) (app p i) (app q j) :=
-<_> app _ i
+⊢ path (path A a b) (p i) (q j) :=
+<_> _ i
  
 /** Strict groupoid structure **/
  
@@ -118,7 +113,7 @@ def path_trans_ru {A : type l} {a b : A} (p : path A a b)
 def path_symm_inv {A : type l} {a b : A} (p : path A a b)
 ⊢ path (path A a b) p (p ⁻¹⁻¹) := 
 <_> _
-    
+
 def path_trans_assoc {A : type l} {a b c d : A} (p : path A a b) (q : path A b c) (r : path A c d)
 ⊢ path (path A a d) (p · q · r) ((p · q) · r) := 
 <_> p · q · r

@@ -12,15 +12,15 @@ universe l
  
 def de_morgan_prod_1 {A B : type l}
 ⊢ (A × B) → ¬ (¬A + ¬B) :=
-λ w v, case v (λ f, app f (fst w)) (λ g, app g (snd w))
+λ w v, case v (λ f, f (fst w)) (λ g, g (snd w))
  
 def de_morgan_prod_2 {A B : type l}
 ⊢  (¬ A × ¬ B) → ¬ (A + B) :=
-λ w v, case v (λ x, app (fst w) x) (λ y, app (snd w) y)
+λ w v, case v (λ x, (fst w) x) (λ y, (snd w) y)
  
 def prod_elim_sum {A B C : type l}
 ⊢  (A × B) → ((A → C) + (B → C)) → C :=
-λ w v, case v (λ f, app f (fst w)) (λ g, app g (snd w))
+λ w v, case v (λ f, f (fst w)) (λ g, g (snd w))
  
 def weak_1 {A B : type l}
 ⊢ A → A + B :=
@@ -41,31 +41,31 @@ def sum_assoc {A B C : type l}
  
 def sum_distrib_1 {A B C : type l} 
 ⊢ ((A + B) → C) → ((A → C) + (B → C)) :=
-λ f, inl (λ x, app f (inl x))
+λ f, inl (λ x, f (inl x))
  
 def sum_distrib_2 {A B C : type l} 
 ⊢ ((A + B) → C) → ((A → C) + (B → C)) :=
-λ f, inr (λ y, app f (inr y))
+λ f, inr (λ y, f (inr y))
  
 def disj_syll_1 {A B C : type l} 
 ⊢ (A + B) → (¬A) -> B  :=
-λ v f, case v (λ x, abort (app f x)) (λ y, y)
+λ v f, case v (λ x, abort (f x)) (λ y, y)
  
 def disj_syll_2 {A B : type l}
 ⊢ (A + B) → (¬B) → A  :=
-λ v g, case v (λ x, x) (λ y, abort (app g y))
+λ v g, case v (λ x, x) (λ y, abort (g y))
  
 def not_not_lem {A : type l}
 ⊢ ¬¬ (A + ¬A) :=
-λ f, app f (inr (λ x, app f (inl x)))
+λ f, f (inr (λ x, f (inl x)))
  
 def lem_implies_dne {A : type l} (v : A + ¬A)
 ⊢ ¬¬A → A :=
-λ f, case v id (λ nx, abort (app f nx))
+λ f, case v id (λ nx, abort (f nx))
  
 def dne_implies_lem {A : type l} (dne : ¬¬(A + ¬A) → (A + ¬A))
 ⊢ A + ¬A :=
-app dne (λ f, app f (inr (λ x, app f (inl x))))
+dne (λ f, f (inr (λ x, f (inl x))))
  
 def sum_up_1 {A B C : type l}
 ⊢ (A → C) → (B → C) → ((A + B) → C) :=
@@ -73,35 +73,35 @@ def sum_up_1 {A B C : type l}
  
 def sum_up_2 {A B C : type l}
 ⊢ ((A + B) → C) → (A → C) :=
-λ f x, app f (inl x)
+λ f x, f (inl x)
  
 def sum_up_3 {A B C : type l}
 ⊢ ((A + B) → C) → (B → C) :=
-λ f y, app f (inr y) 
+λ f y, f (inr y) 
  
 def sum_to_fun {A B : type l}
 ⊢ (A + B) → (¬ A → B) :=
-λ v, case v (λ x, (λ f, abort (app f x))) (λ y f, y)
+λ v, case v (λ x, (λ f, abort (f x))) (λ y f, y)
  
 def sum_neg_to_fun {A B : type l}
 ⊢ (¬ A + B) → (A → B) :=
-λ v x, case v (λ nx, abort (app nx x)) (λ y, y)
+λ v x, case v (λ nx, abort (nx x)) (λ y, y)
  
 def de_morgan_sum_1 {A B : type l}
 ⊢ (A + B) → ¬ (¬ A × ¬ B) :=
-λ v w, case v (λ x, app (fst w) x) (λ y, app (snd w) y)
+λ v w, case v (λ x, (fst w) x) (λ y, (snd w) y)
  
 def de_morgan_sum_2 {A B : type l}
 ⊢ ¬(A + B) → (¬A × ¬B) :=
-λ f, (λ x, app f (inl x) , λ y, app f (inr y))
+λ f, (λ x, f (inl x) , λ y, f (inr y))
  
 def de_morgan_sum_3 {A B : type l}
 ⊢ (¬ A + ¬ B) → (¬ (A × B)) :=
-λ v w, case v (λ f, app f (fst w)) (λ g, app g (snd w)) 
+λ v w, case v (λ f, f (fst w)) (λ g, g (snd w)) 
  
 def sum_elim {A B C : type l}
 ⊢ (A + B) → ((A → C) × (B → C)) → C :=
-λ v f, case v (λ x, app (fst f) x) (λ y, app (snd f) y)
+λ v f, case v (λ x, (fst f) x) (λ y, (snd f) y)
 
 /* Sum equations */
 
@@ -126,7 +126,7 @@ def sum_code (A B : type l) (v v' : A + B)
 case v (λ x, case v' (λ x', path (A + B) (inl x) (inl x')) (λ _, void)) (λ y, case v' (λ _, void) (λ y', path (A + B) (inr y) (inr y')))
  
 def sum_eq {A B : type l} (v v' : A + B)
-⊢ path (A + B) v v' ↔ app app app app sum_code A B v v' :=
+⊢ path (A + B) v v' ↔ sum_code A B v v' :=
 case v 
   (λ y, case v' 
     (λ y', id_iff_id) (λ y', (sum_neq, absurd))) 
