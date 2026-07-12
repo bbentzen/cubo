@@ -25,13 +25,11 @@ This will create the executable `main.exe` which you can run on any `.cube` file
 $ dune exec _build/default/bin/main.exe <filename>.cube
 ```
 
-However, we recommend using the cubicle-vscode extension for verification support. This extension is available on the VSCode marketplace as cubicle-vscode. 
-It supports syntax highlighting, snippet completion, bracket matching, bracket autoclosing, bracket autosurrounding, 
-comment toggling (`Ctrl` + `/`), and Unicode abbreviations for transforming `\to` into `→`, `\to` into `→`, `\lambda` and `\let` into `λ`, `\Pi` into `Π`, `\Sigma` into `Σ`, `\times` into `×`, `\vdash` into `⊢`, `\nat` into `ℕ`, and `\I` into `𝕀`, using VS Code's native IntelliSense engine.
+However, we recommend using the cubicle-vscode extension for verification support. More information can be found at [cubicle-vscode/README.md](https://github.com/bbentzen/cubicle/blob/master/cubicle-vscode/README.md).
 
 ## Usage
 
-We assume that the user is relatively familiar with cubical type theory. See <a id="1">[3]</a> for a friendly introduction. 
+Please see the reference manual on [doc/README.md](https://github.com/bbentzen/cubicle/blob/master/doc/README.md).
 
 ## Support
 
@@ -49,8 +47,3 @@ Jonathan Sterling, Carlo Angiuli, Daniel Gratzer.
 A Cubical Language for Bishop Sets. 
 Logical Methods in Computer Science, 18 (1), 2022.
 [doi:10.46298/lmcs-18(1:43)2022](https://doi.org/10.46298/lmcs-18(1:43)2022), [arXiv:2003.01491](https://arxiv.org/abs/2003.01491).
-
-<a id="1">[3]</a> 
-Bruno Bentzen. Naive cubical type theory. 
-Mathematical Structures in Computer Science, 31, pp. 1205–1231, 2021.
-[doi:10.1017/S096012952200007X](https://doi.org/10.1017/S096012952200007X), [arXiv:1911.05844](https://arxiv.org/abs/1911.05844).
