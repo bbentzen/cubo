@@ -118,8 +118,43 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     end
 
   | App (e1, e2) ->
+    let e2_is_subgoal =
+      match e2 with
+      | Subgoal () -> true
+      | _ -> false
+    in
 
-    if Placeholder.has_underscore e2 then
+    if e2_is_subgoal then
+
+      let h1 = Placeholder.generate ty ph [] in
+      let elab1 = elaborate global ctx lvl sl h1 (ph+1) (vars+1) e1 in
+      begin match elab1 with
+      | Ok (e1', Pi(x, ty1, ty2), sa1) ->
+        let goal_ty =
+          if Placeholder.has_placeholder ty1 then
+            match find true global ctx ctx ty1 lvl sl ph vars with
+            | Ok (_, ty1') -> ty1'
+            | Error _ -> ty1
+          else
+            ty1
+        in
+        begin
+          match elaborate global ctx lvl sl goal_ty (ph+1) (vars+1) e2 with
+          | Ok (e2', _, sa2) ->
+            Ok (App (e1', e2'), subst x e2' ty2, Stack.append sa1 sa2)
+          | Error (sa2, msg) ->
+            Error (Stack.append sa1 sa2, msg)
+        end
+      | Ok (e1', _, sa1) ->
+        Error (sa1,
+          "Failed application\n  " ^ Pretty.print (App (e1', e2)) ^
+          "\nThe term\n  " ^ Pretty.print e1' ^
+          "\nis expected to have type\n  Π (v? : ?0?) ?1?")
+      | Error (sa, msg) ->
+        Error (sa, msg)
+      end
+
+    else if Placeholder.has_underscore e2 then
 
       (* for performance reasons we typecheck e1 fist if e2 has implicit arguments *)
 
@@ -933,7 +968,24 @@ let rec elaborate global ctx lvl sl ty ph vars = function
     let h1 = Placeholder.generate ty 0 [] in
     let h2 = Placeholder.generate ty 1 [] in
     let h3 = Placeholder.generate ty 2 [] in
-    let elab1 = elaborate global ctx lvl sl (Pathd(h1, h2, h3)) (ph+3) vars e1 in
+    let goal_ty =
+      match e1 with
+      | Subgoal () ->
+        let rec infer = function
+          | [] -> Pathd(h1, h2, h3)
+          | (id, ty', b) :: ctx' ->
+            if b then
+              match elaborate global ctx lvl sl ty ph vars (At (Id id, e2)) with
+              | Ok _ -> ty'
+              | Error _ -> infer ctx'
+            else
+              infer ctx'
+        in
+        infer ctx
+      | _ ->
+        Pathd(h1, h2, h3)
+    in
+    let elab1 = elaborate global ctx lvl sl goal_ty (ph+3) vars e1 in
     let elab2 = elaborate global ctx lvl sl (Int()) ph vars e2 in
     begin match elab1, elab2 with
     | Ok (e1', ty1', sa1), Ok (e2', _, sa2) ->
@@ -1416,24 +1468,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       "Failed to synthesize placeholder for ?0" ^ string_of_int n ^ "? in the current goal:\n" ^ 
       print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print (eval ty))
     in
-    
-    (*if Placeholder.is ty then
-
-      let helper x y =
-        match Local.find_any_true x with
-        | Ok e ->
-          let sl' = ((n, e, ty) :: fst sl, y) in
-          Ok (Id e, ty, sl')
-        | Error _ -> fails
-      in
-      match Stack.find_index n (snd sl) with
-      | Ok l -> 
-        helper l (snd sl)
-      | Error _ ->
-        helper ctx (Stack.make n ctx :: (snd sl))
-
-    else*)
-
+    begin
       match Stack.find_index n (snd sl) with
       | Ok l ->
         begin
@@ -1460,6 +1495,19 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           | Error _ ->
             fails
         end
+        end
+
+  | Subgoal () ->
+      let goal_ty =
+        if Placeholder.has_placeholder ty then
+          match find true global ctx ctx ty lvl sl ph vars with
+          | Ok (_, ty') -> ty'
+          | Error _ -> ty
+        else
+          ty
+      in
+      Error (sl, 
+      "The current goal:\n" ^ print ctx ^ "-------------------------------------------\n ⊢ " ^ Pretty.print goal_ty)
 
 (* Finds a variable in a context for a given type up to unification *)
 

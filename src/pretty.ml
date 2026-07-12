@@ -141,6 +141,7 @@ let rec print = function
   | Inl e -> "inl " ^ par e
   | Inr e -> "inr " ^ par e
   | Wild n -> "?0" ^ string_of_int n ^ "? "
+  | Subgoal() -> "?"
 
 and par e = 
   let helper = function

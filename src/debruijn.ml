@@ -83,6 +83,7 @@ let rec of_raw_expr_with_env env = function
   | Ast.Type l -> Core_ast.Type (level_of_raw l)
   | Ast.Hole (n, l) -> Core_ast.Hole (n, List.map (of_raw_expr_with_env env) l)
   | Ast.Wild n -> Core_ast.Wild n
+  | Ast.Subgoal() -> Core_ast.Subgoal()
 
 let of_raw_expr e = of_raw_expr_with_env [] e
 
@@ -139,6 +140,7 @@ let rec to_raw_expr_with_env env = function
   | Core_ast.Type l -> Ast.Type (level_to_raw l)
   | Core_ast.Hole (n, l) -> Ast.Hole (n, List.map (to_raw_expr_with_env env) l)
   | Core_ast.Wild n -> Ast.Wild n
+  | Core_ast.Subgoal() -> Ast.Subgoal()
 
 let to_raw_expr e = to_raw_expr_with_env [] e
 

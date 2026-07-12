@@ -70,7 +70,7 @@ def hcom_regularity {A : type l} {a b : A} (p : path A a b)
   ) k) := 
 <_> p
  
-/** Proof irrevelance **/
+/** Boundary separation Proof irrevelance **/
 
 def irrel_uip {A : type l} {a b : A} (p q : path A a b)
 ⊢ path (path A a b) p q :=
@@ -91,6 +91,10 @@ id
 def irrel_example2 {A : type l} (i j : I) {a b : A} (p q : I → path A a b)
 ⊢ path (path A a b) (p i) (q j) :=
 <_> _ i
+
+def path_bs {A : type 1} {a b : A} (p q : path A a b) {C : path A a b → type 1} 
+⊢ C p ↔ C q := 
+id_iff_id
  
 /** Strict groupoid structure **/
  

@@ -174,12 +174,44 @@ function normalizeCubicleOutput(output: string): string {
 
     if (output.startsWith(failurePrefix) && output.endsWith('")')) {
         const escaped = output.slice(failurePrefix.length, -2);
-        return escaped
-            .replace(/\\n/g, '\n')
-            .replace(/\\r/g, '\r')
-            .replace(/\\t/g, '\t')
-            .replace(/\\"/g, '"')
-            .replace(/\\\\/g, '\\');
+        
+        const bytes: number[] = [];
+        for (let i = 0; i < escaped.length; i++) {
+            // Check for an escape sequence
+            if (escaped[i] === '\\' && i + 1 < escaped.length) {
+                const nextChar = escaped[i + 1];
+                if (nextChar === 'n') { bytes.push(10); i++; continue; }
+                if (nextChar === 'r') { bytes.push(13); i++; continue; }
+                if (nextChar === 't') { bytes.push(9); i++; continue; }
+                if (nextChar === '"') { bytes.push(34); i++; continue; }
+                if (nextChar === '\\') { bytes.push(92); i++; continue; }
+                
+                // Handle OCaml's 3-digit decimal byte escapes (e.g., \226)
+                if (i + 3 < escaped.length) {
+                    const match = escaped.substring(i + 1, i + 4).match(/^[0-9]{3}$/);
+                    if (match) {
+                        bytes.push(parseInt(match[0], 10));
+                        i += 3;
+                        continue;
+                    }
+                }
+            }
+            
+            // Handle regular characters
+            const charCode = escaped.charCodeAt(i);
+            if (charCode < 128) {
+                bytes.push(charCode);
+            } else {
+                // Safely encode any unescaped non-ASCII characters to UTF-8 bytes
+                const utf8Buffer = Buffer.from(escaped[i], 'utf-8');
+                for (let j = 0; j < utf8Buffer.length; j++) {
+                    bytes.push(utf8Buffer[j]);
+                }
+            }
+        }
+        
+        // Decode the reconstructed byte array back into a UTF-8 string
+        return Buffer.from(bytes).toString('utf-8');
     }
 
     return output;

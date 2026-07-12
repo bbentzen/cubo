@@ -108,6 +108,7 @@ rule token = parse
   | "pathd"            { PATHD }
   | "_"                { WILDCARD }
   | "??"               { PLACEHOLDER }
+  | "?"                { SUBGOAL }
   | ":="               { COLONEQ }
   | "type"             { TYPE }
   | "max"              { MAX }

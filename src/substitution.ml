@@ -114,6 +114,7 @@ let rec presubst x t hole_flag = function
     else
       Ast.Hole (n, l)
   | Ast.Wild n -> Ast.Wild n
+  | Ast.Subgoal () -> Ast.Subgoal ()
 
 let rec free_var x = function
   | Ast.Id y -> 
@@ -214,6 +215,7 @@ let rec alphasubst x t flag hole_flag = function
     else 
       Ast.Hole (n, l)
   | Ast.Wild n -> Ast.Wild n
+  | Ast.Subgoal () -> Ast.Subgoal ()
 
 let hsubst x t e hole_flag = presubst x t hole_flag (alphasubst x t false hole_flag e) 
 

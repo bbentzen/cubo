@@ -54,6 +54,7 @@ type expr =
   | Type of level
   | Hole of string * (expr list)
   | Wild of int
+  | Subgoal of unit
 
 type proof =
   | Prf of string * (((string list * expr) * bool) list) * expr * expr

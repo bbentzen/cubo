@@ -54,7 +54,7 @@ let single_id = function
 %token STAR LET UNIT
 %token ABORT VOID NEG
 %token LANGLE RANGLE AT REFL SYMM TRANS PATHD PATH
-%token WILDCARD PLACEHOLDER COLONEQ
+%token WILDCARD PLACEHOLDER COLONEQ SUBGOAL
 %token EOF
 %right LRARROW
 %right PI
@@ -240,3 +240,4 @@ atom:
   | TYPE level                                              { Type ($2) }
   | PLACEHOLDER NUMBER                                      { Hole($2, []) }
   | WILDCARD                                                { Wild 0 }
+  | SUBGOAL                                                 { Subgoal() }
