@@ -16,6 +16,11 @@ let goal_msg ctx e ty =
   "when checking that\n  " ^ Pretty.print e ^ "\nhas the expected type\n" ^ Local.print ctx ^ 
   "-------------------------------------------\n ⊢ " ^ Pretty.print ty
 
+let normalize_with_global global e =
+  match Global.unfold_all global 0 e with
+  | Ok e' -> eval e'
+  | Error _ -> eval e
+
 (* Checks whether the type of a given expression is the given type *)
 
 let rec elaborate global ctx lvl sl ty ph vars = function
@@ -1847,17 +1852,53 @@ and unify global ctx lvl sl ph vars x lift =
         (* if i = ε we elaborate and unify e @ ε with e' : ty *)
 
         if eval i = I0() || eval i = I1() then
-        
-          let elab = elaborate global ctx lvl sl ty ph vars (At (e, eval i)) in
-          begin match elab with
-          | Ok (ei, ety, _) ->
-            let u1 = unify global ctx lvl sl ph vars (ei, e', ety) lift in
-            begin match u1 with
-            | Ok se -> Ok se
-            | Error msg -> Error msg
+
+          let endpoint = eval i in
+          let h0 = Placeholder.generate ty ph [] in
+          let h1 = Placeholder.generate ty (ph+1) [] in
+          let h2 = Placeholder.generate ty (ph+2) [] in
+          begin match elaborate global ctx lvl sl (Pathd(h0, h1, h2)) ph vars e with
+          | Ok (_, Pathd(_, a, b), _) ->
+            let lhs = if endpoint = I0() then a else b in
+            let lhs' = normalize_with_global global lhs in
+            let rhs' = normalize_with_global global e' in
+            if lhs' = rhs' then
+              Ok lhs
+            else
+              begin match elaborate global ctx lvl sl ty ph vars lhs with
+              | Ok (lhs_elab, lhs_ty, _) ->
+                let u1 = unify global ctx lvl sl ph vars (lhs_elab, e', lhs_ty) lift in
+                begin match u1 with
+                | Ok se -> Ok se
+                | Error msg -> Error msg
+                end
+              | Error _ ->
+                let at_endpoint = At (e, endpoint) in
+                let elab = elaborate global ctx lvl sl ty ph vars at_endpoint in
+                begin match elab with
+                | Ok (ei, ety, _) ->
+                  let u1 = unify global ctx lvl sl ph vars (ei, e', ety) lift in
+                  begin match u1 with
+                  | Ok se -> Ok se
+                  | Error msg -> Error msg
+                  end
+                | Error (_, msg) ->
+                  Error ((at_endpoint, e'), msg)
+                end
+              end
+          | _ ->
+            let at_endpoint = At (e, endpoint) in
+            let elab = elaborate global ctx lvl sl ty ph vars at_endpoint in
+            begin match elab with
+            | Ok (ei, ety, _) ->
+              let u1 = unify global ctx lvl sl ph vars (ei, e', ety) lift in
+              begin match u1 with
+              | Ok se -> Ok se
+              | Error msg -> Error msg
+              end
+            | Error (_, msg) ->
+              Error ((at_endpoint, e'), msg)
             end
-          | Error (_, msg) ->
-            Error ((At (e, eval i), e'), msg)
           end
 
         else
