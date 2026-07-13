@@ -191,39 +191,43 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       end
 
     else
-
-      let h1 = Placeholder.generate ty ph [] in
-      let v1 = fresh_var (App(e1, e2)) ty vars in
-      let elab2 = elaborate global ctx lvl sl h1 (ph+1) (vars+2) e2 in
-      begin match elab2 with
-      | Ok (e2', ty2', sa2) ->
-        let h2 = Placeholder.generate ty (ph+1) [Id v1; e2; e2'] in
-        let helper ty1' =
-          let elab1 = elaborate global ctx lvl sl ty1' (ph+1) (vars+2) e1 in
-          begin match elab1 with
-          | Ok (e1', Pi(x, _, ty'), sa1) ->
-            Ok (App (e1', e2'), subst x e2 ty', Stack.append sa1 sa2)
-          | Ok (e1', _, sa1) -> 
-            Error (Stack.append sa1 sa2, 
-              "Failed application\n  " ^ Pretty.print (App (e1', e2')) ^
-              "\nThe term\n  " ^ Pretty.print e1' ^ 
-              "\nis expected to have type\n " ^ Pretty.print ty1')
-          | Error (sa1, msg) -> 
-            Error (Stack.append sa1 sa2,
-              "Failed application\n  " ^ Pretty.print (App (e1, e2')) ^
-              "\nThe term\n  " ^ Pretty.print e1 ^ 
-              "\nis expected to have type\n  " ^ Pretty.print ty1' ^ "\n" ^ msg)
-          end
-        in
-        if e2 = e2' then
-          let ty1' = Pi(v1, fullsubst e2 h2 ty2', fullsubst e2 h2 ty) in
-          helper ty1'
-        else
-          let subs x = hfullsubst e2' h2 (fullsubst e2 h2 x) in
-          let ty1' = Pi(v1, subs ty2', subs ty) in
-          helper ty1'
-      | Error (sa, msg) -> 
-        Error (sa, msg)
+      begin match e1 with
+      | Abs (x, body) ->
+        elaborate global ctx lvl sl ty ph vars (subst x e2 body)
+      | _ ->
+        let h1 = Placeholder.generate ty ph [] in
+        let v1 = fresh_var (App(e1, e2)) ty vars in
+        let elab2 = elaborate global ctx lvl sl h1 (ph+1) (vars+2) e2 in
+        begin match elab2 with
+        | Ok (e2', ty2', sa2) ->
+          let h2 = Placeholder.generate ty (ph+1) [Id v1; e2; e2'] in
+          let helper ty1' =
+            let elab1 = elaborate global ctx lvl sl ty1' (ph+1) (vars+2) e1 in
+            begin match elab1 with
+            | Ok (e1', Pi(x, _, ty'), sa1) ->
+              Ok (App (e1', e2'), subst x e2 ty', Stack.append sa1 sa2)
+            | Ok (e1', _, sa1) -> 
+              Error (Stack.append sa1 sa2, 
+                "Failed application\n  " ^ Pretty.print (App (e1', e2')) ^
+                "\nThe term\n  " ^ Pretty.print e1' ^ 
+                "\nis expected to have type\n " ^ Pretty.print ty1')
+            | Error (sa1, msg) -> 
+              Error (Stack.append sa1 sa2,
+                "Failed application\n  " ^ Pretty.print (App (e1, e2')) ^
+                "\nThe term\n  " ^ Pretty.print e1 ^ 
+                "\nis expected to have type\n  " ^ Pretty.print ty1' ^ "\n" ^ msg)
+            end
+          in
+          if e2 = e2' then
+            let ty1' = Pi(v1, fullsubst e2 h2 ty2', fullsubst e2 h2 ty) in
+            helper ty1'
+          else
+            let subs x = hfullsubst e2' h2 (fullsubst e2 h2 x) in
+            let ty1' = Pi(v1, subs ty2', subs ty) in
+            helper ty1'
+        | Error (sa, msg) -> 
+          Error (sa, msg)
+        end
       end
     
   | Pair (e1, e2) -> 

@@ -249,7 +249,7 @@ let rec termsubst pre f e t hole_flag = function
         if not (free_var y t) then 
           Ast.Pabs (y, termsubst pre f e1 t hole_flag ex) 
         else 
-          Ast.Pabs (var, termsubst pre f e1 t hole_flag ex)
+          Ast.Pabs (var, termsubst pre f (f y (Ast.Id var) e1 hole_flag) t hole_flag ex)
       else
         Ast.Pabs (y, termsubst true f e1 t hole_flag ex)       
 

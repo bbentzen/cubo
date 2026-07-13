@@ -6,5 +6,7 @@
 
 *.install
 
+/tests/examples/debruijin-port
+
 /cubicle-vscode/node_modules
 /cubicle-vscode/out
