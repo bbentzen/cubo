@@ -15,7 +15,7 @@ def bneg
 def band
 ⊢ bool → bool → bool :=
 λ b b', if b (if b' true false) (if b' false false)
- 
+
 def bor
 ⊢ bool → bool → bool :=
 λ b b', if b (if b' true true) (if b' true false)
@@ -77,4 +77,3 @@ def bool_eq (b b' : bool)
 if b 
   (if b' id_iff_id (bool_neq, absurd)) 
   (if b' (bool_neq', absurd) id_iff_id)
-

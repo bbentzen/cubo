@@ -13,15 +13,21 @@ let check global ctx lvl =
     match l with
   | [] -> Ok []
   | (x, ty, b) :: ctx' ->
-    match Type.check global ctx' lvl ty, helper ctx' with
-    | Ok elab, Ok ctx'' -> 
-      if Global.is_declared x global then
-        Error ("Naming conflict with the identifier '" ^ x ^ 
-          "'\nIt occurs as a definition/theorem name but is declared as a local variable")
-      else
-        Ok ((x, eval (fst elab), b) :: ctx'')
-    | Error msg, _ -> 
+    begin match Global.unfold_all global 0 ty with
+    | Ok ty' ->
+      begin match Type.check global ctx' lvl ty', helper ctx' with
+      | Ok elab, Ok ctx'' -> 
+        if Global.is_declared x global then
+          Error ("Naming conflict with the identifier '" ^ x ^ 
+            "'\nIt occurs as a definition/theorem name but is declared as a local variable")
+        else
+          Ok ((x, eval (fst elab), b) :: ctx'')
+      | Error msg, _ -> 
+        Error ("The specified context is invalid: " ^ msg)
+      | _ , Error msg -> Error msg
+      end
+    | Error msg ->
       Error ("The specified context is invalid: " ^ msg)
-    | _ , Error msg -> Error msg
+    end
   in
   helper (List.rev ctx)

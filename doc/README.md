@@ -1,6 +1,6 @@
 # The Cubicle documentation
 
-This contains a short reference manual on the basics of Cubicle.
+This contains a short reference manual on the basics of Cubicle. Here we assume that the user is relatively familiar with cubical type theory. See <a id="1">[3]</a> for a friendly introduction. 
 
 ## Usage
 
@@ -33,6 +33,8 @@ Dependent product type | Σ (x : A) B | ( M , N ) | fst M and snd M
 Dependent path type | pathd A x y | < x > M | M @ N
 Interval | I or 𝕀 | i0 and i1 | 
 Universe type | type n | 
+
+In addition, the user can also have `_` and `?` as placeholders in any expression. The former is used to synthesize an implicit assumption or fail after a number of steps, evaluating and displaying the type of the current goal. The latter is used to display the type of current goal directly without evaluation.
 
 Moreover, the language also contains two primitive functions known as Kan operations:
 
