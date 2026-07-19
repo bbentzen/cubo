@@ -5,6 +5,7 @@
  */
  
 import ./function.cube
+import ./path.cube
 
 /* Natural numbers */
  
@@ -15,21 +16,29 @@ def pred
 def add
 ⊢ nat → nat → nat :=
 λ m n, natrec n m (λ k f, succ f)
- 
+
 def mult 
 ⊢ nat → nat → nat := 
 λ m n, natrec n 0 (λ k f, (natrec f m (λ k, λ g, succ g)))
  
-/* Equations */
+/* Numerical equations */
  
 def add_zero (m : nat)
 ⊢ path nat ((add 0) m) m :=
 natrec m (<_> 0) (λ n p , <i> succ (p @ i))
 
-def nat_eq_succ {n m : nat}
+def succ_iff_eq {n m : nat}
+⊢ path nat (succ n) (succ m) ↔ path nat n m :=
+(λ p, <i> natrec (p @ i) n (λ k _, k), λ p, <i> succ (p @ i))
+
+def succ_to_eq {n m : nat}
 ⊢ path nat (succ n) (succ m) → path nat n m :=
-λ p, <i> natrec (p @ i) n (λ k _, k)
- 
+fst succ_iff_eq
+
+def eq_to_succ {n m : nat}
+⊢ path nat n m → path nat (succ n) (succ m) :=
+snd succ_iff_eq
+
 def pred_succ {n : nat}
 ⊢ path nat (pred (succ n)) n :=
 <_> n
@@ -45,6 +54,49 @@ def nat_neq {n : nat}
 def nat_neq' {n : nat}
 ⊢ ¬ path nat (succ n) 0 :=
 λ p, coe i1 i0 (λ i, natrec (p @ i) unit (λ _ _, void)) ()
+
+/* Basic arithmetical laws */
+
+def add_assoc (m n k : ℕ)
+⊢ path ℕ (add (add m n) k) (add m (add n k)) :=
+natrec k (<_> add m n) (λ k ih, eq_to_succ ih)
+
+def add_comm_zero (m : ℕ)
+⊢ path ℕ m (add 0 m) :=
+natrec m (<_> 0) (λ k ih, eq_to_succ ih) 
+
+def add_comm_succ (l n : ℕ)
+⊢ path ℕ (succ (add l n)) (add (succ l) n) :=
+natrec n (<_> succ l) (λ _ ih, eq_to_succ ih)
+
+def add_comm (m n : ℕ)
+⊢ path ℕ (add m n) (add n m) :=
+natrec m (add_comm_zero n) (λ k ih, 
+  path_trans (eq_to_succ ih) (add_comm_succ k n) )
+
+def add_left {m n : ℕ} (k : ℕ)
+⊢ path ℕ m n → path ℕ (add k m) (add k n) :=
+λ p, <i> add k (p @ i)
+
+def add_right {m n : ℕ} (k : ℕ)
+⊢ path ℕ m n → path ℕ (add m k) (add n k) :=
+λ p, <i> add (p @ i) k
+
+def add_two {m n k l : ℕ}
+⊢ path ℕ m n → path ℕ k l → path ℕ (add m k) (add n l) :=
+λ p q, <i> add (p @ i) (q @ i)
+
+def add_inj {m n k : ℕ}
+⊢ path ℕ (add m k) (add n k) → path ℕ m n :=
+natrec k id (λ i ih p, ih (succ_to_eq p))
+
+def add_comm2 (m n k : ℕ) /* takes about 2.5 seconds */
+⊢ path ℕ (add (add m n) k) (add (add m k) n) :=
+(add_assoc m n k) · (add_left m (add_comm n k)) · (add_assoc m n k)⁻¹
+
+def leq (m n : ℕ)
+⊢ type 1 :=
+Σ (i : ℕ) path ℕ (add m i) n
 
 /* Code-decode */
 
