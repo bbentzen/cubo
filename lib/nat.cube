@@ -90,9 +90,15 @@ def add_inj {m n k : ℕ}
 ⊢ path ℕ (add m k) (add n k) → path ℕ m n :=
 natrec k id (λ i ih p, ih (succ_to_eq p))
 
-def add_comm2 (m n k : ℕ) /* takes about 2.5 seconds */
+def add_comm2 (m n k : ℕ) 
 ⊢ path ℕ (add (add m n) k) (add (add m k) n) :=
 (add_assoc m n k) · (add_left m (add_comm n k)) · (add_assoc m n k)⁻¹
+
+def add_pair_symm {m n x y : ℕ} 
+⊢ path ℕ (add (add m x) (add n y))  (add (add m n) (add x y)) :=
+path_trans (path_trans (add_assoc m x (add n y)) (add_left m (path_symm (add_assoc x n y))))
+(path_trans (path_trans (add_left m (add_right y (add_comm x n))) (path_symm (add_assoc m (add n x) y))) 
+ (path_trans (path_symm (add_assoc (add m n) x y)) (add_assoc (add m n) x y)))
 
 def leq (m n : ℕ)
 ⊢ type 1 :=
