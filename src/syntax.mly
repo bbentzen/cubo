@@ -43,7 +43,7 @@ let single_id = function
 %token <string list> IDSCOLON
 %token <string> FILENAME
 %token <string> NUMBER
-%token IMPORT UNIVERSE DEF PRINT INFER LBRACE RBRACE
+%token EVAL IMPORT UNIVERSE DEF PRINT INFER LBRACE RBRACE
 %token TYPE MAX NEXT COLON VDASH
 %token I0 I1 INTERVAL COE HCOM HFILL FILL COM BAR
 %token ABS APP RARROW LRARROW PI
@@ -92,6 +92,7 @@ command:
   | UNIVERSE ids command                                    {Level($3, $2)}
   | PRINT ID command                                        {Print($3, $2)}
   | INFER expr command                                      {Infer($3, $2)}
+  | EVAL expr command                                       {Eval($3, $2)}
   | EOF                                                     {Eof()}
 
 decl:

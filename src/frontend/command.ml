@@ -51,7 +51,8 @@ let rec compile global lopen filename lvl next_location = function
                      "'\nName already exists in the environment (try 'print " ^ id ^ "' for more information)")
                 else
                   begin
-                    let res = Synthesize.init global ctx' lvl e' ty' in 
+                    (* let e'' = eval e' in  *)
+                    let res = Synthesize.init global ctx' lvl e' ty' in
                     match res with 
                     | Ok (e1, ty1) ->
                       let e1' = normalize_expr e1 in
@@ -88,7 +89,7 @@ let rec compile global lopen filename lvl next_location = function
       | Error msg -> 
         failwith_at location msg
     end
-  
+
   | Ast.Infer (cmd, e) ->
     let location = next_location () in
     let e' = normalize_expr e in
@@ -108,6 +109,17 @@ let rec compile global lopen filename lvl next_location = function
           | Error msg -> failwith_at location msg
         end
       | Error (_, msg) -> 
+        failwith_at location msg
+    end
+  
+  | Ast.Eval (_, e) ->
+    let location = next_location () in
+    begin
+      match (Global.unfold_all global 0 e) with
+      | Ok e' ->
+        Ok (global, ("eval " ^ Pretty.print e ^ " := " ^ 
+        Pretty.print (Eval.eval e'), lopen))
+      | Error msg -> 
         failwith_at location msg
     end
   
@@ -131,6 +143,8 @@ let rec compile global lopen filename lvl next_location = function
 
   | Ast.Eof() -> 
     Ok (global, ("", lopen))
+  
+  
 
 and checkfile global lopen filename lvl =
   let cmd =

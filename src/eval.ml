@@ -4,7 +4,7 @@
  * Desc: Call-by-name prenormalization
  *       Performs full β-reduction on β-redexes of all types,
  *       η-reduction for dependent functions and paths,
- *       but not ε-reduction for dependent paths.
+ *       but not ε-reduction (i0/i1 endpoints) for dependent paths.
  **)
 
 open Substitution
@@ -26,9 +26,9 @@ let rec has_reduction = function
     if has_var k ty = false then
       let v1 = fresh_var (Ast.App(e1, e2)) e 2 in
       Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
-      Ast.Abs(v1, Ast.At(Ast.Coe (i, j, Ast.Abs(k, Pathd(Abs(v, ty), e1, e2)), e), Ast.Id v1)), 
-      Ast.Abs(k, subst k j e1),
-      Ast.Abs(k, subst k j e2)),
+      Ast.Abs(v1, Ast.Coe (i, j, Ast.Abs(k, Abs(v, ty)), Ast.At(e, Ast.Id v1))), 
+      Ast.Abs(k, Coe (Id v1, j, Ast.Abs(k, Abs(v, ty)), e1)),
+      Ast.Abs(k, Coe (Id v1, j, Ast.Abs(k, Abs(v, ty)), e2))),
       I1()), Id v1)), true
     else
       let v1 = fresh_var (Ast.App(e1, e2)) e 2 in
@@ -39,20 +39,16 @@ let rec has_reduction = function
       Ast.Abs(k, Coe(I1(), Id v1,  Abs(k, subst v (Id k) (subst k j ty)), subst k j e2))),
       I1()), Id v1)), true
   
-  | Ast.Coe (i, j, Ast.Abs(k, Pathd(ty, e1, e2)), e) ->  
+  (* | Ast.Coe (i, j, Ast.Abs(k, Pathd(ty, e1, e2)), e) ->  
     let v1 = fresh_var (Ast.App(e1, e2)) e 2 in
     let v2 = fresh_var (Ast.App(e1, e2)) e 3 in
     Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
     Ast.Abs(v2, Coe(Id v2, Id v1,  Abs(k, App(subst k j ty, Id k)), Ast.Coe (i, j, Abs(k, App(ty, Id v2)), Ast.At(e, Ast.Id v2)))), 
     Ast.Abs(k, Coe(I0(), Id v1,  Abs(k, App(subst k j ty, Id k)), subst k j e1)),
     Ast.Abs(k, Coe(I1(), Id v1,  Abs(k, App(subst k j ty, Id k)), subst k j e2))),
-    I1()), Id v1)), true
+    I1()), Id v1)), true *)
 
   | Ast.Coe (i, j, e1, e2) ->
-    let coe' = 
-      Ast.Coe (fst (has_reduction i), fst (has_reduction j), fst (has_reduction e1), fst (has_reduction e2)), 
-      snd (has_reduction i) || snd (has_reduction j) || snd (has_reduction e1) || snd (has_reduction e2)
-    in
     begin
       if fst (has_reduction i) = fst (has_reduction j) then
         e2, true
@@ -60,11 +56,13 @@ let rec has_reduction = function
         match e1 with
         | Ast.Abs(k, e) -> 
           if has_var k e then
-            coe'
+            Ast.Coe (fst (has_reduction i), fst (has_reduction j), fst (has_reduction e1), fst (has_reduction e2)), 
+            snd (has_reduction i) || snd (has_reduction j) || snd (has_reduction e1) || snd (has_reduction e2)
           else 
             e2, true
         | _ -> 
-          coe'
+          Ast.Coe (fst (has_reduction i), fst (has_reduction j), fst (has_reduction e1), fst (has_reduction e2)), 
+          snd (has_reduction i) || snd (has_reduction j) || snd (has_reduction e1) || snd (has_reduction e2)
     end
   
   | Ast.Hfill (e, e1, e2) -> 

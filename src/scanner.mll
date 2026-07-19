@@ -129,7 +129,8 @@ rule token = parse
   | "thm"              { DEF }
   | "print"            { PRINT }
   | "infer"            { INFER }
-  | idlistcolon         { IDSCOLON (ids_of_idscolon str) }
+  | "eval"             { EVAL }
+  | idlistcolon        { IDSCOLON (ids_of_idscolon str) }
   | whitespace         { token lexbuf }
   | end_of_line        { Lexing.new_line lexbuf; token lexbuf } (* needs fix later *)
   | identifier         { ID(str) }
