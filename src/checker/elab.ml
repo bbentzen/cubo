@@ -129,8 +129,10 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       | _ -> false
     in
 
+    (* this is needed if we don't evaluate before calling the elaborator *)
     if snd (has_reduction (App (e1, e2))) then
       elaborate global ctx lvl sl ty (ph+1) (vars+1) (reduce (App (e1, e2)))
+    (*  *)
 
     else if e2_is_subgoal then
 
@@ -474,7 +476,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           end
         
         | _ -> 
-          let ee' = eval e' in
+          let ee' = eval e' in (* this and the line below are also only needed if we don't evaluate before calling the elaborator*)
           let ty' = eval ty in
           let elab1 = elaborate global ctx lvl sl ((fullsubst ee' (Ast.Zero()) ty')) ph (vars+2) e1 in
           let tyx = (Pi(v1, Nat(), Pi(v2, fullsubst ee' (Id v1) ty', fullsubst ee' (Succ (Id v1)) ty'))) in
@@ -623,8 +625,8 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       let h0 = Placeholder.generate ty 0 [] in
       let elabi = elaborate global ctx lvl sl (Int()) ph vars i in
       let elabj = elaborate global ctx lvl sl (Int()) ph vars j in
-      let elabti = elaborate global ctx lvl sl h0 ph vars (reduce (App(ety, i))) in
-      let elabtj = elaborate global ctx lvl sl h0 ph vars (reduce (App(ety, j))) in
+      let elabti = elaborate global ctx lvl sl h0 ph vars (eval (App(ety, i))) in
+      let elabtj = elaborate global ctx lvl sl h0 ph vars (eval (App(ety, j))) in
       begin
         match elabi, elabj, elabti, elabtj with
         | Ok (i', _, _), Ok (j', _, _), Ok (tyi, eTy, sat), Ok (tyj, _, _) ->
@@ -718,25 +720,25 @@ let rec elaborate global ctx lvl sl ty ph vars = function
                     Error (Stack.append sa' (Stack.lappend sa sa1 sa2), 
                     "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
-                    "\nThe i0-face of the lid\n  " ^ Pretty.print (reduce (App(e', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
+                    "\nThe i0-face of the lid\n  " ^ Pretty.print (eval (App(e', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
                   | _, Error (sa', msg), _, _ ->
                     Error (Stack.append sa' (Stack.lappend sa sa1 sa2), 
                     "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
-                    "\nThe i1-face of the lid\n  " ^ Pretty.print (reduce (App(e', I1()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
+                    "\nThe i1-face of the lid\n  " ^ Pretty.print (eval (App(e', I1()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
                   | _, _, Error (sa', msg), _ ->
                     Error (Stack.append sa' (Stack.lappend sa sa1 sa2), 
                     "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e', e1', e2')) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
-                    "\nThe i0-face of the i0-tube\n  " ^ Pretty.print (reduce (App(e1', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
+                    "\nThe i0-face of the i0-tube\n  " ^ Pretty.print (eval (App(e1', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
                   | _, _, _, Error (sa', msg) ->
                     Error (Stack.append sa' (Stack.lappend sa sa1 sa2), 
                     "Error when checking that the homogeneous filling\n  " ^ Pretty.print (Hfill(e, e1, e2)) ^ 
                     "\nhas type\n  I → I → " ^ Pretty.print ty' ^ 
-                    "\nThe i0-face of the i1-tube\n  " ^ Pretty.print (reduce (App(e2', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
+                    "\nThe i0-face of the i1-tube\n  " ^ Pretty.print (eval (App(e2', I0()))) ^ "\ndoes not have the expected type\n  " ^ Pretty.print ty' ^ 
                     "\n" ^ msg)
                 end
 
@@ -781,7 +783,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
 
                   | Error (sa', msg), _, _ ->
                     Error (Stack.append sa sa', 
-                      "Error when checking that the line\n  " ^ Pretty.print (reduce (Ast.App(e', Ast.I1()))) ^ "\nhas type\n  " ^ Pretty.print ty' ^ 
+                      "Error when checking that the line\n  " ^ Pretty.print (eval (Ast.App(e', Ast.I1()))) ^ "\nhas type\n  " ^ Pretty.print ty' ^ 
                       "\nin the homogeneous filling\n  hfill (" ^ Pretty.print e' ^ 
                       ")\n    | i0 → " ^ Pretty.print e1' ^
                       "\n    | i1 → " ^ Pretty.print e2' ^ "\n" ^ msg)
@@ -800,7 +802,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
   
   | Pabs (i, e) ->
     let h0 = Placeholder.generate ty 0 [] in
-    let elabt = elaborate global ctx lvl sl h0 ph vars ty in
+    let elabt = elaborate global ctx lvl sl h0 ph vars (eval ty) in
     begin match elabt with
     | Ok (Pathd (Hole (n, l), e1, e2), _, _) ->
       let h0 = Placeholder.generate ty 0 [] in
@@ -854,12 +856,12 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       let elab = 
         elaborate global ((i, Int(), true) :: ctx) lvl 
         (fst sl, Stack.allconcat i (Int()) (snd sl)) 
-        (reduce (App(ty1, Id i))) ph vars e
+        (eval (App(ty1, Id i))) ph vars e
       in
       begin match elab with
       | Ok (e', _, saa) ->
-        let elab1 = elaborate global ctx lvl sl (reduce (App(ty1, I0()))) ph vars (reduce (subst i (I0()) e')) in
-        let elab2 = elaborate global ctx lvl sl (reduce (App(ty1, I1()))) ph vars (reduce (subst i (I1()) e')) in
+        let elab1 = elaborate global ctx lvl sl (eval (App(ty1, I0()))) ph vars (eval (subst i (I0()) e')) in
+        let elab2 = elaborate global ctx lvl sl (eval (App(ty1, I1()))) ph vars (eval (subst i (I1()) e')) in
         begin match elab1, elab2 with
         | Ok (ei0, tyi0, _), Ok (ei1, tyi1, _) ->
           let u1 = unify global ctx lvl sl ph vars (eval ei0, eval e1, tyi0) false in
@@ -874,7 +876,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
               let elab0 = elaborate global ctx lvl sl h1 ph vars s' in
               begin match elab0 with
               | Ok (_, Pathd(sty, sa, _), _) ->
-                let u = unify global ctx lvl sl ph vars (s, sa, reduce (App(sty, I0()))) false in
+                let u = unify global ctx lvl sl ph vars (s, sa, eval (App(sty, I0()))) false in
                 begin match u with
                 | Ok _ ->
                   Ok (Pabs (i, e'), Pathd (ty1, ei0, ei1), saa)
@@ -900,7 +902,7 @@ let rec elaborate global ctx lvl sl ty ph vars = function
               let elab0 = elaborate global ctx lvl sl h1 ph vars s' in
               begin match elab0 with
               | Ok (_, Pathd(sty,_,sb), _) ->
-                let u = unify global ctx lvl sl ph vars (s, sb, reduce (App(sty, I1()))) false in
+                let u = unify global ctx lvl sl ph vars (s, sb, eval (App(sty, I1()))) false in
                 begin match u with
                 | Ok _ -> 
                   Ok (Pabs (i, e'), Pathd (ty1, ei0, ei1), saa)
@@ -926,13 +928,13 @@ let rec elaborate global ctx lvl sl ty ph vars = function
           Error (saa, "Error when checking that the path abstracted term\n  " ^ 
             Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
             "\nThe i0-endpoint\n  " ^ Pretty.print (eval (subst i (I0()) e')) ^ 
-            "\ndoes not have type\n  " ^ Pretty.print (reduce (App(ty1, I0()))) ^
+            "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I0()))) ^
             "\n" ^ msg)
         | _, Error (_, msg) -> 
           Error (saa, "Error when checking that the path abstracted term\n  " ^ 
             Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ 
             "\nThe i1-endpoint\n  " ^ Pretty.print (eval (subst i (I1()) e')) ^ 
-            "\ndoes not have type\n  " ^ Pretty.print (reduce (App(ty1, I1()))) ^ 
+            "\ndoes not have type\n  " ^ Pretty.print (eval (App(ty1, I1()))) ^ 
             "\n" ^ msg)
         end
       | Error (sa, msg) -> 

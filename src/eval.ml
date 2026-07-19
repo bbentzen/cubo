@@ -50,30 +50,41 @@ let rec has_reduction = function
 
   | Ast.Coe (i, j, e1, e2) ->
     begin
-      if fst (has_reduction i) = fst (has_reduction j) then
+      let (i', bi) = has_reduction i in
+      let (j', bj) = has_reduction j in
+      if i' = j' then
         e2, true
       else
         match e1 with
-        | Ast.Abs(k, e) -> 
+        | Ast.Abs(k, e) ->
+          let (e1', b1) = has_reduction e1 in
+          let (e2', b2) = has_reduction e2 in
           if has_var k e then
-            Ast.Coe (fst (has_reduction i), fst (has_reduction j), fst (has_reduction e1), fst (has_reduction e2)), 
-            snd (has_reduction i) || snd (has_reduction j) || snd (has_reduction e1) || snd (has_reduction e2)
-          else 
+            Ast.Coe (i', j', e1', e2'), 
+            bi || bj || b1 || b2
+          else
             e2, true
-        | _ -> 
-          Ast.Coe (fst (has_reduction i), fst (has_reduction j), fst (has_reduction e1), fst (has_reduction e2)), 
-          snd (has_reduction i) || snd (has_reduction j) || snd (has_reduction e1) || snd (has_reduction e2)
+        | _ ->
+          let (e1', b1) = has_reduction e1 in
+          let (e2', b2) = has_reduction e2 in
+          Ast.Coe (i', j', e1', e2'), 
+          bi || bj || b1 || b2
     end
   
-  | Ast.Hfill (e, e1, e2) -> 
-    Ast.Hfill (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
-    snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2)
+  | Ast.Hfill (e, e1, e2) ->
+    let (e', b) = has_reduction e in
+    let (e1', b1) = has_reduction e1 in
+    let (e2', b2) = has_reduction e2 in
+    Ast.Hfill (e', e1', e2'), b || b1 || b2
   
-  | Ast.App (Ast.Hfill (e, _, _), Ast.I0()) -> e, true
+  | Ast.App (Ast.Hfill (e, _, _), Ast.I0()) -> 
+    e, true
 
-  | Ast.App (Ast.App (Ast.Hfill (_, e1, _), i), Ast.I0()) -> fst (has_reduction (Ast.App(e1, i))), true
+  | Ast.App (Ast.App (Ast.Hfill (_, e1, _), i), Ast.I0()) -> 
+    fst (has_reduction (Ast.App(e1, i))), true
 
-  | Ast.App (Ast.App (Ast.Hfill (_, _, e2), i), Ast.I1()) -> fst (has_reduction (Ast.App(e2, i))), true
+  | Ast.App (Ast.App (Ast.Hfill (_, _, e2), i), Ast.I1()) -> 
+    fst (has_reduction (Ast.App(e2, i))), true
 
   | Ast.Abs (x, e) -> 
     begin 
@@ -81,9 +92,12 @@ let rec has_reduction = function
       | Ast.App (e1 , e2) ->
         if e2 = Ast.Id x && not (has_var x e1) then 
           fst (has_reduction e1), true
-        else 
-          Ast.Abs (x, fst (has_reduction e)), snd (has_reduction e)
-      | _ -> Ast.Abs (x, fst (has_reduction e)), snd (has_reduction e)
+        else
+          let (e', b) = has_reduction e in
+          Ast.Abs (x, e'), b
+      | _ ->
+        let (e', b) = has_reduction e in
+        Ast.Abs (x, e'), b
     end
 
   | Ast.App (e1, e2) -> 
@@ -94,57 +108,69 @@ let rec has_reduction = function
           Ast.App (e1, e2), false
         else
           subst x e2 (fst (has_reduction e)), true
-      | _ -> 
-        Ast.App (fst (has_reduction e1), fst (has_reduction e2)), 
-        snd (has_reduction e1) || snd (has_reduction e2)
+      | _ ->
+        let (e1', b1) = has_reduction e1 in
+        let (e2', b2) = has_reduction e2 in
+        Ast.App (e1', e2'), b1 || b2
     end
 
   | Ast.Pair (e1, e2) ->
     begin
       match e1, e2 with
-      | Fst e1', Snd e2' ->
+      | Ast.Fst e1', Ast.Snd e2' ->
         if e1' = e2' then
           e1', true
         else
-          Ast.Pair (fst (has_reduction e1), fst (has_reduction e2)),
-          snd (has_reduction e1) || snd (has_reduction e2)
+          let (e1'', b1) = has_reduction e1 in
+          let (e2'', b2) = has_reduction e2 in
+          Ast.Pair (e1'', e2''), b1 || b2
       | _ ->
-        Ast.Pair (fst (has_reduction e1), fst (has_reduction e2)),
-        snd (has_reduction e1) || snd (has_reduction e2)
+        let (e1', b1) = has_reduction e1 in
+        let (e2', b2) = has_reduction e2 in
+        Ast.Pair (e1', e2'), b1 || b2
     end
 
   | Ast.Fst e ->
     begin 
       match e with
       | Ast.Pair (e1 , _) -> (e1, true)
-      | _ -> Ast.Fst (fst (has_reduction e)), snd (has_reduction e)
+      | _ -> 
+        let (e', b) = has_reduction e in
+        Ast.Fst e', b
     end
 
   | Ast.Snd e -> 
     begin
       match e with
       | Ast.Pair (_ , e2) -> (e2, true)
-      | _ -> Ast.Snd (fst (has_reduction e)), snd (has_reduction e)
+      | _ -> 
+        let (e', b) = has_reduction e in
+        Ast.Snd e', b
     end
 
-  | Ast.Inl e -> 
-    Ast.Inl (fst (has_reduction e)), snd (has_reduction e)
+  | Ast.Inl e ->
+    let (e', b) = has_reduction e in
+    Ast.Inl e', b
 
   | Ast.Inr e -> 
-    Ast.Inr (fst (has_reduction e)), snd (has_reduction e)
+    let (e', b) = has_reduction e in
+    Ast.Inr e', b
 
   | Ast.Case (e, e1, e2) -> 
     begin
       match e with
       | Ast.Inl a -> Ast.App (e1,a), true
       | Ast.Inr b -> Ast.App (e2,b), true
-      | _ -> 
-        Ast.Case (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
-        snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2)
+      | _ ->
+        let (e', b) = has_reduction e in
+        let (e1', b1) = has_reduction e1 in
+        let (e2', b2) = has_reduction e2 in
+        Ast.Case (e', e1', e2'), b || b1 || b2
     end
 
-  | Ast.Succ e -> 
-    Ast.Succ (fst (has_reduction e)), snd (has_reduction e)
+  | Ast.Succ e ->
+    let (e', b) = has_reduction e in
+    Ast.Succ e', b
 
   | Ast.Natrec (e, e1, e2) -> 
     begin 
@@ -152,8 +178,10 @@ let rec has_reduction = function
       | Ast.Zero() -> e1, true
       | Ast.Succ k -> Ast.App (Ast.App (e2,k),Natrec(k,e1,e2)), true
       | _ -> 
-        Ast.Natrec (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
-        snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2)
+        let (e', b) = has_reduction e in
+        let (e1', b1) = has_reduction e1 in
+        let (e2', b2) = has_reduction e2 in
+        Ast.Natrec (e', e1', e2'), b || b1 || b2
     end
 
   | Ast.If (e, e1, e2) -> 
@@ -161,16 +189,21 @@ let rec has_reduction = function
       match e with
       | Ast.True() -> e1, true
       | Ast.False() -> e2, true
-      | _ -> 
-        Ast.If (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
-        snd (has_reduction e) || snd (has_reduction e1) || snd (has_reduction e2)
+      | _ ->
+        let (e', b) = has_reduction e in
+        let (e1', b1) = has_reduction e1 in
+        let (e2', b2) = has_reduction e2 in
+        Ast.If (e', e1', e2'), b || b1 || b2
     end
 
   | Ast.Let (e, e1) -> 
     begin
       match e with
       | Ast.Star() -> e1, true
-      | _ -> Ast.Let (fst (has_reduction e), e1), snd (has_reduction e)
+      | _ -> 
+        let (e', b) = has_reduction e in
+        let (e1', b1) = has_reduction e1 in
+        Ast.Let (e', e1'), b || b1
     end
 
   | Ast.Pabs (x, e) -> 
@@ -179,10 +212,12 @@ let rec has_reduction = function
       | Ast.At (e1 , e2) ->
         if e2 = Ast.Id x && not (free_var x e1) then 
           fst (has_reduction e1), true
-        else 
-          Ast.Pabs (x, fst (has_reduction e)), snd (has_reduction e)
-      | _ -> 
-        Ast.Pabs (x, fst (has_reduction e)), snd (has_reduction e)
+        else
+          let (e', b) = has_reduction e in
+          Ast.Pabs (x, e'), b
+      | _ ->
+        let (e', b) = has_reduction e in
+        Ast.Pabs (x, e'), b
     end
 
   | Ast.At (e1, e2) -> 
@@ -193,26 +228,32 @@ let rec has_reduction = function
           Ast.At (e1, e2), false
         else
           (subst x e2 (fst (has_reduction e)), true)
-      | _ -> 
-        Ast.At (fst (has_reduction e1), fst (has_reduction e2)), 
-        snd (has_reduction e1) || snd (has_reduction e2)
+      | _ ->
+        let (e1', b1) = has_reduction e1 in
+        let (e2', b2) = has_reduction e2 in
+        Ast.At (e1', e2'), b1 || b2
     end
   
-  | Ast.Pi (x, e1, e2) -> 
-    Ast.Pi (x, fst (has_reduction e1), fst (has_reduction e2)), 
-    snd (has_reduction e1) || snd (has_reduction e2)
+  | Ast.Pi (x, e1, e2) ->
+    let (e1', b1) = has_reduction e1 in
+    let (e2', b2) = has_reduction e2 in
+    Ast.Pi (x, e1', e2'), b1 || b2
 
-  | Ast.Sigma (x, e1, e2) -> 
-    Ast.Sigma (x, fst (has_reduction e1), fst (has_reduction e2)), 
-    snd (has_reduction e1) || snd (has_reduction e2)
+  | Ast.Sigma (x, e1, e2) ->
+    let (e1', b1) = has_reduction e1 in
+    let (e2', b2) = has_reduction e2 in
+    Ast.Sigma (x, e1', e2'), b1 || b2
 
-  | Ast.Sum (e1, e2) -> 
-    Ast.Sum (fst (has_reduction e1), fst (has_reduction e2)), 
-    snd (has_reduction e1) || snd (has_reduction e2)
+  | Ast.Sum (e1, e2) ->
+    let (e1', b1) = has_reduction e1 in
+    let (e2', b2) = has_reduction e2 in
+    Ast.Sum (e1', e2'), b1 || b2
 
   | Ast.Pathd (e, e1, e2) -> 
-    Ast.Pathd (fst (has_reduction e), fst (has_reduction e1), fst (has_reduction e2)), 
-    snd (has_reduction e)|| snd (has_reduction e1) || snd (has_reduction e2)
+    let (e', b) = has_reduction e in
+    let (e1', b1) = has_reduction e1 in
+    let (e2', b2) = has_reduction e2 in
+    Ast.Pathd (e', e1', e2'), b || b1 || b2
 
   | Ast.Type l ->
     Ast.Type (Universe.eval l), false
@@ -223,9 +264,8 @@ let rec has_reduction = function
 
 let reduce e = fst (has_reduction e)
 
-(* Returns the value of an expression (may not terminate if expression is ill-typed) *)
+(* Returns the value of an expression (may not terminate if ill-typed) *)
 
 let rec eval e =
-  if snd (has_reduction e) = false
-  then reduce e
-  else eval (reduce e)
+  let (e', b) = has_reduction e in
+  if not b then e' else eval e'
