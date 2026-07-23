@@ -1,4 +1,31 @@
 
+/* look into this later: */
+
+def add_path_injs {m n k l : ℕ} (p : path ℕ k l) (q : path ℕ (add m k) (add n l))
+⊢ path ℕ (add m k) (add n k) :=
+coe i1 i0 (λ i, path ℕ (add m k) (add n (p @ i))) q
+
+/* this is not a bug: */
+def add_path_inj {m n k l : ℕ} (p : path ℕ k l) (q : path ℕ (add m k) (add n k))
+⊢ path ℕ (add m k) (add n l) :=
+coe i j (λ i, path ℕ (add m k) (add n (p @ i))) q
+
+/* bound-variable capture with <i>: */
+
+def add
+⊢ nat → nat → nat :=
+λ m n, natrec n m (λ k f, succ f)
+
+def add_num_left {m n : ℕ} (k : ℕ)
+⊢ path ℕ m n → path ℕ (add k m) (add k n) :=
+λ p, <i> add k (p @ i)
+
+def add_path_left {m n k l : ℕ} (p : path ℕ k l)
+⊢ path ℕ m n → path ℕ (add k m) (add l n) :=
+λ q, add_num_left (p @ i) q
+
+print add_path_left
+
 /** synthesize placeholders in path ?1? ?2? ?3? **/
 
 def path_coe2 (A : I → I → type 1) {a : app app A i0 i0} {b : app app A i0 i1} (p : pathd (λ i, app app A i0 i) a b) 

@@ -98,10 +98,11 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       let s var = (fst sl, Stack.allconcat var ty1 (snd sl)) in
       if has_var x ty then
         let v1 = fresh_var e ty vars in
-        let elab = elaborate global ((v1, ty1, true) :: ctx) lvl (s v1) (subst y (Ast.Id v1) ty2) ph vars e in
+        let e' = subst x (Ast.Id v1) e in
+        let elab = elaborate global ((v1, ty1, true) :: ctx) lvl (s v1) (subst y (Ast.Id v1) ty2) ph vars e' in
         begin match elab with
-        | Ok (e', ty2', sa) ->
-          Ok (Abs (v1, e'), Pi (v1, ty1, ty2'), sa)
+        | Ok (e'', ty2', sa) ->
+          Ok (Abs (v1, e''), Pi (v1, ty1, ty2'), sa)
         | Error (sa, msg) -> 
           Error (sa, msg)
         end
@@ -664,28 +665,36 @@ let rec elaborate global ctx lvl sl ty ph vars = function
       | Ast.Pi(i, int, Pi(j, int', ty')) ->
         if eval int = Int() && eval int = eval int' then
           begin
-            let elab = elaborate global ctx lvl sl (Pi(j, Int(), ty')) ph vars e in
-            let elab1 = elaborate global ctx lvl sl (Pi(j, Int(), ty')) ph vars e1 in
-            let elab2 = elaborate global ctx lvl sl (Pi(j, Int(), ty')) ph vars e2 in
+            let ty0 = subst j (Ast.I0()) ty' in
+            let ty1 = subst j (Ast.I1()) ty' in
+            let jty = Pi(j, Int(), ty') in
+            let jty0 = Pi(j, Int(), ty0) in
+            let jty1 = Pi(j, Int(), ty1) in
+            let elab = elaborate global ctx lvl sl jty ph vars e in
+            let elab1 = elaborate global ctx lvl sl jty0 ph vars e1 in  (* subst i0 *)
+            let elab2 = elaborate global ctx lvl sl jty1 ph vars e2 in  (* subst i1 *)
             match elab, elab1, elab2 with
             | Ok (e', ety, sa), Ok (e1', e1ty, sa1), Ok (e2', e2ty, sa2) ->
               begin
-                let jty = Pi(j, Int(), ty') in
-                let elabi0 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e', I0())))) in
+                let elabi0 = elaborate global ctx lvl sl ty0 ph vars (eval (App(e', I0()))) in
+                let elabi1 = elaborate global ctx lvl sl ty1 ph vars (eval (App(e', I1()))) in
+                let elab1i0 = elaborate global ctx lvl sl ty0 ph vars (eval (App(e1', I0()))) in
+                let elab2i0 = elaborate global ctx lvl sl ty1 ph vars (eval (App(e2', I0()))) in
+                (* let elabi0 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e', I0())))) in
                 let elabi1 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e', I1())))) in
-                let elab1i0 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e1', I0())))) in
-                let elab2i0 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e2', I0())))) in
+                let elab1i0 = elaborate global ctx lvl sl jty0 ph vars (Abs("v?", eval (App(e1', I0())))) in
+                let elab2i0 = elaborate global ctx lvl sl jty1 ph vars (Abs("v?", eval (App(e2', I0())))) in *)
                 begin
                   match elabi0, elabi1, elab1i0, elab2i0 with
                   | Ok (ei0, _, _), Ok (ei1, _, _), Ok (e1i0, _, _), Ok (e2i0, _, _) ->
                     begin
-                      let elab1i1 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e1, I1())))) in
-                      let elab2i1 = elaborate global ctx lvl sl jty ph vars (Abs("v?", eval (App(e2, I1())))) in
+                      let elab1i1 = elaborate global ctx lvl sl ty0 ph vars (eval (App(e1', I1()))) in
+                      let elab2i1 = elaborate global ctx lvl sl ty1 ph vars (eval (App(e2', I1()))) in
                       match elab1i1, elab2i1 with
                       | Ok _, Ok _ ->
 
-                          let u1 = unify global ctx lvl sl ph vars (eval ei0, e1i0, jty) false in
-                          let u2 = unify global ctx lvl sl ph vars (eval ei1, e2i0, jty) false in
+                          let u1 = unify global ctx lvl sl ph vars (eval ei0, e1i0, ty0) false in
+                          let u2 = unify global ctx lvl sl ph vars (eval ei1, e2i0, ty1) false in
                           begin
                             match u1, u2 with
                             | Ok _, Ok _ ->
@@ -853,10 +862,11 @@ let rec elaborate global ctx lvl sl ty ph vars = function
         Error (sa, msg)
       end
     | Ok (Pathd (ty1, e1, e2), _, _) ->
+      let ty1' = eval (App(ty1, Id i)) in
       let elab = 
         elaborate global ((i, Int(), true) :: ctx) lvl 
         (fst sl, Stack.allconcat i (Int()) (snd sl)) 
-        (eval (App(ty1, Id i))) ph vars e
+        ty1' ph vars e
       in
       begin match elab with
       | Ok (e', _, saa) ->
@@ -938,8 +948,8 @@ let rec elaborate global ctx lvl sl ty ph vars = function
             "\n" ^ msg)
         end
       | Error (sa, msg) -> 
-        Error (sa, "Error when checking that the path abstracted term\n  " ^ 
-          Pretty.print (Pabs(i, eval e)) ^ "\nhas type\n  " ^ Pretty.print ty ^ "\n" ^ msg)
+        Error (sa, "Error when checking that the term\n  " ^ 
+          Pretty.print e ^ "\nhas type\n  " ^ Pretty.print ty1' ^ "\n" ^ msg)
       end
     | Ok (Hole _, _, _) ->
       let h1 = Placeholder.generate ty 0 [] in

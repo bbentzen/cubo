@@ -22,7 +22,16 @@ let rec has_reduction = function
     let c x = Ast.Coe (i, x, Ast.Abs(k, ty1), Ast.Fst e) in
     Ast.Pair(c j, Ast.Coe (i, j, Ast.Abs(k, subst x (c (Id k)) ty2), Snd e)), true
 
-  | Ast.Coe (i, j, Ast.Abs(k, Pathd(Abs(v, ty), e1, e2)), e) ->  (* Non-dependent paths *)
+  | Ast.Coe (i, j, Ast.Abs(k, Pathd(ty, e1, e2)), e) ->
+      let v1 = fresh_var (Ast.App(e1, e2)) e 2 in
+      let v2 = fresh_var (Ast.App(e1, e2)) e 3 in
+      Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
+      Ast.Abs(v1, Ast.Coe (i, j, (Ast.Abs(k, fst (has_reduction (Ast.App(ty, Id v1))))), Ast.At(e, Ast.Id v1))), 
+      Ast.Abs(v2, Coe (Id v2, j, (Ast.Abs(k, fst (has_reduction (Ast.App(ty, I0()))))), subst k (Id v2) e1)),
+      Ast.Abs(v2, Coe (Id v2, j, (Ast.Abs(k, fst (has_reduction (Ast.App(ty, I1()))))), subst k (Id v2) e2))),
+      I1()), Id v1)), true
+  
+  (* | Ast.Coe (i, j, Ast.Abs(k, Pathd(Abs(v, ty), e1, e2)), e) ->  (* Non-dependent paths *)
     if has_var k ty = false then
       let v1 = fresh_var (Ast.App(e1, e2)) e 2 in
       Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
@@ -37,16 +46,7 @@ let rec has_reduction = function
       Ast.Abs(v2, Coe(Id v2, Id v1,  Abs(k, subst v (Id k) (subst k j ty)), Ast.Coe (i, j, Abs(k, subst v (Id v2) ty), Ast.At(e, Ast.Id v2)))), 
       Ast.Abs(k, Coe(I0(), Id v1,  Abs(k, subst v (Id k) (subst k j ty)), subst k j e1)),
       Ast.Abs(k, Coe(I1(), Id v1,  Abs(k, subst v (Id k) (subst k j ty)), subst k j e2))),
-      I1()), Id v1)), true
-  
-  (* | Ast.Coe (i, j, Ast.Abs(k, Pathd(ty, e1, e2)), e) ->  
-    let v1 = fresh_var (Ast.App(e1, e2)) e 2 in
-    let v2 = fresh_var (Ast.App(e1, e2)) e 3 in
-    Ast.Pabs(v1, Ast.App(Ast.App (Ast.Hfill(
-    Ast.Abs(v2, Coe(Id v2, Id v1,  Abs(k, App(subst k j ty, Id k)), Ast.Coe (i, j, Abs(k, App(ty, Id v2)), Ast.At(e, Ast.Id v2)))), 
-    Ast.Abs(k, Coe(I0(), Id v1,  Abs(k, App(subst k j ty, Id k)), subst k j e1)),
-    Ast.Abs(k, Coe(I1(), Id v1,  Abs(k, App(subst k j ty, Id k)), subst k j e2))),
-    I1()), Id v1)), true *)
+      I1()), Id v1)), true *)
 
   | Ast.Coe (i, j, e1, e2) ->
     begin
@@ -57,13 +57,13 @@ let rec has_reduction = function
       else
         match e1 with
         | Ast.Abs(k, e) ->
-          let (e1', b1) = has_reduction e1 in
-          let (e2', b2) = has_reduction e2 in
           if has_var k e then
+            let (e1', b1) = has_reduction e1 in
+            let (e2', b2) = has_reduction e2 in
             Ast.Coe (i', j', e1', e2'), 
             bi || bj || b1 || b2
           else
-            e2, true
+            e2, true  (* coercion regularity *)
         | _ ->
           let (e1', b1) = has_reduction e1 in
           let (e2', b2) = has_reduction e2 in

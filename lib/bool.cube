@@ -66,6 +66,16 @@ if b
   (if b' (if b'' (<_> true) (<_> true)) (if b'' (<_> true) (<_> true))) 
   (if b' (if b'' (<_> true) (<_> true)) (if b'' (<_> true) (<_> false)))
 
+def band_distr (b b' b'' : bool)
+⊢ path bool (band b (bor b' b'')) (bor (band b b') (band b b'')) :=
+if b (if b' (if b'' (<_> true) (<_> true)) (if b'' (<_> true) (<_> false)))
+  (if b' (if b'' (<_> false) (<_> false)) (if b'' (<_> false) (<_> false)))
+
+def bor_distr (b b' b'' : bool)
+⊢ path bool (bor b (band b' b'')) (band (bor b b') (bor b b'')) :=
+if b (if b' (if b'' (<_> true) (<_> true)) (if b'' (<_> true) (<_> true)))
+  (if b' (if b'' (<_> true) (<_> false)) (if b'' (<_> false) (<_> false)))
+
 /* Path structure (code-decode) */
 
 def bool_code (b b' : bool)

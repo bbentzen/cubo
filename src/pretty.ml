@@ -95,12 +95,12 @@ let rec print = function
     begin
       match e with
       | Abs (i, ty) ->
-        if Substitution.has_var i ty then
-          "pathd (" ^ print (Abs (i, ty)) ^ ") " ^ par e1 ^ par e2
-        else
+        if not (Substitution.has_var i ty) then
           "path " ^ par ty ^ par e1 ^ par e2
+        else
+          "pathd (" ^ print (Abs (i, ty)) ^ ") " ^ par e1 ^ par e2
       | _ ->
-        "path " ^ par e ^ par e1 ^ par e2
+        "pathd " ^ par e ^ par e1 ^ par e2
     end
 
   | App (e1, e2) ->
